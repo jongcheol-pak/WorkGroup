@@ -218,6 +218,8 @@
     - C2/C3: 매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 파싱 → `SpikePopupWindow`를 작업 표시줄 변에 배치. 순수 로직 단위 테스트(GroupArgs 12 + Positioner 10).
     - C4: 메인 화면 드래그 영역(`SetStorageItems(.lnk)`).
   - **남음 = 사용자 수동 검증만**(C1~C4, MSIX 배포 후 작업 표시줄에서). 단일 인스턴스/Redirect(D11)와 고유 AUMID(D3)는 T11/T7에서 정식화(spike는 단일 테스트 .lnk라 미적용).
+  - **배포 수정**: 앱을 MSIX 패키지 모드로 전환(`WindowsPackageType=None` 제거) → VS F5 DEP1700 해결.
+  - **⚠ 중요 발견(D8 갱신 필요 — T7/T8 영향)**: MSIX는 `%LOCALAPPDATA%` 쓰기를 패키지 컨테이너로 **가상화**한다. 따라서 .lnk/.ico는 **`ApplicationData.Current.LocalFolder`**(가상화 없음)에 써야 셸/사용자에게 일관되게 보인다. spike의 .lnk 출력 경로를 LocalFolder로 수정하고 저장 후 존재 검증 추가. **T7(.lnk)·T8(.ico 출력 경로 주입)은 `%LOCALAPPDATA%`가 아니라 LocalFolder 기반 경로를 사용해야 함.**
   - **Type**: D
   - **Acceptance(통과/실패 체크리스트, 모두 통과해야 게이트 통과 — D15)**:
     - [ ] (C1) 수동 생성한 .lnk(고유 AUMID + AppExecutionAlias + `--group test`)가 작업 표시줄에 핀됨

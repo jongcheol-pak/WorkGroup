@@ -25,6 +25,14 @@ namespace WorkGroup.App.Views
             try
             {
                 var lnkPath = BuildSpikeShortcut();
+
+                // MSIX 가상화/실패로 인한 거짓 성공을 막기 위해 실제 존재를 확인한다.
+                if (!File.Exists(lnkPath))
+                {
+                    ShowStatus(InfoBarSeverity.Error, $"저장은 보고됐으나 파일이 없습니다: {lnkPath}");
+                    return;
+                }
+
                 _lnkPath = lnkPath;
                 ShowStatus(InfoBarSeverity.Success, $"바로가기 생성됨: {lnkPath}");
                 RevealInExplorer(lnkPath);
@@ -35,12 +43,19 @@ namespace WorkGroup.App.Views
             }
         }
 
-        /// <summary>실행 별칭(WorkGroupSpike.exe)을 가리키는 테스트 .lnk를 만든다.</summary>
+        /// <summary>
+        /// 실행 별칭(WorkGroupSpike.exe)을 가리키는 테스트 .lnk를 만든다.
+        /// 출력은 MSIX 가상화 대상이 아닌 패키지 실제 폴더(LocalFolder)에 둔다.
+        /// </summary>
         private static string BuildSpikeShortcut()
         {
+            // 별칭 타깃은 셸이 실행하는 실제 경로(가상화되지 않음).
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var aliasExe = Path.Combine(localAppData, "Microsoft", "WindowsApps", "WorkGroupSpike.exe");
-            var lnkPath = Path.Combine(localAppData, "WorkGroup", "Shortcuts", "spike-test.lnk");
+
+            // 출력은 %LOCALAPPDATA% 대신 패키지 LocalFolder(리다이렉트 없음).
+            var shortcutsDir = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Shortcuts");
+            var lnkPath = Path.Combine(shortcutsDir, "spike-test.lnk");
 
             new ShortcutWriter().Create(
                 lnkPath,
