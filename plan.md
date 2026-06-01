@@ -248,12 +248,13 @@
   - **Halt Forecast**: "전체 사용자 열거 관리자 필요?" → D6(현재 사용자). "패키지 앱 실행 타깃?" → AUMID 기반 실행(T11에서 Shell `shell:AppsFolder\{AUMID}` 또는 IApplicationActivationManager).
   - **Depends on**: T3
 
-- [ ] **T5. 아이콘 추출·.ico 생성 서비스**
+- [x] **T5. 아이콘 추출·.ico 생성 서비스**
   - **Type**: C
   - **Acceptance**: `IIconService`가 (a) 앱 실행파일/패키지 로고에서 아이콘 추출, (b) 내장 세트 제공, (c) 사용자 이미지/.ico → 다중 해상도 .ico 변환을 수행하고 `%LOCALAPPDATA%\WorkGroup\Icons\{groupId}.ico` 생성(수동: 파일 생성·아이콘 정상 표시).
   - **Files**:
-    - 주: `src/WorkGroup.Application/Icons/IIconService.cs`, `src/WorkGroup.Infrastructure/Icons/IconService.cs`
-    - 동반: `src/WorkGroup.App/Assets/BuiltInIcons/*`
+    - 주: `src/WorkGroup.Application/Icons/IIconService.cs`, `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.Infrastructure/Icons/IcoWriter.cs`(자체 .ico 라이터 — D16)
+    - 테스트: `tests/WorkGroup.Application.Tests/IcoWriterTests.cs`, `IconServiceTests.cs`
+    - 내장 아이콘: 바이너리 자산(`Assets/BuiltInIcons/*`) 대신 **IconService에서 id별 단색 256px 비트맵을 프로그래밍 생성**(외부 의존 0·테스트 가능). follow-up: T9에서 내장 세트 시각 품질 재논의 가능.
   - **Edge Cases**: 손상/미지원 이미지→기본 아이콘 폴백. 초대형 이미지→256px로 다운스케일. 투명도 보존.
   - **Halt Forecast**: "이미지→.ico 인코딩 수단?" → **D16에서 확정**(자체 .ico 라이터 + BitmapEncoder PNG 프레임). 미결 없음.
   - **Depends on**: T3
@@ -361,10 +362,11 @@
 - T3 완료 (Domain): AppGroup/AppEntry/GroupId/IconSource + Result 패턴(D14). 불변식 단위 테스트 11/11 통과, 빌드 0/0(CS0109 경고 수정). spec-compliance OK. Domain 외부 의존 0 확인.
 - T6 완료 (영속화): IGroupRepository(Application) + JsonGroupRepository(Infrastructure, 경로 주입형·원자적 쓰기·손상 백업·schemaVersion). 테스트 8/8, 빌드 0/0, spec-compliance OK. **부수 변경(필수)**: ① Infrastructure에 Microsoft.Extensions.Logging.Abstractions 추가 ② Application.Tests TFM→net10.0-windows + Infrastructure 참조(net10.0 테스트가 windows 프로젝트 참조 불가 해소) ③ App.xaml.cs 베이스를 `Microsoft.UI.Xaml.Application`로 정규화(WorkGroup.Application 네임스페이스 충돌 CS0118 해소).
   - follow-up: 향후 UI 코드에서 unqualified `Application` 사용 시 형제 네임스페이스 충돌 재발 가능 → 정규화 또는 alias 주의(T9~). T8에서 JsonGroupRepository에 `ApplicationData.Current.LocalFolder.Path` 주입 연결 필요.
+- T5 완료 (아이콘): IIconService(Application) + IconService(Infrastructure, WIC 디코드/리사이즈/PNG + 셸 썸네일 추출 + 단색 내장/기본 생성 + 폴백) + 순수 IcoWriter(.ico 컨테이너, D16). 테스트 19/19(IcoWriter 6 + IconService 5: CustomImage/BuiltIn/폴백/재디코드/notepad.exe 추출). WIC가 헤드리스 테스트 호스트에서 동작 확인. 빌드 0/0, spec-compliance MINOR1(문서)만. **현재 Application.Tests 19건 누적.**
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-01 체크포인트 2)**: T1a·T1b·T3·T6 완료(커밋됨, 최신 389c99f). 전체 빌드 0/0, 테스트 19/19 통과. 다음 자율 작업 = **T5(아이콘 서비스)** → T4(인벤토리). T5는 CsWin32(아이콘 추출) 신규 도입 + WinRT BitmapEncoder(.ico) 포함.
+- **현재 상태(2026-06-01 체크포인트 3)**: T1a·T1b·T3·T6·T5 완료(커밋됨). 전체 빌드 0/0, 테스트 30건(Domain 11 + Application 19) 통과. 다음 자율 작업 = **T4(인벤토리)**. 이후 T2(수동 게이트) → T7·T8.
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
