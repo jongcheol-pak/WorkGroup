@@ -192,7 +192,7 @@
 
 ### Tasks — Plan 1 (코어·인프라): **현재 실행 대상**
 
-- [ ] **T1a. WinUI3 MSIX 패키지 앱 최소 빌드·실행 확정**
+- [x] **T1a. WinUI3 MSIX 패키지 앱 최소 빌드·실행 확정** (빌드 검증 완료 / GUI 창 표시는 수동 확인 사용자 대기)
   - **Type**: C
   - **Acceptance**: 단일 WinUI3 패키지 앱이 `dotnet build` 성공 + 배포 후 실행되어 빈 메인 창 표시(수동). MSIX 패키징·디버그 실행 절차가 확정되어 Verification Strategy에 기록됨.
   - **Files**:
@@ -343,9 +343,11 @@
 - 작업 표시줄 드래그 핀이 동작하지 않는 Windows 빌드: 우리 앱은 핀을 강제할 수 없으므로 "그룹 폴더 열기 + 우클릭 핀 안내"를 폴백으로 제공(T10). 근본적으로는 Microsoft 핀 API(Limited Access Feature) 채택이 필요하나 본 plan 범위 밖.
 
 ## Verification Strategy
-- 빌드: `dotnet build WorkGroup.sln -c Debug`
+- 빌드: **`dotnet build WorkGroup.slnx`** (플랫폼 미지정 — 솔루션 단위 빌드 확정. `-p:Platform=x64` 강제 시 slnx 솔루션 구성 매핑 오류 발생하므로 미지정 사용. 앱 단독 RID 빌드가 필요하면 `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64`). **검증됨: T1a에서 0 warning / 0 error.**
 - 단위 테스트: `dotnet test`(Domain/Application; Infrastructure·UI 제외)
-- 패키지 앱 디버그 실행: Visual Studio 또는 `dotnet build`로 MSIX 배포 후 실행(T1a에서 절차 확정·문서화).
+- 패키지 앱 디버그 실행(수동, GUI — 자율 실행에서 관찰 불가, 사용자 확인 필요): Visual Studio F5(MSIX 배포) 또는 `dotnet build` 후 생성 패키지 등록. 절차는 README에 기록(T1b).
+
+> **follow-up(T1a)**: `dotnet new sln`이 .NET 10 기본값인 `WorkGroup.slnx`(신형 XML 솔루션)를 생성 → plan/AGENTS의 `WorkGroup.sln` 표기를 `WorkGroup.slnx`로 통일. 템플릿은 `VijayAnand.WinUITemplates`(서드파티)이나 생성물은 표준 WinUI3 구성(Microsoft.WindowsAppSDK 1.*, Microsoft.Windows.SDK.BuildTools 10.*, Microsoft.Web.WebView2 1.* — 공식 템플릿 baseline과 동일). 기본 `WindowsPackageType=None`(비패키지 실행 가능)이며 `EnableMsixTooling=true`로 MSIX 패키징 가능 — MSIX 식별자/capability 설정은 T2에서 확정.
 - 수동 검증(필수):
   - T2(게이트): C1~C4 체크리스트(핀/클릭 인자 수신/팝업 위치/드래그 핀) 모두 통과 확인
   - T4: 주요 설치 앱이 목록에 표시되는지 확인

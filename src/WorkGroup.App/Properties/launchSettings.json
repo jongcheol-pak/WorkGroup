@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "WorkGroup.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "WorkGroup.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
