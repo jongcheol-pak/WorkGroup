@@ -212,7 +212,7 @@
   - **Halt Forecast**: 없음(표준 스캐폴딩).
   - **Depends on**: T1a
 
-- [/] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증**
+- [x] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증** — **게이트 통과(C1~C4 사용자 확인 완료)**
   - **진행 상황(코드 완성, 수동 검증 대기)**: C1~C4 코드 모두 빌드 완료.
     - C1: `ShortcutWriter`(IShellLink COM) + 메인 화면 "테스트 바로가기 생성" 버튼 → 별칭 타깃 .lnk 생성. **단위 테스트로 .lnk 생성 런타임 검증됨.**
     - C2/C3: 매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 파싱 → `SpikePopupWindow`를 작업 표시줄 변에 배치. 순수 로직 단위 테스트(GroupArgs 12 + Positioner 10).
@@ -282,28 +282,28 @@
   - **Halt Forecast**: "스키마 버전 필드?" → D7(schemaVersion 포함). "경로 주입?" → 생성자 주입으로 테스트 가능화.
   - **Depends on**: T3
 
-- [ ] **T7. 바로가기(.lnk) 생성 서비스**
+- [x] **T7. 바로가기(.lnk) 생성 서비스**
   - **Type**: D
-  - **Acceptance**: `IShortcutService.CreateOrUpdate(group)`가 IShellLink(CsWin32)로 `Shortcuts\{groupId}.lnk` 생성: 타깃=AppExecutionAlias, 인자=`--group {id}`, 아이콘=그룹 .ico, IPropertyStore로 고유 AUMID 설정. 탐색기에서 더블클릭 시 앱이 해당 group으로 기동(수동 확인). Delete 시 .lnk 제거.
+  - **Acceptance(T2 검증 반영해 갱신)**: `IShortcutService.CreateOrUpdate(group, iconPath)`가 IShellLink COM(자체 `ShortcutWriter`)로 `%USERPROFILE%\WorkGroup\Shortcuts\{표시용 그룹명}.lnk` 생성: 타깃=AppExecutionAlias, 인자=`--group {groupId}`(GroupArgs), 아이콘=그룹 .ico. 파일명은 **표시용 그룹명(금지문자 치환)** — 작업 표시줄 라벨 표시용이며, 그룹 식별은 인자의 groupId로 한다. Delete 멱등. `CleanupOrphans(validGroups)`로 고아 .lnk 정리.
+  - **결정 변경(T2 검증)**: ① **커스텀 AUMID 미사용** — T2/AppGroup 검증 결과 .lnk 핀·클릭에 IPropertyStore AUMID가 불필요(D3 사실상 불요). ② 파일명을 `{groupId}` 대신 **표시용 그룹명**으로(taskbar 라벨 가독성). ③ `.lnk` 생성은 CsWin32가 아닌 **자체 IShellLink COM(`ShortcutWriter`)** — `NativeMethods.txt`는 좌표 API(GetCursorPos 등) 전용이라 T7 동반 파일에서 제외.
   - **Files**:
-    - 주: `src/WorkGroup.Application/Shortcuts/IShortcutService.cs`, `src/WorkGroup.Infrastructure/Shortcuts/ShortcutService.cs`
-    - 동반: `src/WorkGroup.Infrastructure/Interop/NativeMethods.txt`(CsWin32 입력)
-  - **Edge Cases**: .lnk 이미 존재→갱신(덮어쓰기). 아이콘 파일 없음→T5로 선생성 보장(오케스트레이션 T8). AUMID 충돌→groupId 기반 고유 보장.
-  - **Halt Forecast**: "alias 실 경로 확인?" → T2 spike에서 검증된 alias 사용. "IPropertyStore COM 시그니처?" → CsWin32 생성.
+    - 주: `src/WorkGroup.Application/Shortcuts/IShortcutService.cs`, `src/WorkGroup.Infrastructure/Shortcuts/ShortcutService.cs`, `src/WorkGroup.Infrastructure/Shortcuts/ShortcutWriter.cs`(IShortcutWriter 추출 — 주입/테스트 가능)
+    - 테스트: `tests/WorkGroup.Application.Tests/ShortcutServiceTests.cs`
+  - **Edge Cases**: .lnk 이미 존재→갱신(덮어쓰기). 라이터 예외→Result 실패(주입형 IShortcutWriter로 검증). 금지문자→치환. 고아→CleanupOrphans.
   - **Depends on**: T2(C1/C2 통과 — alias 활성화), T5
 
-- [ ] **T8. Application 서비스(그룹 관리 use case 오케스트레이션)**
+- [x] **T8. Application 서비스(그룹 관리 use case 오케스트레이션)**
   - **Type**: C
-  - **Acceptance**: `GroupAppService`의 Create/Update/Delete가 도메인 검증→아이콘 생성(T5)→.lnk 생성/갱신(T7)→영속화(T6)를 순서대로 수행하고, 실패 시 아래 단일 일관성 정책대로 동작(단위 테스트는 인프라 인터페이스 모킹으로 각 실패 지점 검증).
+  - **Acceptance**: `GroupAppService`의 SaveAsync(생성/갱신)·DeleteAsync가 아이콘 생성(T5)→.lnk 생성/갱신(T7)→영속화(T6)를 순서대로 수행하고, 실패 시 아래 단일 일관성 정책대로 동작(단위 테스트는 인프라 인터페이스 페이크로 각 실패 지점 검증). `CleanupOrphansAsync`로 고아 .lnk/.ico 정리.
   - **일관성 정책(M3, 단일안)**: 영속화 순서를 **(1)아이콘 → (2).lnk → (3)groups.json 저장**으로 고정하고, **groups.json 저장이 성공해야만 그룹이 "존재"로 간주**한다.
-    - (1) 또는 (2) 실패 → json 저장 안 함 → 그룹은 미존재. 이미 만든 .ico/.lnk는 정리 시도. 정리마저 실패하면 그 파일은 **orphan**으로 남기되, groupId가 json에 없으므로 무해(고아 파일은 앱 시작 시 "json에 없는 Shortcuts/Icons 파일 청소" 루틴으로 제거 — 본 task에 포함).
+    - (1) 또는 (2) 실패 → json 저장 안 함 → 그룹은 미존재. 이미 만든 .ico/.lnk는 정리 시도. 정리마저 실패하면 그 파일은 **orphan**으로 남되 무해(groupId가 json에 없음). 고아 파일은 `CleanupOrphansAsync`(.lnk=ShortcutService 위임 / .ico={id}.ico 규칙)로 제거 — **구현 완료(앱 시작 시 호출은 Plan 2 조립 단계에서 연결)**.
     - (3) json 저장 실패 → (1)(2) 산출물 정리 시도 → 그룹 미존재.
     - 재시도는 하지 않는다(사용자가 다시 저장 시 멱등 수렴).
   - **Files**:
     - 주: `src/WorkGroup.Application/Groups/GroupAppService.cs`, `IGroupAppService.cs`
     - 테스트: `tests/WorkGroup.Application.Tests/GroupAppServiceTests.cs`
-  - **Edge Cases**: 삭제 시 .lnk/.ico/json 모두 정리. 멱등성(같은 그룹 중복 Create→Update로 수렴). 시작 시 orphan 파일 청소.
-  - **Halt Forecast**: "롤백/orphan 정책?" → 위 단일 일관성 정책으로 고정(분기 없음).
+  - **Edge Cases**: 삭제 시 .lnk/.ico/json 모두 정리(그룹 미발견 시 .lnk는 표시명 추론 불가 → CleanupOrphansAsync가 보완). 멱등성(중복 Save→upsert 수렴). 고아 .lnk/.ico 청소.
+  - **Halt Forecast**: "롤백/orphan 정책?" → 위 단일 일관성 정책 + CleanupOrphansAsync로 고정.
   - **Depends on**: T6, T7
 
 ---
@@ -371,6 +371,8 @@
 
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
+- **T2 게이트 통과(2026-06-02, 사용자 확인)**: C1(.lnk 생성+핀) / C2(클릭→--group 수신) / C3(작업 표시줄 변 팝업) / C4(앱 드래그→핀) 모두 동작. 검증된 방식 = `%USERPROFILE%\WorkGroup` 저장 + ListView `DragItemsStarting` + 지연 `SetDataProvider(StorageItems)` + 임시 복사. 커스텀 AUMID 불필요(D3 사실상 불요). 승격 유지: GroupArgs/ActivationParser/TaskbarPopupPositioner/ScreenMetricsProvider/ShortcutWriter.
+- **T7·T8 완료**: IShortcutService/ShortcutService(IShellLink, %USERPROFILE% 저장, --group {id} 인자, 표시명 .lnk, CleanupOrphans) + IShortcutWriter 추출(주입형). GroupAppService(아이콘→.lnk→json 일관성 정책 + DeleteAsync + CleanupOrphansAsync). 테스트 ShortcutService 7 + GroupAppService 6. 리뷰 spec/quality 반영 후 spec-compliance 재검토 OK. **Plan 1 전체(T1a~T8) 완료. 빌드 0/0, 테스트 77건(Domain 11 + Application 66).**
 - T1a–T1b 완료 (커밋 1e2b1be 외): WinUI3 앱 + 4 레이어/2 테스트 프로젝트 스캐폴딩, 문서(AGENTS/README/notes) 작성. 전체 빌드 0/0, 테스트 2/2 통과. 빌드 명령 `dotnet build WorkGroup.slnx` 확정(.slnx 채택). **미완(수동 사용자 대기): T1a GUI 창 표시 시각 확인.**
 - T3 완료 (Domain): AppGroup/AppEntry/GroupId/IconSource + Result 패턴(D14). 불변식 단위 테스트 11/11 통과, 빌드 0/0(CS0109 경고 수정). spec-compliance OK. Domain 외부 의존 0 확인.
 - T6 완료 (영속화): IGroupRepository(Application) + JsonGroupRepository(Infrastructure, 경로 주입형·원자적 쓰기·손상 백업·schemaVersion). 테스트 8/8, 빌드 0/0, spec-compliance OK. **부수 변경(필수)**: ① Infrastructure에 Microsoft.Extensions.Logging.Abstractions 추가 ② Application.Tests TFM→net10.0-windows + Infrastructure 참조(net10.0 테스트가 windows 프로젝트 참조 불가 해소) ③ App.xaml.cs 베이스를 `Microsoft.UI.Xaml.Application`로 정규화(WorkGroup.Application 네임스페이스 충돌 CS0118 해소).
@@ -380,12 +382,11 @@
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-01 체크포인트 6)**: T1a·T1b·T3·T4·T5·T6 완료 + **T2 spike 코드 완성**(C1~C4 모두 빌드, 수동 검증 대기). 전체 빌드 0/0, 테스트 64건(Domain 11 + Application 53) 통과.
-- **🚧 게이트: T2 사용자 수동 검증 필요(C1~C4)** — 통과해야 T7·T8 진입(D15).
-- **수동 검증 절차(MSIX 배포 후)**:
-  - C2/C3: 터미널 `WorkGroupSpike.exe --group test` → 작업 표시줄 변에 팝업이 뜨면 통과.
-  - C1: 앱 메인 화면 "테스트 바로가기 생성" → 열린 폴더의 `spike-test.lnk`를 작업 표시줄에 핀 → 클릭 시 팝업.
-  - C4: 메인 화면 드래그 영역을 작업 표시줄로 끌어 핀.
+- **현재 상태(2026-06-02)**: ✅ **Plan 1 전체 완료(T1a·T1b·T2·T3·T4·T5·T6·T7·T8).** T2 게이트 사용자 검증 통과. 전체 빌드 0/0, 테스트 77건(Domain 11 + Application 66). 커밋됨.
+- **다음 = Plan 2(T9~T12)**: 메인 UI(앱 목록+그룹 빌더+아이콘) → 그룹 리스트+드래그 등록 → 팝업 런처 → 자동시작/트레이/문서. **검증된 패턴 적용**: 드래그=ListView DragItemsStarting+지연 SetDataProvider, 저장=%USERPROFILE%, 팝업=TaskbarPopupPositioner. spike UI(MainPage/SpikePopupWindow)는 정식 UI로 대체.
+- **Plan 2 조립 시 연결 필요**: GroupAppService.CleanupOrphansAsync를 앱 시작 시 호출; DI로 IIconService/IShortcutService(%USERPROFILE% 경로)/IGroupRepository(LocalFolder) 구성.
+- **finalize follow-up**: 실행 별칭명 `WorkGroupSpike.exe` → production용 `WorkGroup.exe` 변경 검토(매니페스트 + ShortcutService alias).
+- Suggested skills: pjc:implement-task(Plan 2) / 공식 /code-review
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).

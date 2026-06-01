@@ -2,11 +2,17 @@ using System.Runtime.InteropServices;
 
 namespace WorkGroup.Infrastructure.Shortcuts;
 
+/// <summary>.lnk 바로가기 생성 추상화(테스트에서 실패 주입 가능하도록 분리).</summary>
+public interface IShortcutWriter
+{
+    void Create(string lnkPath, string targetPath, string? arguments = null, string? iconPath = null, string? description = null);
+}
+
 /// <summary>
 /// IShellLink COM으로 .lnk 바로가기를 생성한다(plan.md T2 C1 / T7 셸 서비스 핵심).
-/// 타깃은 실행 별칭(WorkGroupSpike.exe)이고 인자/아이콘을 지정한다.
+/// 타깃은 실행 별칭이고 인자/아이콘을 지정한다.
 /// </summary>
-public sealed class ShortcutWriter
+public sealed class ShortcutWriter : IShortcutWriter
 {
     /// <summary>지정 경로에 .lnk를 생성/덮어쓴다.</summary>
     public void Create(string lnkPath, string targetPath, string? arguments = null, string? iconPath = null, string? description = null)
