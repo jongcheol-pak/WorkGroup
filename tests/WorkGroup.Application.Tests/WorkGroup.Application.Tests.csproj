@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Infrastructure(net10.0-windows) 참조를 위해 Windows 타깃. Application/Infrastructure 양쪽 테스트를 담는다. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -21,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\WorkGroup.Application\WorkGroup.Application.csproj" />
     <ProjectReference Include="..\..\src\WorkGroup.Domain\WorkGroup.Domain.csproj" />
+    <ProjectReference Include="..\..\src\WorkGroup.Infrastructure\WorkGroup.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

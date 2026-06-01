@@ -258,7 +258,7 @@
   - **Halt Forecast**: "이미지→.ico 인코딩 수단?" → **D16에서 확정**(자체 .ico 라이터 + BitmapEncoder PNG 프레임). 미결 없음.
   - **Depends on**: T3
 
-- [ ] **T6. 영속화(JSON 리포지토리)**
+- [x] **T6. 영속화(JSON 리포지토리)**
   - **Type**: C
   - **Acceptance**: `IGroupRepository` Save/Load/Delete가 `LocalFolder\groups.json`에 그룹 컬렉션을 직렬화/역직렬화하고, 앱 재시작 후 복원됨(단위 테스트는 임시 폴더 주입으로 검증).
   - **Files**:
@@ -359,6 +359,8 @@
 <!-- implement-task가 2 task마다 갱신 -->
 - T1a–T1b 완료 (커밋 1e2b1be 외): WinUI3 앱 + 4 레이어/2 테스트 프로젝트 스캐폴딩, 문서(AGENTS/README/notes) 작성. 전체 빌드 0/0, 테스트 2/2 통과. 빌드 명령 `dotnet build WorkGroup.slnx` 확정(.slnx 채택). **미완(수동 사용자 대기): T1a GUI 창 표시 시각 확인.**
 - T3 완료 (Domain): AppGroup/AppEntry/GroupId/IconSource + Result 패턴(D14). 불변식 단위 테스트 11/11 통과, 빌드 0/0(CS0109 경고 수정). spec-compliance OK. Domain 외부 의존 0 확인.
+- T6 완료 (영속화): IGroupRepository(Application) + JsonGroupRepository(Infrastructure, 경로 주입형·원자적 쓰기·손상 백업·schemaVersion). 테스트 8/8, 빌드 0/0, spec-compliance OK. **부수 변경(필수)**: ① Infrastructure에 Microsoft.Extensions.Logging.Abstractions 추가 ② Application.Tests TFM→net10.0-windows + Infrastructure 참조(net10.0 테스트가 windows 프로젝트 참조 불가 해소) ③ App.xaml.cs 베이스를 `Microsoft.UI.Xaml.Application`로 정규화(WorkGroup.Application 네임스페이스 충돌 CS0118 해소).
+  - follow-up: 향후 UI 코드에서 unqualified `Application` 사용 시 형제 네임스페이스 충돌 재발 가능 → 정규화 또는 alias 주의(T9~). T8에서 JsonGroupRepository에 `ApplicationData.Current.LocalFolder.Path` 주입 연결 필요.
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->

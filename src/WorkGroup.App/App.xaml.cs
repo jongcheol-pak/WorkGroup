@@ -3,9 +3,10 @@ using Microsoft.UI.Xaml.Navigation;
 namespace WorkGroup.App
 {
     /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
+    /// 애플리케이션 진입점. WorkGroup.Application 네임스페이스와의 이름 충돌을 피하기 위해
+    /// 베이스 타입을 정규화하여 지정한다.
     /// </summary>
-    public partial class App : Application
+    public partial class App : Microsoft.UI.Xaml.Application
     {
         private Window window = Window.Current;
 
