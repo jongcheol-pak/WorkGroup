@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Input;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
-using WorkGroup.App.Interop;
 using WorkGroup.Infrastructure.Activation;
 using WorkGroup.Infrastructure.Shortcuts;
 
@@ -46,7 +45,7 @@ namespace WorkGroup.App.Views
 
         /// <summary>
         /// 실행 별칭(WorkGroupSpike.exe)을 가리키는 테스트 .lnk를 만든다.
-        /// 출력은 MSIX 가상화 대상이 아닌 패키지 실제 폴더(LocalFolder)에 둔다.
+        /// 셸이 접근하는 .lnk는 MSIX 가상화 대상이 아닌 %USERPROFILE% 하위에 둔다(AppGroup 검증 방식).
         /// </summary>
         private static string BuildSpikeShortcut()
         {
@@ -54,8 +53,9 @@ namespace WorkGroup.App.Views
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var aliasExe = Path.Combine(localAppData, "Microsoft", "WindowsApps", "WorkGroupSpike.exe");
 
-            // 출력은 %LOCALAPPDATA% 대신 패키지 LocalFolder(리다이렉트 없음).
-            var shortcutsDir = Path.Combine(ApplicationData.Current.LocalFolder.Path, "Shortcuts");
+            // %USERPROFILE%\WorkGroup\Shortcuts (비가상화 — 셸/작업 표시줄이 일관되게 접근).
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var shortcutsDir = Path.Combine(userProfile, "WorkGroup", "Shortcuts");
             var lnkPath = Path.Combine(shortcutsDir, "spike-test.lnk");
 
             new ShortcutWriter().Create(
@@ -73,23 +73,51 @@ namespace WorkGroup.App.Views
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
         }
 
-        private void OnDragSourcePointerPressed(object sender, PointerRoutedEventArgs e)
+        /// <summary>
+        /// ListView 항목 드래그 시작. .lnk를 임시 폴더로 복사하고 StorageItems를 '지연 제공'한다.
+        /// 외부(작업 표시줄)가 드롭 시점에 데이터를 요청할 때만 StorageFile을 넘겨야 핀이 동작한다(AppGroup 검증 방식).
+        /// </summary>
+        private void OnDragItemsStarting(object sender, DragItemsStartingEventArgs e)
         {
             if (string.IsNullOrEmpty(_lnkPath) || !File.Exists(_lnkPath))
             {
+                e.Cancel = true;
                 ShowStatus(InfoBarSeverity.Warning, "먼저 '테스트 바로가기 생성'을 눌러주세요.");
                 return;
             }
 
             try
             {
-                // 셸 IDataObject(Shell IDList 포함)로 네이티브 OLE 드래그를 시작한다.
-                // 누른 상태로 작업 표시줄까지 끌어 떼면 핀된다(plan.md T2 C4).
-                ShellFileDragSource.BeginDrag(_lnkPath);
+                e.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Link;
+
+                // 드래그용 .lnk를 임시 폴더로 복사(원본 잠금 방지).
+                var tempDir = Path.Combine(Path.GetTempPath(), "WorkGroupDrag");
+                Directory.CreateDirectory(tempDir);
+                var tempLnk = Path.Combine(tempDir, Path.GetFileName(_lnkPath));
+                File.Copy(_lnkPath, tempLnk, overwrite: true);
+
+                e.Data.SetText(_lnkPath);
+
+                // 지연 제공: 외부 드롭 대상이 요청할 때 StorageFile을 넘긴다.
+                e.Data.SetDataProvider(StandardDataFormats.StorageItems, async request =>
+                {
+                    var deferral = request.GetDeferral();
+                    try
+                    {
+                        var folder = await StorageFolder.GetFolderFromPathAsync(tempDir);
+                        var file = await folder.GetFileAsync(Path.GetFileName(tempLnk));
+                        request.SetData(new List<IStorageItem> { file });
+                    }
+                    finally
+                    {
+                        deferral.Complete();
+                    }
+                });
             }
             catch (Exception ex)
             {
-                ShowStatus(InfoBarSeverity.Error, $"드래그 시작 실패: {ex.Message}");
+                e.Cancel = true;
+                ShowStatus(InfoBarSeverity.Error, $"드래그 준비 실패: {ex.Message}");
             }
         }
 

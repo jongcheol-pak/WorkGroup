@@ -17,20 +17,23 @@
 
             <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="False" />
 
-            <Border x:Name="DragSource"
-                    PointerPressed="OnDragSourcePointerPressed"
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="24">
-                <StackPanel Spacing="4" HorizontalAlignment="Center">
-                    <TextBlock Text="⠿ 여기를 눌러 작업 표시줄로 드래그 (C4)" Style="{ThemeResource BodyStrongTextBlockStyle}"
-                               HorizontalAlignment="Center" />
-                    <TextBlock Text="먼저 위 버튼으로 바로가기를 생성하세요."
-                               Style="{ThemeResource CaptionTextBlockStyle}"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               HorizontalAlignment="Center" />
-                </StackPanel>
-            </Border>
+            <!-- 검증된 방식: ListView 항목 드래그 + SetDataProvider(StorageItems, 지연) -->
+            <ListView x:Name="DragList" CanDragItems="True" SelectionMode="None"
+                      DragItemsStarting="OnDragItemsStarting"
+                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                      BorderThickness="1" CornerRadius="8">
+                <ListViewItem>
+                    <StackPanel Spacing="4" Padding="16" HorizontalAlignment="Center">
+                        <TextBlock Text="⠿ 이 항목을 작업 표시줄로 드래그 (C4)" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="먼저 위 버튼으로 바로가기를 생성하세요."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </ListViewItem>
+            </ListView>
         </StackPanel>
     </ScrollViewer>
 </Page>
