@@ -201,7 +201,7 @@
   - **Halt Forecast**: "WindowsAppSDK 버전 어떤 것?" → D12에서 최신 안정 채택, 본 task에서 실측 확정. "패키지 앱 디버그 실행 방법?" → 본 task에서 확정·문서화.
   - **Depends on**: -
 
-- [ ] **T1b. 레이어 프로젝트·테스트·문서 스캐폴딩**
+- [x] **T1b. 레이어 프로젝트·테스트·문서 스캐폴딩**
   - **Type**: C
   - **Acceptance**: Domain/Application/Infrastructure 프로젝트 + 2개 테스트 프로젝트가 솔루션에 추가되고 `dotnet build`/`dotnet test`(빈 테스트) 성공. `README.md`/`notes.md`/`AGENTS.md` 생성(m1 기준 충족).
   - **Files**:
@@ -357,6 +357,7 @@
 
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
+- T1a–T1b 완료 (커밋 1e2b1be 외): WinUI3 앱 + 4 레이어/2 테스트 프로젝트 스캐폴딩, 문서(AGENTS/README/notes) 작성. 전체 빌드 0/0, 테스트 2/2 통과. 빌드 명령 `dotnet build WorkGroup.slnx` 확정(.slnx 채택). **미완(수동 사용자 대기): T1a GUI 창 표시 시각 확인.**
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
