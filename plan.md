@@ -212,7 +212,8 @@
   - **Halt Forecast**: 없음(표준 스캐폴딩).
   - **Depends on**: T1a
 
-- [ ] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증**
+- [/] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증**
+  - **진행 상황**: C2/C3 코어 구현·빌드 완료(매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 인자 파싱 → 작업 표시줄 변 팝업 배치). 순수 로직 단위 테스트: GroupArgs 파싱 12건 + TaskbarPopupPositioner 10건. **남음**: C1(.lnk 생성·핀)·C4(드래그)용 셸 바로가기 생성기(IShellLink, T7 핵심과 공유) + 드래그 UI, 그리고 사용자 수동 검증(C1~C4).
   - **Type**: D
   - **Acceptance(통과/실패 체크리스트, 모두 통과해야 게이트 통과 — D15)**:
     - [ ] (C1) 수동 생성한 .lnk(고유 AUMID + AppExecutionAlias + `--group test`)가 작업 표시줄에 핀됨
@@ -372,7 +373,9 @@
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-01 체크포인트 4)**: T1a·T1b·T3·T6·T5·T4 완료. 전체 빌드 0/0, 테스트 39건(Domain 11 + Application 28) 통과. 다음 = **T2(수동 게이트 — 작업 표시줄 핀/클릭/팝업/드래그핀, 자율 통과 불가)**. T2 spike 코드 구현 후 사용자 수동 검증 필요. T7·T8은 T2 통과 후.
+- **현재 상태(2026-06-01 체크포인트 5)**: T1a·T1b·T3·T4·T5·T6 완료 + **T2 spike C2/C3 코어 구현**(진행 중). 전체 빌드 0/0, 테스트 62건(Domain 11 + Application 51) 통과.
+- **T2 남은 작업**: (1) C1/C4용 .lnk 생성기(IShellLink — T7와 공유) + 드래그 UI 구현, (2) 사용자 MSIX 배포 후 수동 검증 C1~C4.
+- **C2/C3 수동 검증 방법(배포 후)**: 터미널에서 `WorkGroupSpike.exe --group test` 실행 → 작업 표시줄 변 위에 "수신한 그룹 id: test" 팝업이 뜨면 C2(인자 수신)·C3(위치) 통과.
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).

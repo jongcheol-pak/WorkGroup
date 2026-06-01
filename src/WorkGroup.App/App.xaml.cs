@@ -1,4 +1,7 @@
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.Windows.AppLifecycle;
+using WorkGroup.App.Activation;
+using WorkGroup.App.Views;
 
 namespace WorkGroup.App
 {
@@ -8,43 +11,47 @@ namespace WorkGroup.App
     /// </summary>
     public partial class App : Microsoft.UI.Xaml.Application
     {
-        private Window window = Window.Current;
+        private Window? _window;
 
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
         public App()
         {
             this.InitializeComponent();
         }
 
         /// <summary>
-        /// Invoked when the application is launched normally by the end user.  Other entry points
-        /// will be used such as when the application is launched to open a specific file.
+        /// 활성화 인자에 그룹 id가 있으면(핀된 .lnk 클릭 / 프로토콜) 팝업을, 없으면 메인 창을 연다(plan.md T2).
         /// </summary>
-        /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
-            window ??= new Window();
+            var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
+            var groupId = ActivationParser.TryGetGroupId(activation);
 
-            if (window.Content is not Frame rootFrame)
+            if (!string.IsNullOrWhiteSpace(groupId))
+            {
+                _window = new SpikePopupWindow(groupId);
+                _window.Activate();
+                return;
+            }
+
+            LaunchMainWindow(e);
+        }
+
+        private void LaunchMainWindow(LaunchActivatedEventArgs e)
+        {
+            _window ??= new Window();
+
+            if (_window.Content is not Frame rootFrame)
             {
                 rootFrame = new Frame();
                 rootFrame.NavigationFailed += OnNavigationFailed;
-                window.Content = rootFrame;
+                _window.Content = rootFrame;
             }
 
             _ = rootFrame.Navigate(typeof(MainPage), e.Arguments);
-            window.Activate();
+            _window.Activate();
         }
 
-        /// <summary>
-        /// Invoked when Navigation to a certain page fails
-        /// </summary>
-        /// <param name="sender">The Frame which failed navigation</param>
-        /// <param name="e">Details about the navigation failure</param>
-        void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
+        private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
         }
