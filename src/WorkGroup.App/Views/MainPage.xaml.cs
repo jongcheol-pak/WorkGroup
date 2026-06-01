@@ -1,7 +1,8 @@
 using System.Diagnostics;
 using Microsoft.UI.Xaml.Controls;
-using Windows.ApplicationModel.DataTransfer;
+using Microsoft.UI.Xaml.Input;
 using Windows.Storage;
+using WorkGroup.App.Interop;
 using WorkGroup.Infrastructure.Activation;
 using WorkGroup.Infrastructure.Shortcuts;
 
@@ -72,31 +73,23 @@ namespace WorkGroup.App.Views
             Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
         }
 
-        private async void OnDragStarting(UIElement sender, DragStartingEventArgs e)
+        private void OnDragSourcePointerPressed(object sender, PointerRoutedEventArgs e)
         {
             if (string.IsNullOrEmpty(_lnkPath) || !File.Exists(_lnkPath))
             {
-                e.Cancel = true;
                 ShowStatus(InfoBarSeverity.Warning, "먼저 '테스트 바로가기 생성'을 눌러주세요.");
                 return;
             }
 
-            var deferral = e.GetDeferral();
             try
             {
-                // 탐색기에서 파일을 끌 때와 동일하게 .lnk를 셸 파일로 제공한다(plan.md T2 C4).
-                var file = await StorageFile.GetFileFromPathAsync(_lnkPath);
-                e.Data.SetStorageItems(new[] { file });
-                e.Data.RequestedOperation = DataPackageOperation.Copy;
+                // 셸 IDataObject(Shell IDList 포함)로 네이티브 OLE 드래그를 시작한다.
+                // 누른 상태로 작업 표시줄까지 끌어 떼면 핀된다(plan.md T2 C4).
+                ShellFileDragSource.BeginDrag(_lnkPath);
             }
             catch (Exception ex)
             {
-                e.Cancel = true;
-                ShowStatus(InfoBarSeverity.Error, $"드래그 준비 실패: {ex.Message}");
-            }
-            finally
-            {
-                deferral.Complete();
+                ShowStatus(InfoBarSeverity.Error, $"드래그 시작 실패: {ex.Message}");
             }
         }
 
