@@ -47,5 +47,7 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <!-- PackageManager로 설치된 패키지 앱을 열거하기 위해 필요(plan.md T4). -->
+    <rescap:Capability Name="packageQuery" />
   </Capabilities>
 </Package>

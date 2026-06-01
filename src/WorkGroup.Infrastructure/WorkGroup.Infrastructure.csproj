@@ -17,4 +17,9 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- 순수 internal 로직(MergeApps 등) 단위 테스트 허용 -->
+    <InternalsVisibleTo Include="WorkGroup.Application.Tests" />
+  </ItemGroup>
+
 </Project>

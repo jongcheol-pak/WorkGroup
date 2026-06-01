@@ -238,14 +238,19 @@
   - **Halt Forecast**: "GroupId 생성 규칙?" → GUID 문자열(결정 본 task에 고정). "멤버 최대 개수?" → 제한 없음(UI에서 스크롤).
   - **Depends on**: T1b
 
-- [ ] **T4. 설치 앱 인벤토리(Win32 + Store/UWP + 수동 추가)**
+- [x] **T4. 설치 앱 인벤토리(Win32 + Store/UWP + 수동 추가)**
   - **Type**: D
-  - **Acceptance**: `IAppInventory.GetInstalledAppsAsync()`가 현재 사용자 기준 Win32(`InstalledDesktopApp`) + 패키지(`PackageManager`) 앱을 합쳐 표시명·실행타깃·아이콘 핸들/경로로 N개 반환(수동: 주요 앱이 목록에 보임). 수동 .exe 추가 경로 제공.
+  - **Acceptance**: `IAppInventory.GetInstalledAppsAsync()`가 현재 사용자 기준 **Win32(시작 메뉴 .lnk 열거)** + 패키지(`PackageManager.FindPackagesForUser`) 앱을 합쳐 표시명·실행타깃·아이콘 경로로 N개 반환(수동: 주요 앱이 목록에 보임). `CreateManualEntry(filePath)`로 사용자 지정 .exe/.lnk 추가 경로 제공.
+  - **구현 방식 결정(리뷰 반영)**:
+    - **Win32 = 시작 메뉴 .lnk 열거**(당초 `InstalledDesktopApp` 대신). 사유: `Windows.System.Inventory.InstalledDesktopApp`은 표시명/Id/게시자만 제공하고 **실행 가능한 타깃(exe 경로)을 주지 않아** 런처 용도에 부적합. .lnk는 실행 대상(셸 실행) + 아이콘(셸 썸네일)을 동시에 제공하며 IShellLink 없이 열거 가능.
+    - **dedup = 표시명(대소문자 무시) 기준, 패키지 우선**(당초 "AUMID/경로 기준" 대신). 사유: Win32(.lnk 경로)와 패키지(AUMID)는 타깃 타입이 달라 경로/AUMID 비교로는 교차 소스 중복을 잡을 수 없음 → 표시명이 실질적 dedup 키.
   - **Files**:
     - 주: `src/WorkGroup.Application/Inventory/IAppInventory.cs`, `src/WorkGroup.Infrastructure/Inventory/InstalledAppInventory.cs`
     - 동반: `src/WorkGroup.App/Package.appxmanifest`(packageQuery, runFullTrust)
-  - **Edge Cases**: 권한 없음→해당 소스 건너뛰고 나머지 반환(부분 실패 허용, 로깅). 실행 타깃 경로 누락 앱→목록 제외 또는 비활성. 중복(같은 앱이 Win32+패키지 양쪽)→AUMID/경로 기준 dedup.
-  - **Halt Forecast**: "전체 사용자 열거 관리자 필요?" → D6(현재 사용자). "패키지 앱 실행 타깃?" → AUMID 기반 실행(T11에서 Shell `shell:AppsFolder\{AUMID}` 또는 IApplicationActivationManager).
+    - 테스트: `tests/WorkGroup.Application.Tests/InstalledAppInventoryTests.cs`(순수 MergeApps/CreateManualEntry 단위 + 실머신 Integration 트레이트)
+  - **Edge Cases**: 권한 없음→해당 소스 건너뛰고 나머지 반환(부분 실패 허용, 로깅). 실행 타깃 누락→AppEntry 생성 거부로 제외. 중복→표시명 dedup. `GetAppListEntries`는 19041+ 가드.
+  - **Halt Forecast**: "전체 사용자 열거 관리자 필요?" → D6(현재 사용자). "패키지 앱 실행 타깃?" → AUMID(T11에서 IApplicationActivationManager).
+  - **follow-up(품질 리뷰)**: Infrastructure 구현 테스트가 `WorkGroup.Application.Tests`에 위치(T6 이후 windows 타깃 공용 테스트 프로젝트로 사용 중). 추후 `WorkGroup.Infrastructure.Tests` 분리 검토.
   - **Depends on**: T3
 
 - [x] **T5. 아이콘 추출·.ico 생성 서비스**
@@ -363,10 +368,11 @@
 - T6 완료 (영속화): IGroupRepository(Application) + JsonGroupRepository(Infrastructure, 경로 주입형·원자적 쓰기·손상 백업·schemaVersion). 테스트 8/8, 빌드 0/0, spec-compliance OK. **부수 변경(필수)**: ① Infrastructure에 Microsoft.Extensions.Logging.Abstractions 추가 ② Application.Tests TFM→net10.0-windows + Infrastructure 참조(net10.0 테스트가 windows 프로젝트 참조 불가 해소) ③ App.xaml.cs 베이스를 `Microsoft.UI.Xaml.Application`로 정규화(WorkGroup.Application 네임스페이스 충돌 CS0118 해소).
   - follow-up: 향후 UI 코드에서 unqualified `Application` 사용 시 형제 네임스페이스 충돌 재발 가능 → 정규화 또는 alias 주의(T9~). T8에서 JsonGroupRepository에 `ApplicationData.Current.LocalFolder.Path` 주입 연결 필요.
 - T5 완료 (아이콘): IIconService(Application) + IconService(Infrastructure, WIC 디코드/리사이즈/PNG + 셸 썸네일 추출 + 단색 내장/기본 생성 + 폴백) + 순수 IcoWriter(.ico 컨테이너, D16). 테스트 19/19(IcoWriter 6 + IconService 5: CustomImage/BuiltIn/폴백/재디코드/notepad.exe 추출). WIC가 헤드리스 테스트 호스트에서 동작 확인. 빌드 0/0, spec-compliance MINOR1(문서)만. **현재 Application.Tests 19건 누적.**
+- T4 완료 (인벤토리): IAppInventory + InstalledAppInventory(패키지=PackageManager, Win32=시작 메뉴 .lnk, 표시명 dedup, packageQuery capability, 19041 가드, CreateManualEntry 수동추가). 테스트 39건(순수 MergeApps/CreateManualEntry 7 + 실머신 Integration 2 추가). 빌드 0/0. **리뷰 2종 반영**: spec BLOCKER 2(B1 Win32방식·B2 수동추가)+MAJOR1(dedup) → B1/M1은 plan에 구현방식 정당화 기록, B2는 CreateManualEntry 구현으로 해소. 품질 MAJOR2(테스트 분리·통합테스트) → 순수 단위테스트 추가 + Integration 트레이트, MINOR2(빈catch·주석) 수정.
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-01 체크포인트 3)**: T1a·T1b·T3·T6·T5 완료(커밋됨). 전체 빌드 0/0, 테스트 30건(Domain 11 + Application 19) 통과. 다음 자율 작업 = **T4(인벤토리)**. 이후 T2(수동 게이트) → T7·T8.
+- **현재 상태(2026-06-01 체크포인트 4)**: T1a·T1b·T3·T6·T5·T4 완료. 전체 빌드 0/0, 테스트 39건(Domain 11 + Application 28) 통과. 다음 = **T2(수동 게이트 — 작업 표시줄 핀/클릭/팝업/드래그핀, 자율 통과 불가)**. T2 spike 코드 구현 후 사용자 수동 검증 필요. T7·T8은 T2 통과 후.
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
