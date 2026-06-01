@@ -263,7 +263,7 @@
 
 - [x] **T5. 아이콘 추출·.ico 생성 서비스**
   - **Type**: C
-  - **Acceptance**: `IIconService`가 (a) 앱 실행파일/패키지 로고에서 아이콘 추출, (b) 내장 세트 제공, (c) 사용자 이미지/.ico → 다중 해상도 .ico 변환을 수행하고 `%LOCALAPPDATA%\WorkGroup\Icons\{groupId}.ico` 생성(수동: 파일 생성·아이콘 정상 표시).
+  - **Acceptance**: `IIconService`가 (a) 앱 실행파일/패키지 로고에서 아이콘 추출, (b) 내장 세트 제공, (c) 사용자 이미지/.ico → 다중 해상도 .ico 변환을 수행하고 `{주입된 아이콘 디렉터리}\{groupId}.ico` 생성(출력 경로는 호출자 주입 — 운영 시 D8의 `%USERPROFILE%\WorkGroup\Icons`)(수동: 파일 생성·아이콘 정상 표시).
   - **Files**:
     - 주: `src/WorkGroup.Application/Icons/IIconService.cs`, `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.Infrastructure/Icons/IcoWriter.cs`(자체 .ico 라이터 — D16)
     - 테스트: `tests/WorkGroup.Application.Tests/IcoWriterTests.cs`, `IconServiceTests.cs`
@@ -386,6 +386,7 @@
 - **다음 = Plan 2(T9~T12)**: 메인 UI(앱 목록+그룹 빌더+아이콘) → 그룹 리스트+드래그 등록 → 팝업 런처 → 자동시작/트레이/문서. **검증된 패턴 적용**: 드래그=ListView DragItemsStarting+지연 SetDataProvider, 저장=%USERPROFILE%, 팝업=TaskbarPopupPositioner. spike UI(MainPage/SpikePopupWindow)는 정식 UI로 대체.
 - **Plan 2 조립 시 연결 필요**: GroupAppService.CleanupOrphansAsync를 앱 시작 시 호출; DI로 IIconService/IShortcutService(%USERPROFILE% 경로)/IGroupRepository(LocalFolder) 구성.
 - **finalize follow-up**: 실행 별칭명 `WorkGroupSpike.exe` → production용 `WorkGroup.exe` 변경 검토(매니페스트 + ShortcutService alias).
+- **Plan 2 follow-up(완료 리뷰 m2)**: 표시명이 같은 두 그룹은 `.lnk` 파일명 충돌로 하나만 핀됨 → T9/T10에서 표시명 중복 방지 또는 파일명에 짧은 id 접미 추가.
 - Suggested skills: pjc:implement-task(Plan 2) / 공식 /code-review
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
