@@ -228,7 +228,7 @@
   - **spike 코드 처리**: 통과 시 LaunchActivationHandler/Interop 코드는 본 코드로 승격(T11에서 확장), 폐기 아님.
   - **Depends on**: T1a
 
-- [ ] **T3. Domain 모델**
+- [x] **T3. Domain 모델**
   - **Type**: C
   - **Acceptance**: `AppGroup`(이름/멤버/아이콘소스/Id), `AppEntry`(표시명/실행타깃/원본아이콘), 값객체(`GroupId`, `IconSource`) 생성·멤버 추가/제거/중복방지 불변식을 단위 테스트로 검증(녹색).
   - **Files**:
@@ -358,11 +358,16 @@
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
 - T1a–T1b 완료 (커밋 1e2b1be 외): WinUI3 앱 + 4 레이어/2 테스트 프로젝트 스캐폴딩, 문서(AGENTS/README/notes) 작성. 전체 빌드 0/0, 테스트 2/2 통과. 빌드 명령 `dotnet build WorkGroup.slnx` 확정(.slnx 채택). **미완(수동 사용자 대기): T1a GUI 창 표시 시각 확인.**
+- T3 완료 (Domain): AppGroup/AppEntry/GroupId/IconSource + Result 패턴(D14). 불변식 단위 테스트 11/11 통과, 빌드 0/0(CS0109 경고 수정). spec-compliance OK. Domain 외부 의존 0 확인.
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- 권장 다음 액션: 승인 후 **Plan 1(T1a~T8)** 부터 implement-task. T2 게이트(C1~C4) 실패 시 즉시 Halt 후 사용자 재논의(D15).
-- Plan 1 완료 후: **Plan 2(T9~T12)** 를 활성 대상으로 승격해 별도 실행.
+- **현재 상태(2026-06-01 체크포인트)**: T1a·T1b·T3 완료(커밋됨). 전체 빌드 0/0, 테스트 11+2건 통과.
+- **사용자 확인 필요(2건)**:
+  1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
+  2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
+- **다음 자율 작업(T2 게이트와 독립, D15)**: T6(영속화)·T5(아이콘)·T4(인벤토리 코드)는 단위 테스트/빌드로 자율 검증 가능 → 이어서 진행 가능. T7·T8은 T2 게이트 통과 후.
+- 재개: "T5부터 계속" 또는 "T2 spike 코드부터" 등으로 지정.
 - Suggested skills: pjc:implement-task / 공식 /code-review
 
 ## Open Questions (모두 해결됨)
