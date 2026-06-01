@@ -104,11 +104,11 @@
 - **Rationale**: 데이터가 작고 구조 단순. MSIX LocalFolder는 샌드박스 안전 경로. .lnk·.ico 실제 파일은 별도 실경로(D8).
 - **Source**: 프로젝트 규모/MSIX 권장.
 
-### D8. .lnk·.ico 저장 경로(실파일 필요)
-- **Options**: A) `%LOCALAPPDATA%\WorkGroup\Shortcuts`(.lnk), `...\Icons`(.ico) / B) LocalFolder 내부
-- **Chosen**: A
-- **Rationale**: 작업 표시줄 핀·드래그 대상은 셸이 접근하는 실제 파일이어야 함. 풀트러스트로 실경로 쓰기 가능. LocalFolder 내부 경로는 셸 핀과의 호환이 불확실.
-- **Source**: WebSearch(MSIX 풀트러스트 .lnk 생성).
+### D8. .lnk·.ico 저장 경로(실파일 필요) — **갱신됨(T2 검증 반영)**
+- **Options**: A) `%LOCALAPPDATA%\WorkGroup`(가상화됨) / B) `ApplicationData.Current.LocalFolder` / C) `%USERPROFILE%\WorkGroup`(비가상화)
+- **Chosen**: **C — `%USERPROFILE%\WorkGroup\{Shortcuts|Icons}`** (사용자 확정 "A 유지" = 현행 비가상화 경로 유지)
+- **Rationale**: MSIX는 `%LOCALAPPDATA%`/`%APPDATA%` 쓰기를 패키지 컨테이너로 **가상화 리다이렉트**한다(T2에서 "파일 생성 성공 표시되나 literal 경로엔 없음" 버그로 실증). 셸/작업 표시줄이 접근하는 .lnk/.ico는 가상화되지 않는 `%USERPROFILE%` 하위에 둬야 일관되게 보이고 핀된다. (`groups.json` 등 비셸 설정은 D7대로 LocalFolder 유지 가능.)
+- **Source**: T2 실증 + 참조 프로젝트 AppGroup(AppPaths) 동일 방식 확인 + 사용자 확정.
 
 ### D9. 그룹 아이콘 소스(요구사항 5)
 - **Options**: A) 내장 세트 + 멤버 앱 아이콘 + 사용자 이미지/.ico 모두 / B) 사용자 이미지만 / C) 내장만
