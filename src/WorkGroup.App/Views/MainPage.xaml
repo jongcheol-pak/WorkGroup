@@ -4,35 +4,34 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:local="using:WorkGroup.App"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
-    <Page.Content>
-        <StackPanel
-            HorizontalAlignment="Center"
-            Spacing="25"
-            VerticalAlignment="Center">
-            <TextBlock
-                FontSize="24"
-                HorizontalAlignment="Center"
-                Style="{StaticResource MyLabel}"
-                Text="Hello, World!" />
-            <TextBlock
-                FontSize="20"
-                HorizontalAlignment="Center"
-                Style="{StaticResource MyLabel}"
-                Text="Welcome to WinUI 3!" />
-            <TextBlock
-                x:Name="txtCount"
-                FontSize="16"
-                HorizontalAlignment="Center"
-                Style="{StaticResource MyLabel}"
-                Text="Current count: 0" />
-            <Button
-                Click="OnCountClicked"
-                Content="Click Me"
-                HorizontalAlignment="Center"
-                Style="{StaticResource PrimaryAction}" />
+    <ScrollViewer>
+        <StackPanel Padding="32" Spacing="16" MaxWidth="640">
+            <TextBlock Text="WorkGroup — T2 게이트 검증(spike)" Style="{ThemeResource TitleTextBlockStyle}" />
+            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="① 아래 버튼으로 테스트 바로가기를 만들고 폴더를 엽니다. ② 그 .lnk를 작업 표시줄에 핀(C1)하거나, ③ 아래 드래그 영역을 작업 표시줄로 끌어(C4) 핀합니다. ④ 핀된 아이콘을 클릭하면 그룹 팝업이 떠야 합니다(C2/C3)." />
+
+            <Button x:Name="CreateButton" Click="OnCreateShortcut" Style="{ThemeResource AccentButtonStyle}"
+                    Content="테스트 바로가기 생성 후 폴더 열기" />
+
+            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="False" />
+
+            <Border x:Name="DragSource"
+                    CanDrag="True"
+                    DragStarting="OnDragStarting"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="24">
+                <StackPanel Spacing="4" HorizontalAlignment="Center">
+                    <TextBlock Text="⠿ 작업 표시줄로 드래그 (C4)" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="먼저 위 버튼으로 바로가기를 생성하세요."
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </StackPanel>
-    </Page.Content>
+    </ScrollViewer>
 </Page>

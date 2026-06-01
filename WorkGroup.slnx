@@ -1,12 +1,31 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+  </Configurations>
   <Folder Name="/src/">
-    <Project Path="src/WorkGroup.App/WorkGroup.App.csproj" />
-    <Project Path="src/WorkGroup.Application/WorkGroup.Application.csproj" />
-    <Project Path="src/WorkGroup.Domain/WorkGroup.Domain.csproj" />
-    <Project Path="src/WorkGroup.Infrastructure/WorkGroup.Infrastructure.csproj" />
+    <Project Path="src/WorkGroup.App/WorkGroup.App.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="Debug|Any CPU" Project="x64" />
+      <Deploy Solution="*|x64" />
+      <Deploy Solution="Debug|Any CPU" />
+    </Project>
+    <Project Path="src/WorkGroup.Application/WorkGroup.Application.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/WorkGroup.Domain/WorkGroup.Domain.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="src/WorkGroup.Infrastructure/WorkGroup.Infrastructure.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/WorkGroup.Application.Tests/WorkGroup.Application.Tests.csproj" />
-    <Project Path="tests/WorkGroup.Domain.Tests/WorkGroup.Domain.Tests.csproj" />
+    <Project Path="tests/WorkGroup.Application.Tests/WorkGroup.Application.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
+    <Project Path="tests/WorkGroup.Domain.Tests/WorkGroup.Domain.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+    </Project>
   </Folder>
 </Solution>

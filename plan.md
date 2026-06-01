@@ -213,7 +213,11 @@
   - **Depends on**: T1a
 
 - [/] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증**
-  - **진행 상황**: C2/C3 코어 구현·빌드 완료(매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 인자 파싱 → 작업 표시줄 변 팝업 배치). 순수 로직 단위 테스트: GroupArgs 파싱 12건 + TaskbarPopupPositioner 10건. **남음**: C1(.lnk 생성·핀)·C4(드래그)용 셸 바로가기 생성기(IShellLink, T7 핵심과 공유) + 드래그 UI, 그리고 사용자 수동 검증(C1~C4).
+  - **진행 상황(코드 완성, 수동 검증 대기)**: C1~C4 코드 모두 빌드 완료.
+    - C1: `ShortcutWriter`(IShellLink COM) + 메인 화면 "테스트 바로가기 생성" 버튼 → 별칭 타깃 .lnk 생성. **단위 테스트로 .lnk 생성 런타임 검증됨.**
+    - C2/C3: 매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 파싱 → `SpikePopupWindow`를 작업 표시줄 변에 배치. 순수 로직 단위 테스트(GroupArgs 12 + Positioner 10).
+    - C4: 메인 화면 드래그 영역(`SetStorageItems(.lnk)`).
+  - **남음 = 사용자 수동 검증만**(C1~C4, MSIX 배포 후 작업 표시줄에서). 단일 인스턴스/Redirect(D11)와 고유 AUMID(D3)는 T11/T7에서 정식화(spike는 단일 테스트 .lnk라 미적용).
   - **Type**: D
   - **Acceptance(통과/실패 체크리스트, 모두 통과해야 게이트 통과 — D15)**:
     - [ ] (C1) 수동 생성한 .lnk(고유 AUMID + AppExecutionAlias + `--group test`)가 작업 표시줄에 핀됨
@@ -373,9 +377,12 @@
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-01 체크포인트 5)**: T1a·T1b·T3·T4·T5·T6 완료 + **T2 spike C2/C3 코어 구현**(진행 중). 전체 빌드 0/0, 테스트 62건(Domain 11 + Application 51) 통과.
-- **T2 남은 작업**: (1) C1/C4용 .lnk 생성기(IShellLink — T7와 공유) + 드래그 UI 구현, (2) 사용자 MSIX 배포 후 수동 검증 C1~C4.
-- **C2/C3 수동 검증 방법(배포 후)**: 터미널에서 `WorkGroupSpike.exe --group test` 실행 → 작업 표시줄 변 위에 "수신한 그룹 id: test" 팝업이 뜨면 C2(인자 수신)·C3(위치) 통과.
+- **현재 상태(2026-06-01 체크포인트 6)**: T1a·T1b·T3·T4·T5·T6 완료 + **T2 spike 코드 완성**(C1~C4 모두 빌드, 수동 검증 대기). 전체 빌드 0/0, 테스트 64건(Domain 11 + Application 53) 통과.
+- **🚧 게이트: T2 사용자 수동 검증 필요(C1~C4)** — 통과해야 T7·T8 진입(D15).
+- **수동 검증 절차(MSIX 배포 후)**:
+  - C2/C3: 터미널 `WorkGroupSpike.exe --group test` → 작업 표시줄 변에 팝업이 뜨면 통과.
+  - C1: 앱 메인 화면 "테스트 바로가기 생성" → 열린 폴더의 `spike-test.lnk`를 작업 표시줄에 핀 → 클릭 시 팝업.
+  - C4: 메인 화면 드래그 영역을 작업 표시줄로 끌어 핀.
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
