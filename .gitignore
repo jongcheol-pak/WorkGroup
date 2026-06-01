@@ -1,0 +1,27 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+
+# MSIX 패키징 산출물
+AppPackages/
+BundleArtifacts/
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.cer
+*.pfx
+
+# 빌드/테스트 출력
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+TestResults/
+
+# Rider
+.idea/
