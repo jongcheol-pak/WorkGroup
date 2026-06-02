@@ -109,7 +109,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T1
 
-- [ ] **T3 — `AppIconLoader`: 패키지 앱은 GetLogo 우선** *(~1h)*
+- [x] **T3 — `AppIconLoader`: 패키지 앱은 GetLogo 우선** *(~1h)*
   - **Type**: C
   - **Acceptance**:
     - `LoadAsync(app)`(AppIconLoader.cs:13)에서, `app.Kind == AppKind.Packaged`이면
@@ -123,7 +123,7 @@
   - **Halt Forecast**: 없음(App은 이미 Infrastructure 참조).
   - **Depends on**: T1
 
-- [ ] **T4 — 문서 갱신 + 검증 게이트** *(~0.3h)*
+- [x] **T4 — 문서 갱신 + 검증 게이트** *(~0.3h)*
   - **Type**: A
   - **Acceptance**:
     - `README.md`: 아이콘 처리 설명에 "패키지 앱은 셸 로고(AppListEntry.DisplayInfo.GetLogo) 우선 추출" 반영(기존 설명 갱신, 최소 추가).
@@ -150,6 +150,13 @@
 - [x] 캐시 → 도입 안 함, 추출 품질만 개선 (D2, 사용자).
 - [x] 적용 범위 → AppIconLoader + IconService 두 곳 (D3, 사용자).
 
+## Next Steps
+- 현재 상태(2026-06-02): ✅ 패키지 앱 아이콘 추출 개선 완료(T1~T4). 빌드 0/0, 테스트 80/80. 새 의존성/공개 API/직렬화 무변경.
+- GUI 수동 검증 필요(패키지 실행, 헤드리스 불가): ① 설치 앱 목록/"앱 추가" 팝업에서 UWP/Store 앱(예: Teams, Discord) 아이콘 표시 ② 해당 패키지 앱을 멤버로 한 그룹의 대표 .ico에 로고 반영.
+- 권장 다음 액션: 사용자 GUI 검증 → 정상 시 PR 생성.
+- Suggested skills: 공식 /code-review, 공식 /security-review.
+
 ## Progress Log
 <!-- implement-task가 갱신 -->
 - T1-T2 완료 (커밋 9e94076, 5501ed4): T1=PackagedAppIcon.OpenLogoStreamAsync 신규(AUMID→FindPackagesForUser→GetAppListEntries→DisplayInfo.GetLogo→IRandomAccessStream, OS 19041 가드, 실패 null). T2=IconService.ResolveMemberBitmapAsync에 Packaged 분기(GetLogo 우선)+DecodeStreamAsync 공통화(이미지/썸네일/로고 3경로 통일). 빌드 0/0, 테스트 80/80, spec OK.
+- T3-T4 완료 (커밋 a3f02c7, 다음): T3=AppIconLoader.LoadAsync에 Packaged 분기(GetLogo→BitmapImage.SetSourceAsync, 실패 시 기존 폴백). T4=문서(README 핵심기능 아이콘 추출 항목 + notes 최신 항목). 빌드 0/0, 테스트 80/80, spec OK. **plan 전체 완료(T1~T4).**
