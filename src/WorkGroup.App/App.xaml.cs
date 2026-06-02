@@ -94,7 +94,9 @@ namespace WorkGroup.App
                     SystemBackdrop = new MicaBackdrop(),
                     PersistenceId = "WorkGroupMain",
                     MinWidth = 800,
-                    MinHeight = 560
+                    MinHeight = 560,
+                    // 콘텐츠를 타이틀바 영역까지 확장 → MainShell의 TitleBar 컨트롤이 드래그/캡션 영역과 자동 동기(plan.md DG3).
+                    ExtendsContentIntoTitleBar = true
                 };
                 // 닫기를 가로채 트레이로 숨긴다(종료는 트레이 메뉴에서만).
                 win.AppWindow.Closing += OnMainWindowClosing;

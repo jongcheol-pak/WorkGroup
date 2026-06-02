@@ -154,6 +154,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- **T1-T2 완료** (커밋 dfad8f9, 다음): T1=SettingsControls 8.2.251219 추가(1.8 호환 실증)+Resources(Spacing 3토큰/ControlStyles CardStyle 등)+App.xaml 병합, 명시적 Page 등록(.xbf 생성). T2=App.xaml.cs ExtendsContentIntoTitleBar+MainShell 재구성(TitleBar Title/Icon + NavigationView 280pane·컨텐츠보더0·SymbolIcon 유지·MenuItems/Footer 분리·계약 보존). 빌드 0/0(CS0612 미발생), 테스트 80/80. spec/quality OK(Spacing YAGNI 정리). **TitleBar 드래그/캡션 시각은 사용자 GUI 확인 대기(폴백 SetTitleBar용 x:Name AppTitleBar 준비됨).**
 
 ## Open Questions (모두 해결됨)
 - [x] 타이틀바 → **커스텀 TitleBar(NapCat 동일)**(사용자).

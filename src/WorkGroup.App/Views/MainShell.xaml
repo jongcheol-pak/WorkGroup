@@ -5,43 +5,74 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Background="Transparent"
     mc:Ignorable="d">
 
-    <!-- 좌측 메뉴 + 우측 컨텐츠(NavigationView). 상단=작업 그룹/트레이 메뉴, 하단(footer)=설정/정보 (plan.md DU1) -->
-    <NavigationView
-        x:Name="Nav"
-        IsSettingsVisible="False"
-        IsBackButtonVisible="Collapsed"
-        PaneDisplayMode="Left"
-        Loaded="OnLoaded"
-        SelectionChanged="OnSelectionChanged">
+    <!--
+        앱 셸 — WinUI Gallery 표준(plan.md DG3/DG6).
+        - 1행: TitleBar(앱 아이콘 + 제목). 창의 ExtendsContentIntoTitleBar=true와 자동 동기(App.xaml.cs).
+        - 2행: NavigationView(Left, 280 pane). 컨텐츠 마진/보더 제거로 사이드바와 본문 직접 인접(설정 화면 패턴).
+    -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <NavigationView.MenuItems>
-            <NavigationViewItem Content="작업 그룹" Tag="WorkGroups">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="AllApps" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="트레이 메뉴" Tag="TrayMenu">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="List" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-        </NavigationView.MenuItems>
+        <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="WorkGroup">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="ms-appx:///Assets/Square44x44Logo.scale-200.png" />
+            </TitleBar.IconSource>
+        </TitleBar>
 
-        <NavigationView.FooterMenuItems>
-            <NavigationViewItem Content="설정" Tag="Settings">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Setting" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-            <NavigationViewItem Content="정보" Tag="About">
-                <NavigationViewItem.Icon>
-                    <SymbolIcon Symbol="Help" />
-                </NavigationViewItem.Icon>
-            </NavigationViewItem>
-        </NavigationView.FooterMenuItems>
+        <NavigationView
+            Grid.Row="1"
+            x:Name="Nav"
+            Background="Transparent"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleButtonVisible="False"
+            IsSettingsVisible="False"
+            IsTitleBarAutoPaddingEnabled="False"
+            OpenPaneLength="{StaticResource SideNavWidth}"
+            PaneDisplayMode="Left"
+            Loaded="OnLoaded"
+            SelectionChanged="OnSelectionChanged">
 
-        <Frame x:Name="ContentFrame" />
-    </NavigationView>
+            <NavigationView.Resources>
+                <!-- 컨텐츠 영역 마진/보더 제거 → 사이드바 바로 옆에서 본문 시작 -->
+                <Thickness x:Key="NavigationViewContentMargin">0</Thickness>
+                <Thickness x:Key="NavigationViewMinimalContentGridBorderThickness">0</Thickness>
+                <CornerRadius x:Key="NavigationViewContentGridCornerRadius">0</CornerRadius>
+                <Thickness x:Key="NavigationViewContentGridBorderThickness">0</Thickness>
+            </NavigationView.Resources>
+
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="작업 그룹" Tag="WorkGroups">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="AllApps" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="트레이 메뉴" Tag="TrayMenu">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="List" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem Content="설정" Tag="Settings">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Setting" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="정보" Tag="About">
+                    <NavigationViewItem.Icon>
+                        <SymbolIcon Symbol="Help" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+
+            <Frame x:Name="ContentFrame" Background="Transparent" />
+        </NavigationView>
+    </Grid>
 </Page>
