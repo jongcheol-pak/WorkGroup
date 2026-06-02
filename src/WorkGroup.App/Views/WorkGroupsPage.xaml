@@ -24,7 +24,7 @@
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
-            <Grid ColumnSpacing="12">
+            <Grid ColumnSpacing="12" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -81,11 +81,11 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- 그룹 아이콘(사각 테두리) -->
+                                <!-- 그룹 아이콘(사각 테두리). 내부 영역(44-패딩8-테두리2≈34)에 맞춰 32로 표시(잘림 방지). -->
                                 <Border Width="44" Height="44" CornerRadius="4" VerticalAlignment="Center"
                                         Background="{x:Bind IconFallback, Mode=OneWay}"
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="4">
-                                    <Image Width="36" Height="36" Source="{x:Bind Icon, Mode=OneWay}" />
+                                    <Image Width="32" Height="32" Stretch="Uniform" Source="{x:Bind Icon, Mode=OneWay}" />
                                 </Border>
 
                                 <!-- 2라인: 이름 / 멤버 아이콘 -->
