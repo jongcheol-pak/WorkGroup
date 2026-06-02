@@ -58,9 +58,10 @@
 - **Chosen**: **A (WindowEx)** — 사용자 지시. `WindowEx`는 `PersistenceId`/`Backdrop`/`MinWidth`/`MinHeight`를 직접 노출하는 완성형. B는 동일 기능을 plain Window에 부착하는 대안(미채택, 기록만).
 - **Source**: 사용자 선택("메인 창"), WinUIEx WindowManager 문서.
 
-### DW2. Mica 백드롭 — WinUIEx로 일원화
-- **Chosen**: 기존 `Microsoft.UI.Xaml.Media.MicaBackdrop` 제거 → `WindowEx.Backdrop = new WinUIEx.MicaSystemBackdrop()`. 두 백드롭 동시 설정 금지.
-- **Source**: WinUIEx 문서 예제.
+### DW2. Mica 백드롭 — 표준 SystemBackdrop 유지 (구현 시 빌드 교정)
+- **당초**: `WindowEx.Backdrop = new WinUIEx.MicaSystemBackdrop()`.
+- **교정(T1 빌드)**: WinUIEx 2.9.1이 `WindowEx.Backdrop`/`MicaSystemBackdrop`를 **CS0618 deprecated** 처리하고 표준 `Microsoft.UI.Xaml.Window.SystemBackdrop` + `Microsoft.UI.Xaml.Media.MicaBackdrop` 사용을 권장. → **`WindowEx.SystemBackdrop = new MicaBackdrop()`**(표준)로 확정. WinUIEx는 PersistenceId·MinSize에만 사용.
+- **Source**: T1 빌드 경고(CS0618) 기반 교정(Halt Forecast대로).
 
 ### DW3. persistence·최소 크기 파라미터
 - **Chosen**: `PersistenceId = "WorkGroupMain"`, `MinWidth = 800`, `MinHeight = 560`(NavigationView 셸 + 컨텐츠가 좁아지지 않을 하한). PersistenceId는 Show 전에 설정해 복원이 적용되게 한다.
@@ -81,9 +82,9 @@
 
 > 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 기존 테스트 80건 회귀 없음.
 
-- [ ] **T1. WinUIEx 추가 + 메인 창 WindowEx 전환** *(~1.5h)*
+- [x] **T1. WinUIEx 추가 + 메인 창 WindowEx 전환** *(~1.5h)*
   - **Type**: D (의존성 추가 + 창 라이프사이클)
-  - **Acceptance**: `WorkGroup.App.csproj`에 `WinUIEx 2.9.1` 추가되어 복원·빌드 0/0. `App.xaml.cs` ShowMainWindow가 로컬 `WindowEx win`을 생성해 `Backdrop=new MicaSystemBackdrop()`, `PersistenceId="WorkGroupMain"`, `MinWidth=800`/`MinHeight=560` 설정 후 `_window=win` 대입(`_window`/`MainWindow`는 `Window?` 유지). 기존 `_window.SystemBackdrop=MicaBackdrop`는 제거. 트레이 `ExitRequested`를 `_exiting=true; _window?.Close(); _tray?.Dispose(); Exit();` 순으로 변경(DW5 — Close로 persistence 저장 보장). `OnMainWindowClosing`(닫기→트레이 숨김)·`ThemeService.Initialize(rootFrame)`·`MainShell` navigate 보존. 수동: ① Mica 유지 ② 창 크기 변경→트레이 종료→재실행 시 크기/위치 복원 ③ 800×560 이하 축소 불가 ④ 닫기(X)→트레이 숨김.
+  - **Acceptance**: `WorkGroup.App.csproj`에 `WinUIEx 2.9.1` 추가되어 복원·빌드 0/0. `App.xaml.cs` ShowMainWindow가 로컬 `WindowEx win`을 생성해 `SystemBackdrop=new MicaBackdrop()`(표준, DW2 교정), `PersistenceId="WorkGroupMain"`, `MinWidth=800`/`MinHeight=560` 설정 후 `_window=win` 대입(`_window`/`MainWindow`는 `Window?` 유지). 기존 `_window.SystemBackdrop=MicaBackdrop`는 제거. 트레이 `ExitRequested`를 `_exiting=true; _window?.Close(); _tray?.Dispose(); Exit();` 순으로 변경(DW5 — Close로 persistence 저장 보장). `OnMainWindowClosing`(닫기→트레이 숨김)·`ThemeService.Initialize(rootFrame)`·`MainShell` navigate 보존. 수동: ① Mica 유지 ② 창 크기 변경→트레이 종료→재실행 시 크기/위치 복원 ③ 800×560 이하 축소 불가 ④ 닫기(X)→트레이 숨김.
   - **Files**:
     - 주: `src/WorkGroup.App/WorkGroup.App.csproj`(PackageReference WinUIEx), `src/WorkGroup.App/App.xaml.cs`(ShowMainWindow: 로컬 WindowEx + Backdrop/PersistenceId/MinSize, ExitRequested: `_window?.Close()` 추가, `using` 정리)
   - **Edge Cases**: WinAppSDK가 1.8 미만으로 해석→복원/빌드 실패(Risks 완화). 첫 실행(저장값 없음)→기본 크기. persistence 저장 실패(비패키지 등)→무해(기본 크기). 팝업 분기(`_window = popup`)는 WindowEx 미적용(불변). **복원 크기 < MinSize**(WinUIEx 도입 전 저장값 없음이라 사실상 미발생, 있어도 WinUIEx가 MinSize로 클램프 기대 — 수동 확인). **저장 위치가 현재 화면 밖**(멀티모니터 변경)→WinUIEx 복원 동작 수동 확인(미보정 시 사용자가 이동 가능, 무해).

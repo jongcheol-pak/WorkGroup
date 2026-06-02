@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Windows.AppLifecycle;
+using WinUIEx;
 using WorkGroup.App.Activation;
 using WorkGroup.App.Services;
 using WorkGroup.App.Views;
@@ -71,6 +72,10 @@ namespace WorkGroup.App
             _tray.ExitRequested += () =>
             {
                 _exiting = true; // 이후 창 Closing을 취소하지 않고 실제 종료한다.
+                // 메인 창을 실제로 닫아 WinUIEx의 Window.Closed가 발생하도록 한다
+                // → 창 크기/위치 persistence가 이 시점에 저장된다(plan.md DW5).
+                // (트레이는 메인 프로세스에만 초기화되므로 여기서 _window는 항상 메인 WindowEx — 팝업 분기는 EnsureTray 미호출로 미도달.)
+                _window?.Close();
                 _tray?.Dispose();
                 Exit();
             };
@@ -81,11 +86,19 @@ namespace WorkGroup.App
         {
             if (_window is null)
             {
-                _window = new Window();
-                // 창 백드롭을 Mica로 설정한다(plan.md DU6 — 최초 생성 시 1회).
-                _window.SystemBackdrop = new MicaBackdrop();
+                // 메인 창을 WinUIEx WindowEx로 생성해 창 크기/위치 지속(PersistenceId)·최소 크기를 관리한다(plan.md DW1/DW3).
+                // Mica는 표준 SystemBackdrop으로 둔다 — WinUIEx 2.9.1의 자체 Backdrop은 CS0618(Obsolete, 표준 SystemBackdrop 권장)이라 표준 API 사용(DW2).
+                // WindowEx 전용 멤버는 로컬 변수로 설정하고, 필드/정적은 Window? 타입을 유지한다(팝업 분기·HWND 호환).
+                var win = new WindowEx
+                {
+                    SystemBackdrop = new MicaBackdrop(),
+                    PersistenceId = "WorkGroupMain",
+                    MinWidth = 800,
+                    MinHeight = 560
+                };
                 // 닫기를 가로채 트레이로 숨긴다(종료는 트레이 메뉴에서만).
-                _window.AppWindow.Closing += OnMainWindowClosing;
+                win.AppWindow.Closing += OnMainWindowClosing;
+                _window = win;
             }
 
             MainWindow = _window;
