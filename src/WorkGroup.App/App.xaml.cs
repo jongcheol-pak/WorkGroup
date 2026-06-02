@@ -18,6 +18,9 @@ namespace WorkGroup.App
         /// <summary>전역 DI 컨테이너(plan.md T9 조립).</summary>
         public static IServiceProvider Services { get; private set; } = default!;
 
+        /// <summary>메인 창(파일 선택 등 HWND가 필요한 작업용).</summary>
+        public static Window? MainWindow { get; private set; }
+
         public App()
         {
             this.InitializeComponent();
@@ -48,6 +51,7 @@ namespace WorkGroup.App
         private void LaunchMainWindow(LaunchActivatedEventArgs e)
         {
             _window ??= new Window();
+            MainWindow = _window;
 
             if (_window.Content is not Frame rootFrame)
             {

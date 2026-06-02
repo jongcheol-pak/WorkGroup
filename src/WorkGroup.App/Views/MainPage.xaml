@@ -5,35 +5,113 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:domain="using:WorkGroup.Domain.Groups"
     mc:Ignorable="d">
-    <ScrollViewer>
-        <StackPanel Padding="32" Spacing="16" MaxWidth="640">
-            <TextBlock Text="WorkGroup — T2 게이트 검증(spike)" Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       Text="① 아래 버튼으로 테스트 바로가기를 만들고 폴더를 엽니다. ② 그 .lnk를 작업 표시줄에 핀(C1)하거나, ③ 아래 드래그 영역을 작업 표시줄로 끌어(C4) 핀합니다. ④ 핀된 아이콘을 클릭하면 그룹 팝업이 떠야 합니다(C2/C3)." />
 
-            <Button x:Name="CreateButton" Click="OnCreateShortcut" Style="{ThemeResource AccentButtonStyle}"
-                    Content="테스트 바로가기 생성 후 폴더 열기" />
+    <Grid Padding="16" ColumnSpacing="16" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-            <InfoBar x:Name="StatusBar" IsOpen="False" IsClosable="False" />
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="WorkGroup — 작업 그룹 관리"
+                   Style="{ThemeResource TitleTextBlockStyle}" />
 
-            <!-- 검증된 방식: ListView 항목 드래그 + SetDataProvider(StorageItems, 지연) -->
-            <ListView x:Name="DragList" CanDragItems="True" SelectionMode="None"
-                      DragItemsStarting="OnDragItemsStarting"
-                      Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                      BorderThickness="1" CornerRadius="8">
-                <ListViewItem>
-                    <StackPanel Spacing="4" Padding="16" HorizontalAlignment="Center">
-                        <TextBlock Text="⠿ 이 항목을 작업 표시줄로 드래그 (C4)" Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                   HorizontalAlignment="Center" />
-                        <TextBlock Text="먼저 위 버튼으로 바로가기를 생성하세요."
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   HorizontalAlignment="Center" />
-                    </StackPanel>
-                </ListViewItem>
+        <InfoBar Grid.Row="1" Grid.ColumnSpan="3" x:Name="StatusBar" IsClosable="False"
+                 IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+        <!-- 좌: 설치 앱 목록 -->
+        <Grid Grid.Row="2" Grid.Column="0" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="설치된 앱" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <TextBox Grid.Row="1" PlaceholderText="검색" Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <ListView Grid.Row="2" ItemsSource="{x:Bind ViewModel.InstalledApps, Mode=OneWay}"
+                      SelectionMode="None" DoubleTapped="OnInstalledAppDoubleTapped"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="domain:AppEntry">
+                        <TextBlock Text="{x:Bind DisplayName}" ToolTipService.ToolTip="{x:Bind LaunchTarget}" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
             </ListView>
-        </StackPanel>
-    </ScrollViewer>
+        </Grid>
+
+        <!-- 중: 그룹 편집 -->
+        <Grid Grid.Row="2" Grid.Column="1" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="그룹 편집 (앱 더블클릭으로 추가)" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <TextBox Grid.Row="1" PlaceholderText="그룹 이름" Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <ComboBox Grid.Row="2" Header="아이콘" HorizontalAlignment="Stretch"
+                      ItemsSource="{x:Bind ViewModel.IconOptions}"
+                      SelectedItem="{x:Bind ViewModel.SelectedIconOption, Mode=TwoWay}"
+                      SelectionChanged="OnIconOptionChanged" />
+            <ListView Grid.Row="3" ItemsSource="{x:Bind ViewModel.EditingApps, Mode=OneWay}"
+                      SelectionMode="None"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="domain:AppEntry">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{x:Bind DisplayName}" VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Content="✕" Tag="{x:Bind}" Click="OnRemoveAppClick" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8">
+                <Button Content="새 그룹" Command="{x:Bind ViewModel.NewGroupCommand}" />
+                <Button Content="저장" Style="{ThemeResource AccentButtonStyle}" Command="{x:Bind ViewModel.SaveGroupCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 우: 그룹 목록(작업 표시줄로 드래그) -->
+        <Grid Grid.Row="2" Grid.Column="2" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="그룹 (작업 표시줄로 드래그 / 더블클릭 편집)" Style="{ThemeResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+            <ListView Grid.Row="1" x:Name="GroupsList" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                      SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting"
+                      DoubleTapped="OnGroupDoubleTapped"
+                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="domain:AppGroup">
+                        <Grid ColumnSpacing="8" Padding="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                <TextBlock Text="{x:Bind Apps.Count}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                           Style="{ThemeResource CaptionTextBlockStyle}" />
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="삭제" Tag="{x:Bind}" Click="OnDeleteGroupClick" />
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+    </Grid>
 </Page>

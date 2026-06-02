@@ -47,6 +47,9 @@ public static class ServiceConfiguration
                 WorkGroupPaths.IconsDirectory,
                 sp.GetRequiredService<ILogger<GroupAppService>>()));
 
+        // ViewModel (plan.md T9).
+        services.AddTransient<ViewModels.MainViewModel>();
+
         return services.BuildServiceProvider();
     }
 }

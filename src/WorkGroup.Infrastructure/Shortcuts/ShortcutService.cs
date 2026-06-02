@@ -120,6 +120,12 @@ public sealed class ShortcutService : IShortcutService
         }
     }
 
+    public string GetShortcutPath(AppGroup group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+        return ShortcutPathFor(group);
+    }
+
     private string ShortcutPathFor(AppGroup group)
         => Path.Combine(_shortcutsDirectory, SanitizeFileName(group.Name) + ".lnk");
 

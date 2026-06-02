@@ -17,4 +17,7 @@ public interface IShortcutService
 
     /// <summary>유효 그룹 목록에 없는 .lnk(고아)를 정리한다(plan.md T8 일관성 정책).</summary>
     Result CleanupOrphans(IReadOnlyCollection<AppGroup> validGroups);
+
+    /// <summary>그룹의 .lnk 파일 경로를 반환한다(드래그 등록용 — plan.md T10).</summary>
+    string GetShortcutPath(AppGroup group);
 }

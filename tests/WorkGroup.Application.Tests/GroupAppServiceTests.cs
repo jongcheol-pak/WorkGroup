@@ -160,6 +160,8 @@ public sealed class GroupAppServiceTests : IDisposable
             CleanedOrphans = true;
             return Result.Ok();
         }
+
+        public string GetShortcutPath(AppGroup group) => @"C:\fake\" + group.Name + ".lnk";
     }
 
     private sealed class FakeRepository : IGroupRepository
