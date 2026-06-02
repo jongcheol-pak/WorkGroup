@@ -16,6 +16,7 @@ namespace WorkGroup.App
     {
         private Window? _window;
         private TrayIconService? _tray;
+        private bool _exiting;
 
         /// <summary>전역 DI 컨테이너(plan.md T9 조립).</summary>
         public static IServiceProvider Services { get; private set; } = default!;
@@ -68,6 +69,7 @@ namespace WorkGroup.App
             _tray.OpenRequested += ShowMainWindow;
             _tray.ExitRequested += () =>
             {
+                _exiting = true; // 이후 창 Closing을 취소하지 않고 실제 종료한다.
                 _tray?.Dispose();
                 Exit();
             };
@@ -79,7 +81,8 @@ namespace WorkGroup.App
             if (_window is null)
             {
                 _window = new Window();
-                _window.Closed += (_, _) => _window = null; // 닫아도 트레이로 상주
+                // 닫기를 가로채 트레이로 숨긴다(종료는 트레이 메뉴에서만).
+                _window.AppWindow.Closing += OnMainWindowClosing;
             }
 
             MainWindow = _window;
@@ -92,7 +95,17 @@ namespace WorkGroup.App
             if (rootFrame.Content is null)
                 _ = rootFrame.Navigate(typeof(MainPage));
 
+            _window.AppWindow.Show();
             _window.Activate();
+        }
+
+        private void OnMainWindowClosing(
+            Microsoft.UI.Windowing.AppWindow sender,
+            Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+        {
+            if (_exiting) return; // 트레이 종료 시에는 실제로 닫는다.
+            args.Cancel = true;   // 종료 대신
+            sender.Hide();        // 트레이로 숨김
         }
 
         private void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
