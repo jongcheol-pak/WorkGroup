@@ -28,6 +28,11 @@ public sealed partial class GroupPopupWindow : Window
     public GroupPopupWindow(string groupId)
     {
         InitializeComponent();
+
+        // 메인 창과 동일한 저장 테마를 팝업 루트에도 적용한다(plan.md M1 — 별 프로세스라 직접 읽어 적용).
+        if (Content is FrameworkElement root)
+            root.RequestedTheme = App.Services.GetRequiredService<WorkGroup.App.Services.ThemeService>().Read();
+
         _groupService = App.Services.GetRequiredService<IGroupAppService>();
         _launcher = App.Services.GetRequiredService<IAppLauncher>();
 

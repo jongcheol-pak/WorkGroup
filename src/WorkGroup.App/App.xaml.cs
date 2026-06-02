@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Windows.AppLifecycle;
 using WorkGroup.App.Activation;
@@ -81,6 +82,8 @@ namespace WorkGroup.App
             if (_window is null)
             {
                 _window = new Window();
+                // 창 백드롭을 Mica로 설정한다(plan.md DU6 — 최초 생성 시 1회).
+                _window.SystemBackdrop = new MicaBackdrop();
                 // 닫기를 가로채 트레이로 숨긴다(종료는 트레이 메뉴에서만).
                 _window.AppWindow.Closing += OnMainWindowClosing;
             }
@@ -91,9 +94,11 @@ namespace WorkGroup.App
                 rootFrame = new Frame();
                 rootFrame.NavigationFailed += OnNavigationFailed;
                 _window.Content = rootFrame;
+                // 저장된 테마를 루트 Frame에 적용·등록한다(plan.md DU5 — 이후 설정 변경도 이 루트에 반영).
+                Services.GetRequiredService<Services.ThemeService>().Initialize(rootFrame);
             }
             if (rootFrame.Content is null)
-                _ = rootFrame.Navigate(typeof(MainPage));
+                _ = rootFrame.Navigate(typeof(MainShell));
 
             _window.AppWindow.Show();
             _window.Activate();

@@ -53,6 +53,9 @@ public static class ServiceConfiguration
         // 자동 시작 토글(plan.md T12).
         services.AddSingleton<Services.StartupService>();
 
+        // 앱 테마 적용·영속(plan.md T2/DU5).
+        services.AddSingleton<Services.ThemeService>();
+
         // ViewModel (plan.md T9).
         services.AddTransient<ViewModels.MainViewModel>();
 
