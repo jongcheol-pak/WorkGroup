@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
 using WorkGroup.App.ViewModels;
@@ -7,8 +8,8 @@ using WorkGroup.Domain.Groups;
 namespace WorkGroup.App.Views;
 
 /// <summary>
-/// 그룹 추가/수정 다이얼로그(plan.md T6/DU2). 상단에 이름·아이콘 설정, 하단에 설치 앱 체크 목록.
-/// 확인 시 GroupAppService로 저장하고, 실패하면 닫히지 않는다. 호출자는 XamlRoot 지정 + Configure 후 ShowAsync.
+/// 그룹 추가/수정 다이얼로그(plan.md T4). 상단 아이콘+이름, 앱 추가/삭제 목록, 확인 시 검증·저장.
+/// 아이콘/앱 선택 팝업은 Flyout(ContentDialog 중첩 불가). 호출자는 XamlRoot 지정 + Configure 후 ShowAsync.
 /// </summary>
 public sealed partial class GroupEditDialog : ContentDialog
 {
@@ -31,12 +32,11 @@ public sealed partial class GroupEditDialog : ContentDialog
 
     private async void OnPrimaryButtonClick(ContentDialog sender, ContentDialogButtonClickEventArgs args)
     {
-        // 저장이 끝날 때까지 다이얼로그 닫힘을 보류한다. 실패 시 닫지 않는다.
+        // 검증·저장이 끝날 때까지 닫힘을 보류한다. 실패(빈 목록/중복 이름/저장 실패) 시 닫지 않는다.
         var deferral = args.GetDeferral();
         try
         {
-            var ok = await ViewModel.SaveAsync();
-            if (!ok)
+            if (!await ViewModel.ValidateAndSaveAsync())
                 args.Cancel = true;
         }
         finally
@@ -45,11 +45,15 @@ public sealed partial class GroupEditDialog : ContentDialog
         }
     }
 
-    private async void OnIconOptionChanged(object sender, SelectionChangedEventArgs e)
+    // 아이콘 Flyout이 열릴 때마다 리소스 그리드를 접어 두 선택지부터 보이게 한다.
+    private void OnIconFlyoutOpening(object? sender, object e)
+        => ViewModel.ShowResourceGrid = false;
+
+    private async void OnUserIconClick(object sender, RoutedEventArgs e)
     {
-        // "이미지 선택..."을 고르면 파일 선택기를 띄운다.
-        if (ViewModel.SelectedIconOption != "이미지 선택...")
-            return;
+        // 아이콘 Flyout을 닫고 파일 선택기를 띄운다(닫힘 UI 사이클 양보 후 호출해 포커스 경합 회피).
+        (IconButton.Flyout as Flyout)?.Hide();
+        await Task.Yield();
 
         var picker = new FileOpenPicker();
         foreach (var ext in new[] { ".png", ".jpg", ".jpeg", ".bmp", ".ico" })
@@ -63,9 +67,29 @@ public sealed partial class GroupEditDialog : ContentDialog
 
         var file = await picker.PickSingleFileAsync();
         if (file is not null)
-            ViewModel.CustomImagePath = file.Path;
-        else if (string.IsNullOrWhiteSpace(ViewModel.CustomImagePath))
-            // 선택 취소 + 기존 이미지 없음 → 옵션을 기본으로 되돌려 UI와 저장값을 일치시킨다.
-            ViewModel.SelectedIconOption = "기본";
+            ViewModel.SetUserImage(file.Path);
+    }
+
+    private void OnShowResourceGrid(object sender, RoutedEventArgs e)
+        => ViewModel.ShowResourceGrid = true;
+
+    private void OnResourceIconSelected(object sender, ItemClickEventArgs e)
+    {
+        if (e.ClickedItem is ResourceIconItem item)
+            ViewModel.SetResourceIcon(item.Uri);
+        (IconButton.Flyout as Flyout)?.Hide();
+    }
+
+    private void OnAppPickerItemClick(object sender, ItemClickEventArgs e)
+    {
+        // 후보 앱을 클릭하면 선택 목록에 추가한다(Flyout은 유지하여 연속 추가 가능).
+        if (e.ClickedItem is PopupAppItem item)
+            ViewModel.AddApp(item.App);
+    }
+
+    private void OnRemoveAppClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
+            ViewModel.RemoveApp(item);
     }
 }

@@ -76,9 +76,10 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
 - **Chosen**: `GetIconUrisAsync()` → `IReadOnlyList<string>`(ms-appx URI). UI 객체 미생성. `BitmapImage`는 VM이 **UI 스레드(InitializeAsync 진입부, 인벤토리 await 이전)** 에서 생성. Singleton(URI 캐시).
 - **Source**: WinUI BitmapImage 스레드 어피니티.
 
-### DI4. 아이콘 선택 = 미리보기 버튼 + MenuFlyout + 리소스 Flyout
-- **Chosen**: 아이콘 미리보기 `Button` 클릭 → `MenuFlyout`("사용자 아이콘"/"리소스 아이콘"). 사용자→`FileOpenPicker`(App.MainWindow HWND)→`SetUserImageAsync`. 리소스→리소스 GridView를 담은 `Flyout`을 버튼에 `ShowAt`, 항목 클릭→`SetResourceIcon`+Flyout 닫기. (ContentDialog 중첩 불가→Flyout.)
-- **Source**: WinUI ContentDialog/Flyout 제약.
+### DI4. 아이콘 선택 = 미리보기 버튼 + 단일 Flyout(사용자/리소스 토글)
+- **Chosen(구현 시 확정)**: 아이콘 미리보기 `Button`의 단일 `Flyout`에 [사용자 아이콘][리소스 아이콘] 두 버튼 + 리소스 `GridView`(초기 접힘). "리소스 아이콘" 클릭→VM `ShowResourceGrid=true`로 그리드 펼침(Visibility는 x:Bind — Flyout 내 x:Name code-behind 접근 회피). 항목 클릭→`SetResourceIcon`+Flyout 닫기. "사용자 아이콘"→Flyout 닫고 `FileOpenPicker`→`SetUserImage`. Flyout Opening마다 그리드 접음.
+- **당초 MenuFlyout 미채택 사유**: `MenuFlyout`은 `MenuFlyoutItem`만 담을 수 있어 리소스 `GridView`를 직접 넣을 수 없고, 별도 ShowAt Flyout은 namescope/표시 복잡. 단일 Flyout+토글이 더 단순하고 ContentDialog 중첩 제약도 충족.
+- **Source**: WinUI ContentDialog/Flyout/MenuFlyout 제약(구현 시 확정).
 
 ### DI5. 미리보기·편집 복원
 - **Chosen**: VM `IconSource SelectedIcon`+`ImageSource? PreviewImage`. 신규→기본 리소스(DI2)+그 이미지; 편집→`SelectedIcon=group.Icon`+미리보기(CustomImage면 그 이미지, 그 외 legacy면 `GroupIconLoader.GetIconPath(id)` .ico). SaveAsync는 SelectedIcon 사용.

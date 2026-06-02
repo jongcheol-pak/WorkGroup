@@ -12,35 +12,45 @@ using IconSource = WorkGroup.Domain.Groups.IconSource;
 namespace WorkGroup.App.ViewModels;
 
 /// <summary>
-/// 그룹 추가/수정 다이얼로그 ViewModel(plan.md T6). 설치 앱 체크 선택 + 이름/아이콘 설정 후
-/// GroupAppService로 저장한다. 신규/편집 모드를 모두 다룬다.
+/// 그룹 추가/수정 다이얼로그 ViewModel(plan.md T4). 상단 아이콘+이름(15자), 선택 앱 목록(추가/삭제),
+/// 확인 시 빈 목록·이름 중복을 검증하고 GroupAppService로 저장한다. 아이콘은 사용자 이미지/리소스 아이콘.
 /// </summary>
 public sealed partial class GroupEditViewModel : ObservableObject
 {
+    // 미선택 새 그룹의 기본 아이콘(번들 리소스, plan.md DI2).
+    private const string DefaultIconUri = "ms-appx:///Assets/GroupIcons/appgroup.png";
+
     private readonly IAppInventory _inventory;
     private readonly IGroupAppService _groupService;
+    private readonly ResourceIconCatalog _resourceIcons;
 
-    private readonly List<SelectableAppItem> _allApps = new();
+    // 설치 앱 항목(아이콘 1회 로드 후 선택/후보 목록에서 재사용).
+    private readonly List<PopupAppItem> _installedItems = new();
+    // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외). 확인 시 재조회하지 않는다(plan.md DI10/M2).
+    private HashSet<string> _existingNames = new(StringComparer.OrdinalIgnoreCase);
     private GroupId? _editingId;
 
-    public GroupEditViewModel(IAppInventory inventory, IGroupAppService groupService)
+    public GroupEditViewModel(IAppInventory inventory, IGroupAppService groupService, ResourceIconCatalog resourceIcons)
     {
         _inventory = inventory;
         _groupService = groupService;
+        _resourceIcons = resourceIcons;
 
         Title = "그룹 추가";
         EditingName = string.Empty;
-        SearchText = string.Empty;
-        SelectedIconOption = "기본";
+        PickerSearch = string.Empty;
         StatusMessage = string.Empty;
+        SelectedIcon = IconSource.FromCustomImage(DefaultIconUri);
     }
 
-    /// <summary>검색어로 필터링된 설치 앱 목록(체크박스 선택).</summary>
-    public ObservableCollection<SelectableAppItem> Apps { get; } = new();
+    /// <summary>그룹에 포함된(선택된) 앱 목록.</summary>
+    public ObservableCollection<PopupAppItem> SelectedApps { get; } = new();
 
-    /// <summary>아이콘 소스 선택지(표시명 = 키, plan.md DU3 기존 옵션 유지).</summary>
-    public IReadOnlyList<string> IconOptions { get; } =
-        new[] { "기본", "빨강", "초록", "주황", "보라", "첫 멤버 앱", "이미지 선택..." };
+    /// <summary>"앱 추가" 팝업에 표시할 후보 설치 앱(이미 선택된 앱 제외, 검색 필터).</summary>
+    public ObservableCollection<PopupAppItem> AvailableApps { get; } = new();
+
+    /// <summary>리소스 아이콘 그리드 항목.</summary>
+    public ObservableCollection<ResourceIconItem> ResourceIcons { get; } = new();
 
     [ObservableProperty]
     public partial string Title { get; set; }
@@ -49,13 +59,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public partial string EditingName { get; set; }
 
     [ObservableProperty]
-    public partial string SearchText { get; set; }
-
-    [ObservableProperty]
-    public partial string SelectedIconOption { get; set; }
-
-    [ObservableProperty]
-    public partial string? CustomImagePath { get; set; }
+    public partial string PickerSearch { get; set; }
 
     [ObservableProperty]
     public partial bool IsLoading { get; set; }
@@ -64,47 +68,71 @@ public sealed partial class GroupEditViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasStatus))]
     public partial string StatusMessage { get; set; }
 
-    /// <summary>미리보기 배경색(내장 색상 아이콘일 때).</summary>
-    [ObservableProperty]
-    public partial Brush? PreviewColor { get; set; }
+    /// <summary>현재 선택된 아이콘 소스(저장 대상).</summary>
+    public IconSource SelectedIcon { get; private set; }
 
-    /// <summary>미리보기 이미지(멤버 앱/사용자 이미지일 때).</summary>
+    /// <summary>아이콘 미리보기 이미지.</summary>
     [ObservableProperty]
     public partial ImageSource? PreviewImage { get; set; }
 
+    /// <summary>아이콘 Flyout에서 리소스 그리드를 펼쳤는지(사용자/리소스 선택 후 그리드 표시).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ResourceGridVisibility))]
+    public partial bool ShowResourceGrid { get; set; }
+
+    /// <summary>리소스 그리드 표시 여부(Visibility 바인딩 — Flyout 내 x:Name code-behind 접근 회피).</summary>
+    public Visibility ResourceGridVisibility => ShowResourceGrid ? Visibility.Visible : Visibility.Collapsed;
+
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
 
-    /// <summary>신규(group=null) 또는 편집 모드로 초기화하고 설치 앱을 로드한다(plan.md DU8 lazy 로드).</summary>
+    /// <summary>신규(group=null)/편집 모드로 초기화. UI 스레드에서 호출(BitmapImage 생성, plan.md M2).</summary>
     public async Task InitializeAsync(AppGroup? group)
     {
         IsLoading = true;
+        ShowResourceGrid = false;
         try
         {
             _editingId = group?.Id;
             Title = group is null ? "그룹 추가" : "그룹 수정";
             EditingName = group?.Name ?? string.Empty;
-            (SelectedIconOption, CustomImagePath) = group is null
-                ? ("기본", null)
-                : DescribeIcon(group.Icon);
 
-            var selectedTargets = group is null
-                ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                : group.Apps.Select(a => a.LaunchTarget).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            // 리소스 아이콘 그리드(BitmapImage는 UI 스레드에서 생성).
+            var uris = await _resourceIcons.GetIconUrisAsync();
+            ResourceIcons.Clear();
+            foreach (var uri in uris)
+                ResourceIcons.Add(new ResourceIconItem(uri, new BitmapImage(new Uri(uri))));
 
-            var apps = await _inventory.GetInstalledAppsAsync();
-            _allApps.Clear();
-            foreach (var app in apps)
+            // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외).
+            var groups = await _groupService.GetAllAsync();
+            _existingNames = groups
+                .Where(g => _editingId is null || g.Id != _editingId)
+                .Select(g => g.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // 아이콘 초기값 + 미리보기.
+            SelectedIcon = group?.Icon ?? IconSource.FromCustomImage(DefaultIconUri);
+            ResolvePreview(group);
+
+            // 설치 앱 로드(아이콘 1회 로드).
+            _installedItems.Clear();
+            foreach (var app in await _inventory.GetInstalledAppsAsync())
             {
-                var item = new SelectableAppItem(app) { IsSelected = selectedTargets.Contains(app.LaunchTarget) };
-                _allApps.Add(item);
+                var item = new PopupAppItem(app);
+                _installedItems.Add(item);
                 _ = item.LoadIconAsync();
             }
-            ApplyFilter();
-            await RefreshPreviewAsync();
+
+            // 편집 시 기존 멤버 복원.
+            SelectedApps.Clear();
+            if (group is not null)
+                foreach (var app in group.Apps)
+                    AddApp(app);
+
+            RefreshAvailable();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"앱 목록을 불러오지 못했습니다: {ex.Message}";
+            StatusMessage = $"불러오기 실패: {ex.Message}";
         }
         finally
         {
@@ -112,34 +140,81 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }
     }
 
-    /// <summary>확인 클릭 시 호출. 저장 성공 시 true(다이얼로그 닫힘), 실패 시 false(유지).</summary>
-    public async Task<bool> SaveAsync()
+    /// <summary>사용자가 고른 이미지 파일을 아이콘으로 설정한다.</summary>
+    public void SetUserImage(string path)
     {
-        if (string.IsNullOrWhiteSpace(EditingName))
+        SelectedIcon = IconSource.FromCustomImage(path);
+        SetPreviewFromUri(path);
+    }
+
+    /// <summary>리소스 아이콘(ms-appx URI)을 아이콘으로 설정한다.</summary>
+    public void SetResourceIcon(string uri)
+    {
+        SelectedIcon = IconSource.FromCustomImage(uri);
+        SetPreviewFromUri(uri);
+    }
+
+    /// <summary>앱을 선택 목록에 추가한다(중복 무시). 설치 목록의 항목이면 재사용, 아니면 새로 만든다.</summary>
+    public void AddApp(AppEntry app)
+    {
+        if (SelectedApps.Any(i => i.App.SameTarget(app.LaunchTarget)))
+            return;
+
+        var item = _installedItems.FirstOrDefault(i => i.App.SameTarget(app.LaunchTarget));
+        if (item is null)
+        {
+            // 설치 목록에 없는 멤버(제거된 앱 등)도 표시할 수 있도록 새로 만든다.
+            item = new PopupAppItem(app);
+            _ = item.LoadIconAsync();
+        }
+        SelectedApps.Add(item);
+        RefreshAvailable();
+    }
+
+    /// <summary>앱을 선택 목록에서 제거한다.</summary>
+    public void RemoveApp(PopupAppItem item)
+    {
+        SelectedApps.Remove(item);
+        RefreshAvailable();
+    }
+
+    /// <summary>확인 클릭 시 호출. 빈 목록·이름 중복 검증 통과·저장 성공 시 true(닫힘), 실패 시 false(유지 + 메시지).</summary>
+    public async Task<bool> ValidateAndSaveAsync()
+    {
+        var name = EditingName.Trim();
+        if (SelectedApps.Count == 0)
+        {
+            StatusMessage = "앱을 1개 이상 추가하세요.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(name))
         {
             StatusMessage = "그룹 이름을 입력하세요.";
             return false;
         }
+        if (_existingNames.Contains(name))
+        {
+            StatusMessage = "이미 같은 이름의 그룹이 있습니다.";
+            return false;
+        }
 
-        var selected = _allApps.Where(a => a.IsSelected).Select(a => a.App).ToList();
-        var icon = BuildIconSource(selected);
-
+        var apps = SelectedApps.Select(i => i.App).ToList();
         AppGroup group;
         if (_editingId is null)
         {
-            var created = AppGroup.Create(EditingName.Trim(), icon);
+            var created = AppGroup.Create(name, SelectedIcon);
             if (created.IsFailure)
             {
                 StatusMessage = created.Error ?? "그룹 생성 실패";
                 return false;
             }
             group = created.Value;
-            foreach (var app in selected)
+            foreach (var app in apps)
                 group.AddApp(app);
         }
         else
         {
-            group = AppGroup.Restore(_editingId, EditingName.Trim(), icon, selected);
+            group = AppGroup.Restore(_editingId, name, SelectedIcon, apps);
         }
 
         var result = await _groupService.SaveAsync(group);
@@ -151,86 +226,53 @@ public sealed partial class GroupEditViewModel : ObservableObject
         return true;
     }
 
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
+    partial void OnPickerSearchChanged(string value) => RefreshAvailable();
 
-    async partial void OnSelectedIconOptionChanged(string value)
+    private void RefreshAvailable()
     {
-        // async partial void는 이벤트 핸들러처럼 동작하므로 예외를 자체 흡수한다(미관측 시 프로세스 종료 위험).
-        try { await RefreshPreviewAsync(); }
-        catch (Exception ex) { StatusMessage = $"미리보기 갱신 실패: {ex.Message}"; }
-    }
-
-    async partial void OnCustomImagePathChanged(string? value)
-    {
-        try { await RefreshPreviewAsync(); }
-        catch (Exception ex) { StatusMessage = $"미리보기 갱신 실패: {ex.Message}"; }
-    }
-
-    private void ApplyFilter()
-    {
-        Apps.Clear();
-        IEnumerable<SelectableAppItem> query = _allApps;
-        if (!string.IsNullOrWhiteSpace(SearchText))
-            query = query.Where(a => a.DisplayName.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+        AvailableApps.Clear();
+        var selectedTargets = SelectedApps.Select(i => i.App.LaunchTarget).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IEnumerable<PopupAppItem> query = _installedItems.Where(i => !selectedTargets.Contains(i.App.LaunchTarget));
+        if (!string.IsNullOrWhiteSpace(PickerSearch))
+            query = query.Where(i => i.DisplayName.Contains(PickerSearch, StringComparison.OrdinalIgnoreCase));
         foreach (var item in query)
-            Apps.Add(item);
+            AvailableApps.Add(item);
     }
 
-    private async Task RefreshPreviewAsync()
+    private void ResolvePreview(AppGroup? group)
     {
-        PreviewImage = null;
-        PreviewColor = null;
-
-        switch (SelectedIconOption)
+        // CustomImage(사용자/리소스)는 그 이미지를, 그 외 legacy 아이콘은 생성된 .ico를 미리보기로 쓴다(plan.md DI5).
+        if (SelectedIcon.Kind == IconSourceKind.CustomImage)
         {
-            case "이미지 선택..." when !string.IsNullOrWhiteSpace(CustomImagePath) && File.Exists(CustomImagePath):
-                PreviewImage = new BitmapImage(new Uri(CustomImagePath!, UriKind.Absolute));
-                break;
-            case "첫 멤버 앱":
-                var first = _allApps.FirstOrDefault(a => a.IsSelected);
-                if (first is not null)
-                    PreviewImage = await AppIconLoader.LoadAsync(first.App);
-                break;
-            case "이미지 선택...":
-                break;
-            default:
-                PreviewColor = new SolidColorBrush(ColorForOption(SelectedIconOption));
-                break;
+            SetPreviewFromUri(SelectedIcon.Value);
+            return;
+        }
+
+        PreviewImage = null;
+        if (group is null) return;
+        try
+        {
+            var ico = GroupIconLoader.GetIconPath(group.Id);
+            if (File.Exists(ico))
+                PreviewImage = new BitmapImage(new Uri(ico, UriKind.Absolute));
+        }
+        catch
+        {
+            // .ico 로드 실패 → 미리보기 없음(표시만 영향).
+            PreviewImage = null;
         }
     }
 
-    private IconSource BuildIconSource(IReadOnlyList<AppEntry> selected) => SelectedIconOption switch
+    private void SetPreviewFromUri(string pathOrUri)
     {
-        "이미지 선택..." when !string.IsNullOrWhiteSpace(CustomImagePath) => IconSource.FromCustomImage(CustomImagePath!),
-        "첫 멤버 앱" when selected.Count > 0 => IconSource.FromMemberApp(selected[0].LaunchTarget),
-        "빨강" => IconSource.BuiltIn("red"),
-        "초록" => IconSource.BuiltIn("green"),
-        "주황" => IconSource.BuiltIn("orange"),
-        "보라" => IconSource.BuiltIn("purple"),
-        _ => IconSource.DefaultBuiltIn
-    };
-
-    private static (string Option, string? Custom) DescribeIcon(IconSource icon) => icon.Kind switch
-    {
-        IconSourceKind.CustomImage => ("이미지 선택...", icon.Value),
-        IconSourceKind.MemberApp => ("첫 멤버 앱", null),
-        _ => (icon.Value switch
+        try
         {
-            "red" => "빨강",
-            "green" => "초록",
-            "orange" => "주황",
-            "purple" => "보라",
-            _ => "기본"
-        }, null)
-    };
-
-    // 미리보기 색상(내장 색상 아이콘의 대략적 표현). 색상 정의는 GroupIconLoader에 단일화한다.
-    private static Windows.UI.Color ColorForOption(string option) => GroupIconLoader.ColorForBuiltIn(option switch
-    {
-        "빨강" => "red",
-        "초록" => "green",
-        "주황" => "orange",
-        "보라" => "purple",
-        _ => "default"
-    });
+            PreviewImage = new BitmapImage(new Uri(pathOrUri, UriKind.Absolute));
+        }
+        catch
+        {
+            // 잘못된 경로/URI → 미리보기 없음(표시만 영향).
+            PreviewImage = null;
+        }
+    }
 }
