@@ -178,6 +178,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- **T1-T3 완료** (커밋 f76d050, 79873fb, 다음): T1=리소스 PNG 91개 번들(Assets/GroupIcons, build.appxrecipe 91개 확인). T2=IconService.DecodeImageFileAsync ms-appx 분기(GetFileFromApplicationUriAsync, IsImageFile 미수정, MemberApp 회귀 없음). T3=ResourceIconCatalog(URI 문자열 열거, 캐시, 빈목록 폴백)+DI Singleton. 빌드 0/0, 테스트 80/80. spec/quality OK.
 
 ## Open Questions (모두 해결됨)
 - [x] 기본 아이콘 → **appgroup.png**(사용자).

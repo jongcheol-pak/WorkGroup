@@ -56,6 +56,9 @@ public static class ServiceConfiguration
         // 앱 테마 적용·영속(plan.md T2/DU5).
         services.AddSingleton<Services.ThemeService>();
 
+        // 번들 리소스 그룹 아이콘 열거(plan.md T3).
+        services.AddSingleton<Services.ResourceIconCatalog>();
+
         // ViewModel (plan.md T2~T7 — NavigationView 셸 페이지/다이얼로그).
         services.AddTransient<ViewModels.SettingsViewModel>();
         services.AddTransient<ViewModels.AboutViewModel>();
