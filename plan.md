@@ -99,7 +99,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
 
 > 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 테스트 80/80 회귀 없음. XAML 재구성 시 4-A 보존 목록(x:Name·핸들러·x:Bind) 유지 → .cs 변경 최소.
 
-- [ ] **T1. SettingsControls 의존성 + Resources 토큰 + App.xaml 병합** *(~2h)*
+- [x] **T1. SettingsControls 의존성 + Resources 토큰 + App.xaml 병합** *(~2h)*
   - **Type**: D
   - **Acceptance**: `WorkGroup.App.csproj`에 `CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219` 추가되어 복원·빌드 0/0. 신규 `Resources/Spacing.xaml`(DG4 토큰)·`Resources/ControlStyles.xaml`(CardStyle 등, Spacing 자체 머지) 생성. **csproj에 두 리소스를 명시적 `<Page Update="Resources\Spacing.xaml" Generator="MSBuild:Compile"/>`(및 ControlStyles)로 등록**(B3 — 컴파일·패키징 보장). `App.xaml` MergedDictionaries에 두 딕셔너리 추가(XamlControlsResources 다음). 기존 App.xaml 리소스 유지. 빌드 산출물에 두 ResourceDictionary가 컴파일됨(obj의 .g.cs/.g.i.cs 또는 .xbf 생성) 확인.
   - **Files**: 주: `src/WorkGroup.App/WorkGroup.App.csproj`, `src/WorkGroup.App/Resources/Spacing.xaml`(신규), `src/WorkGroup.App/Resources/ControlStyles.xaml`(신규), `src/WorkGroup.App/App.xaml`
@@ -107,7 +107,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
   - **Halt Forecast**: "SettingsControls 버전 비호환?" → Risks. "리소스 경로?" → `ms-appx:///Resources/...`(NapCat 동일). "CardStyle OverlayCornerRadius?" → 전역 ThemeResource(XamlControlsResources 제공).
   - **Depends on**: -
 
-- [ ] **T2. 셸 — 커스텀 TitleBar + NavigationView 정교화** *(~2.5h)*
+- [x] **T2. 셸 — 커스텀 TitleBar + NavigationView 정교화** *(~2.5h)*
   - **Type**: D
   - **Acceptance**(자율 종료 = 빌드 0/0; 드래그/캡션 시각은 사용자 수동): `App.xaml.cs` WindowEx에 `ExtendsContentIntoTitleBar = true` 추가. `MainShell.xaml`을 Grid(row0=`TitleBar` Title="WorkGroup"+IconSource, row1=NavigationView)로 재구성: `OpenPaneLength=280`, `IsPaneToggleButtonVisible=False`, `IsSettingsVisible=False`, `IsTitleBarAutoPaddingEnabled=False`, `Background=Transparent`, NavigationView.Resources로 컨텐츠 마진/보더 0. **메뉴 아이콘은 기존 SymbolIcon 유지(DG5).** **MenuItems(작업그룹·트레이메뉴)/FooterMenuItems(설정·정보) 분리 유지(M2).** ContentFrame `Background=Transparent`. x:Name `Nav`/`ContentFrame`·핸들러(`OnLoaded`/`OnSelectionChanged`)·Tag(WorkGroups/TrayMenu/Settings/About) 유지(.cs 불변).
   - **Files**: 주: `src/WorkGroup.App/App.xaml.cs`, `src/WorkGroup.App/Views/MainShell.xaml`
@@ -116,7 +116,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
   - **Depends on**: T1
   - **MainShell.xaml.cs 확인**: 재구성 후에도 `Nav.MenuItems[0]`(OnLoaded)·`Nav`(SelectionChanged 시그니처)·`ContentFrame.Content/Navigate`가 유효한지 빌드로 확정.
 
-- [ ] **T3. 설정 페이지 — SettingsCard** *(~2h)*
+- [x] **T3. 설정 페이지 — SettingsCard** *(~2h)*
   - **Type**: C
   - **Acceptance**: `SettingsPage.xaml`을 공통 레이아웃(DG6) + 그룹 헤더(SettingsGroupHeaderStyle) + `controls:SettingsCard`(자동시작=ToggleSwitch, 테마=RadioButtons 또는 ComboBox)로 재구성. HeaderIcon=FontIcon. x:Bind(AutoStartEnabled/ThemeIndex/HasStatus/StatusMessage) 유지(.cs 불변). 빌드 0/0, 수동: 토글/테마 동작 동일.
   - **Files**: 주: `src/WorkGroup.App/Views/SettingsPage.xaml`
@@ -124,7 +124,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
   - **Halt Forecast**: "SettingsCard xmlns?" → `using:CommunityToolkit.WinUI.Controls`. "테마 3택을 SettingsCard에?" → SettingsExpander 또는 SettingsCard+RadioButtons(폭 넓으면 별 카드).
   - **Depends on**: T1, T2
 
-- [ ] **T4. 정보 페이지 — 공통 레이아웃 + SettingsCard/카드** *(~1.5h)*
+- [x] **T4. 정보 페이지 — 공통 레이아웃 + SettingsCard/카드** *(~1.5h)*
   - **Type**: C
   - **Acceptance**: `AboutPage.xaml`을 공통 레이아웃(DG6)으로: 앱 이름/버전을 CardStyle 카드 또는 SettingsCard, 라이선스 목록을 ItemsControl(SettingsCard 또는 CardStyle 항목, HyperlinkButton 유지). x:Bind/DataTemplate(svc:LicenseInfo) 유지. 빌드 0/0, 수동: 버전·라이선스·링크 동작 동일.
   - **Files**: 주: `src/WorkGroup.App/Views/AboutPage.xaml`
@@ -132,7 +132,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
   - **Halt Forecast**: "라이선스 항목을 SettingsCard로?" → SettingsCard(Header=이름, Description=종류, Content=HyperlinkButton) 권장.
   - **Depends on**: T1, T2
 
-- [ ] **T5. 작업 그룹 + 트레이 페이지 공통 레이아웃** *(~2.5h)*
+- [x] **T5. 작업 그룹 + 트레이 페이지 공통 레이아웃** *(~2.5h)*
   - **Type**: D
   - **Acceptance**: `WorkGroupsPage.xaml`을 공통 레이아웃(DG6)으로: 헤더(제목+부제) + 우상단 "그룹 추가"(PrimaryActionStyle 또는 AccentButtonStyle), 그룹 목록을 CardStyle 카드 안에 ListView(드래그/아이콘버튼/2라인 유지). 모든 이벤트 핸들러·CanDragItems·x:Bind 유지(.cs 불변). `TrayMenuPage.xaml`도 공통 레이아웃(헤더 + InfoBar). 빌드 0/0, 수동: 추가/수정/삭제/드래그 핀 동작 동일.
   - **Files**: 주: `src/WorkGroup.App/Views/WorkGroupsPage.xaml`, `src/WorkGroup.App/Views/TrayMenuPage.xaml`
@@ -140,7 +140,7 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
   - **Halt Forecast**: "드래그가 카드 래핑으로 깨지나?" → DragItemsStarting은 ListView 속성이라 무관, 래핑 무해. "그룹 추가 버튼 위치?" → 헤더 행 우측(Grid 2열) 또는 헤더 아래.
   - **Depends on**: T1, T2
 
-- [ ] **T6. 문서 갱신 + 최종 점검** *(~0.5h)*
+- [x] **T6. 문서 갱신 + 최종 점검** *(~0.5h)*
   - **Type**: A
   - **Acceptance**: `README.md`(디자인 시스템·리소스·SettingsCard 반영), `notes.md`, `AGENTS.md`(승인된 의존성에 SettingsControls 추가) 갱신. 전체 빌드 0/0 + 테스트 80/80 최종 확인.
   - **Files**: 문서: `README.md`, `notes.md`, `AGENTS.md`
@@ -155,6 +155,14 @@ WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (
 ## Progress Log
 <!-- implement-task가 갱신 -->
 - **T3-T4 완료** (커밋 6fa4184, 다음): T3=SettingsPage 공통 레이아웃 + SettingsCard(자동시작 ToggleSwitch/테마 ComboBox, ThemeIndex 동일 바인딩). T4=AboutPage 공통 레이아웃 + SettingsCard(앱이름/버전 + 라이선스 ItemsControl). 바인딩 계약(VM/.cs/LicenseCatalog) 전부 불변. 빌드 0/0, 테스트 80/80, spec OK.
+- **T5-T6 완료** (커밋 71d9d27, 다음): T5=WorkGroupsPage(공통 레이아웃+CardStyle 목록+PrimaryActionStyle, 핸들러/드래그/바인딩 보존, ListView Padding 0,4 클리핑 방어)+TrayMenuPage 공통 레이아웃. T6=문서(README/notes/AGENTS — SettingsControls 등재, 디자인 시스템 반영). 빌드 0/0, 테스트 80/80. **NapCat Fluent 정합 plan 전체 완료(T1~T6).**
+
+## Next Steps
+- **현재 상태(2026-06-02)**: ✅ WinUI Gallery Fluent 디자인 정합 완료(T1~T6). 디자인 토큰·SettingsCard·커스텀 TitleBar·NavigationView 정교화·공통 페이지 레이아웃. 기능/바인딩 불변, 빌드 0/0, 테스트 80/80.
+- **GUI 수동 검증 필요**(자율 관찰 불가): ① 커스텀 TitleBar(아이콘/제목/드래그/캡션버튼) — 자동 동기 실패 시 DG3 폴백(AppTitleBar에 SetTitleBar) ② NavigationView 280 pane·컨텐츠 보더 없음 ③ 페이지 카드/SettingsCard/여백 ④ 설정·정보·작업그룹 동작 동일 ⑤ 라이트/다크 일관.
+- 권장 다음 액션: 사용자 GUI 검증 → 정상 시 PR 생성.
+- follow-up: App.xaml 잔여 템플릿 리소스(Primary/MyLabel/Action 등) 미사용 정리(DG7, 승인 후).
+- Suggested skills: 공식 /code-review, /security-review.
 - **T1-T2 완료** (커밋 dfad8f9, 다음): T1=SettingsControls 8.2.251219 추가(1.8 호환 실증)+Resources(Spacing 3토큰/ControlStyles CardStyle 등)+App.xaml 병합, 명시적 Page 등록(.xbf 생성). T2=App.xaml.cs ExtendsContentIntoTitleBar+MainShell 재구성(TitleBar Title/Icon + NavigationView 280pane·컨텐츠보더0·SymbolIcon 유지·MenuItems/Footer 분리·계약 보존). 빌드 0/0(CS0612 미발생), 테스트 80/80. spec/quality OK(Spacing YAGNI 정리). **TitleBar 드래그/캡션 시각은 사용자 GUI 확인 대기(폴백 SetTitleBar용 x:Name AppTitleBar 준비됨).**
 
 ## Open Questions (모두 해결됨)
