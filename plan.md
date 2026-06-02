@@ -77,9 +77,9 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
-- T1-T2 완료 (커밋 831c679, 후속): T1=드래그 트리거를 ListView→카드 Border(CanDrag+DragStarting)로 전환, DragUI.SetContentFromBitmapImage(item.Icon)로 드래그 비주얼=그룹 아이콘, 데이터 공급자 동일 이식, e.Cancel 제거(DragStarting 미지원). T2=notes 갱신. 빌드 0/0, 테스트 80/80, spec OK. **plan 전체 완료.** 드래그/드롭/핀 실제 동작은 GUI 수동 검증 필요(R1/R3).
+- T1-T2 완료 (커밋 831c679, 후속): T1=드래그 트리거를 ListView→카드 Border(CanDrag+DragStarting)로 전환, 드래그 비주얼=그룹 아이콘, 데이터 공급자 동일 이식, e.Cancel 제거(DragStarting 미지원). T2=notes 갱신. spec OK.
+- 구현 후 GUI 피드백 수정: ① 빈 비주얼 → 라이브 BitmapImage 대신 아이콘 파일을 SoftwareBitmap으로 새로 로드(SetContentFromSoftwareBitmap, deferral). ② 크기 조정(48→64→96→128px, 종횡비 보존·업스케일 금지). **GUI 검증 완료(드래그 시 그룹 아이콘 128px 표시, 핀 정상).** 빌드 0/0, 테스트 80/80. **plan 전체 완료.**
 
 ## Next Steps
-- 현재 상태: ✅ 드래그 비주얼=그룹 아이콘 완료. 빌드 0/0, 테스트 80/80.
-- GUI 수동 검증(필수, 자율 불가): ① 항목 드래그 시 커서가 그룹 아이콘 ② 작업 표시줄 드롭→핀 생성(회귀 없음) ③ 미저장 그룹 드래그→안내 메시지.
-- 권장 다음 액션: GUI 검증 → PR 생성. Suggested skills: 공식 /code-review, /security-review.
+- 현재 상태: ✅ 드래그 비주얼=그룹 아이콘 완료, GUI 검증 완료. 빌드 0/0, 테스트 80/80.
+- 권장 다음 액션: PR 생성(base=master). Suggested skills: 공식 /code-review, /security-review.
