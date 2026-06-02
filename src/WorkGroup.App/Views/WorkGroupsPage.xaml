@@ -30,7 +30,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                <TextBlock Grid.Column="0" VerticalAlignment="Bottom"
                            Text="{x:Bind ViewModel.GroupCountText, Mode=OneWay}"
                            Style="{ThemeResource BodyStrongTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />

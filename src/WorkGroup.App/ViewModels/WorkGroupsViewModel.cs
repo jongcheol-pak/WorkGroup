@@ -52,11 +52,10 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
         OnPropertyChanged(nameof(GroupCountText));
     }
 
-    /// <summary>그룹을 삭제하고 목록을 갱신한다.</summary>
+    /// <summary>그룹을 삭제하고 목록을 갱신한다(별도 안내 메시지는 표시하지 않는다).</summary>
     public async Task DeleteAsync(AppGroup group)
     {
         await _groupService.DeleteAsync(group.Id);
         await LoadAsync();
-        StatusMessage = $"'{group.Name}' 삭제됨.";
     }
 }
