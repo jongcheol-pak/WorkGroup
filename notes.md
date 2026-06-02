@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 작업 그룹 헤더-목록 간격 축소 — InfoBar가 별도 행이라 RowSpacing(12)이 이중 적용되던 문제. InfoBar를 콘텐츠 그리드 안으로 이동하고 외곽 행을 3→2개로 축소, 메시지 없을 때 InfoBar를 접도록 StatusVisibility 추가(WorkGroupsViewModel). 헤더→목록 간격 ≈24→12px. 빌드 0/0.
 - 2026-06-02: 그룹 삭제 시 상단 안내 메시지 제거 — WorkGroupsViewModel.DeleteAsync의 StatusMessage 설정 삭제(InfoBar는 다른 메시지에 계속 사용). 빌드 0/0.
 - 2026-06-02: 작업 그룹 헤더 개편 — "그룹 추가" 버튼을 설명글 아래 줄로 이동하고, 같은 줄 왼쪽에 등록 그룹 수 표시(예: "3 그룹"). WorkGroupsViewModel.GroupCountText 추가(LoadAsync에서 OnPropertyChanged 통지), WorkGroupsPage.xaml 헤더를 제목/부제 + [개수·추가] 2단 구성으로 변경. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 멤버 앱 아이콘에 앱 이름 툴팁 — 멤버 아이콘 타일에 `ToolTipService.ToolTip="{x:Bind DisplayName}"` 바인딩(마우스 오버 시 앱 이름). WorkGroupsPage.xaml만 변경. 빌드 0/0.

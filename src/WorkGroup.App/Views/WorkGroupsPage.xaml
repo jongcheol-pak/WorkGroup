@@ -13,7 +13,6 @@
           MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -44,11 +43,19 @@
             </Grid>
         </StackPanel>
 
-        <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
-                 Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <Grid Grid.Row="2">
-            <ListView x:Name="GroupsList" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+            <!-- 메시지가 있을 때만 펼쳐지고(접히면 0높이), 목록과의 간격은 Margin으로 둔다. -->
+            <InfoBar Grid.Row="0" Margin="0,0,0,8"
+                     Visibility="{x:Bind ViewModel.StatusVisibility, Mode=OneWay}"
+                     IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
+                     Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+            <ListView x:Name="GroupsList" Grid.Row="1" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
                       SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting"
                       Background="Transparent">
                 <ListView.ItemContainerStyle>
@@ -128,7 +135,7 @@
             </ListView>
 
             <!-- 빈 상태 -->
-            <StackPanel Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"
+            <StackPanel Grid.Row="1" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
                 <SymbolIcon Symbol="AllApps" />
                 <TextBlock Text="아직 그룹이 없습니다. '그룹 추가'로 시작하세요."

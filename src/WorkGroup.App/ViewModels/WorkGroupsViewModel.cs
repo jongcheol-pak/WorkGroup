@@ -27,9 +27,13 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
+    [NotifyPropertyChangedFor(nameof(StatusVisibility))]
     public partial string StatusMessage { get; set; }
 
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
+
+    /// <summary>메시지가 없으면 InfoBar 자체를 접어 헤더-목록 간격이 벌어지지 않게 한다.</summary>
+    public Visibility StatusVisibility => HasStatus ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>등록된 그룹 수 표시(예: "3 그룹"). 목록 변경 후 LoadAsync에서 갱신 통지한다.</summary>
     public string GroupCountText => $"{Groups.Count} 그룹";
