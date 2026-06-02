@@ -69,10 +69,10 @@
                                 </Grid.ColumnDefinitions>
 
                                 <!-- 그룹 아이콘(사각 테두리) -->
-                                <Border Width="40" Height="40" CornerRadius="8" VerticalAlignment="Center"
+                                <Border Width="44" Height="44" CornerRadius="4" VerticalAlignment="Center"
                                         Background="{x:Bind IconFallback, Mode=OneWay}"
-                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-                                    <Image Width="32" Height="32" Source="{x:Bind Icon, Mode=OneWay}" />
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="4">
+                                    <Image Width="36" Height="36" Source="{x:Bind Icon, Mode=OneWay}" />
                                 </Border>
 
                                 <!-- 2라인: 이름 / 멤버 아이콘 -->
@@ -88,10 +88,11 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:PopupAppItem">
-                                                    <!-- 멤버 앱 아이콘(사각 테두리 타일) -->
-                                                    <Border Width="30" Height="30" CornerRadius="6"
+                                                    <!-- 멤버 앱 아이콘(사각 테두리 타일, 마우스 오버 시 앱 이름 툴팁) -->
+                                                    <Border Width="30" Height="30" CornerRadius="2" Padding="2"
                                                             Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1"
+                                                            ToolTipService.ToolTip="{x:Bind DisplayName}">
                                                         <Image Width="22" Height="22" Source="{x:Bind Icon, Mode=OneWay}" />
                                                     </Border>
                                                 </DataTemplate>

@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 작업 그룹 목록 멤버 앱 아이콘에 앱 이름 툴팁 — 멤버 아이콘 타일에 `ToolTipService.ToolTip="{x:Bind DisplayName}"` 바인딩(마우스 오버 시 앱 이름). WorkGroupsPage.xaml만 변경. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 아이콘에 사각 테두리 — 그룹 아이콘 Border에 테두리선(CardStrokeColorDefaultBrush, 1px) 추가, 멤버 앱 미니 아이콘을 둥근 사각 타일(30×30, CornerRadius 6, 보조 배경+테두리)로 감쌈. WorkGroupsPage.xaml만 변경(바인딩/로직 불변). 빌드 0/0.
 - 2026-06-02: "앱 추가" 팝업 선택 체크 + 토글 — 추가된 앱을 팝업에서 제외하던 동작을 변경해, 목록에 남기고 항목 앞에 체크 아이콘 표시(LaunchTarget 기준). 항목 클릭 시 추가↔해제 토글(ToggleApp). PopupAppItem.IsSelected/SelectionGlyphVisibility 추가, RefreshAvailable 전체표시+IsSelected 계산, 픽커 DataTemplate에 고정폭 체크 열, OnAppPickerItemClick→ToggleApp. 본문 선택 목록/삭제는 현행 유지. 공개 API/도메인 불변. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: Win32 앱 아이콘도 셸 렌더로 전환 — 설치 목록의 Win32 .lnk(콘솔/스크립트: Strawberry Perl CPAN 도구, VS 개발자 명령 프롬프트 등) 아이콘 누락 해결. `GetThumbnailAsync`(.lnk에서 자주 실패) 대신 `IShellItemImageFactory`를 파일 경로에도 적용(DevDashboard 동일, 탐색기/시작 메뉴 아이콘). `PackagedAppIcon`→`ShellIcon` 일반화: `OpenForAppAsync(AppEntry,size)`가 packaged=shell:AppsFolder\AUMID, Win32=파일 경로로 추출. 크기 캐스케이드(256/128/64/48/32)+플래그 폴백(ICONONLY→일반) 추가. IconService/AppIconLoader는 모든 Kind에 셸 아이콘 우선, 실패 시 기존 폴백. 빌드 0/0, 테스트 80/80. (시각은 GUI 수동 검증.)
