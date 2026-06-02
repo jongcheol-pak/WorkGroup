@@ -47,7 +47,7 @@ public sealed partial class GroupEditDialog : ContentDialog
 
     private async void OnIconOptionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // "이미지 선택..."을 고르면 파일 선택기를 띄운다(기존 MainPage 로직 이식).
+        // "이미지 선택..."을 고르면 파일 선택기를 띄운다.
         if (ViewModel.SelectedIconOption != "이미지 선택...")
             return;
 

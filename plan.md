@@ -101,7 +101,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
 
 > 공통 완료 기준(CLAUDE.md): 추가/수정 코드 **한글 주석**, 파일 **1500라인 내외**, **UTF-8(BOM 없음)**, 빌드 0 경고/0 에러. UI는 D17(Fluent·표준 컨트롤·라이트/다크) 적용. 모든 페이지/다이얼로그는 `x:Bind` 기반 MVVM.
 
-- [ ] **T1. 앱 셸(NavigationView) + 4개 stub 페이지** *(~2h)*
+- [x] **T1. 앱 셸(NavigationView) + 4개 stub 페이지** *(~2h)*
   - **Type**: C
   - **Acceptance**: `MainShell`이 NavigationView(상단 작업그룹/트레이메뉴, 하단 설정/정보, `IsSettingsVisible=false`)로 표시되고 내부 `Frame`로 4개 **빈 stub 페이지**가 전환된다(수동). 시작 선택 = 작업 그룹. 빌드 0/0. (App 연결·테마·Mica는 T2.)
   - **stub 규칙(B2)**: 4개 stub 페이지의 코드비하인드는 **VM을 resolve하지 않는다**(빈 `InitializeComponent`만). VM resolve 추가는 각 채움 task(T3·T4·T5·T7)에서 동반 수행 → T1 단독으로 navigate 시 DI 미등록 예외가 나지 않음.
@@ -112,7 +112,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "메뉴→페이지 매핑?" → MenuItem `Tag`에 페이지 타입 키, SelectionChanged에서 분기. "settings item?" → `IsSettingsVisible=false`로 끄고 footer에 직접 추가.
   - **Depends on**: -
 
-- [ ] **T2. ThemeService + App 통합(MainShell 연결·Mica·테마 적용)** *(~2.5h)*
+- [x] **T2. ThemeService + App 통합(MainShell 연결·Mica·테마 적용)** *(~2.5h)*
   - **Type**: D
   - **Acceptance**: `App.xaml.cs`가 루트 Frame을 `MainShell`로 navigate하고, 메인 창에 **Mica 백드롭** + 시작 시 저장된 **테마**가 적용된다. `GroupPopupWindow`도 저장된 테마를 적용한다(M1). `ThemeService`가 LocalSettings의 `AppTheme`를 읽고/쓰며 대상 루트 요소의 `RequestedTheme`를 설정한다. 빌드 0/0.
   - **적용 위치 명시(B1)**:
@@ -126,7 +126,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "테마 적용 대상?" → 위 B1 명시(rootFrame / 팝업 Border). "Mica API?" → `Microsoft.UI.Xaml.Media.MicaBackdrop`. "LocalSettings 키 타입?" → 문자열 `"System"|"Dark"|"Light"`.
   - **Depends on**: T1
 
-- [ ] **T3. 설정 페이지(자동 시작 + 테마)** *(~2.5h)*
+- [x] **T3. 설정 페이지(자동 시작 + 테마)** *(~2.5h)*
   - **Type**: C
   - **Acceptance**: 설정 페이지에서 (1) "로그인 시 자동 시작" 토글이 `StartupService` 현재 상태를 반영/변경하고(정책 거부 시 되돌림), (2) 테마 3택(시스템/다크/라이트)이 `ThemeService`로 즉시 적용+영속된다(수동: 재시작 후 유지). 페이지가 `SettingsViewModel`을 resolve(B2). 빌드 0/0.
   - **로드 시점 명시(M3)**: 초기 상태(자동시작 on/off, 현재 테마 선택)는 **페이지 `Loaded` 이벤트에서 `suppress` 플래그를 켜고 로드**한 뒤 끈다 → 진입 즉시 토글/테마 변경 핸들러가 오발동하지 않는다(기존 `MainViewModel._suppressAutoStart` 패턴 이식).
@@ -137,7 +137,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "자동시작 로직?" → 기존 `MainViewModel` 이식. "테마 선택 UI?" → `RadioButtons`(표준). "초기화 시점?" → M3(Loaded + suppress).
   - **Depends on**: T2
 
-- [ ] **T4. 정보 페이지(버전 + 라이선스 목록)** *(~2h)*
+- [x] **T4. 정보 페이지(버전 + 라이선스 목록)** *(~2h)*
   - **Type**: C
   - **Acceptance**: 정보 페이지에 앱 이름 + 버전(`Package.Current.Id.Version` → `Major.Minor.Build.Revision`)이 표시되고, 오픈소스 라이선스 목록(이름+종류+링크, DU4)이 리스트로 표시되며 링크 클릭 시 브라우저로 열린다(수동). 페이지가 `AboutViewModel`을 resolve(B2). 빌드 0/0.
   - **Files**:
@@ -147,7 +147,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "버전 출처?" → `Package.Current.Id.Version`. "라이선스 데이터?" → DU4 확정값(테스트 전용 제외, Microsoft 독점 정확 표기). "링크 열기?" → `HyperlinkButton NavigateUri`.
   - **Depends on**: T1
 
-- [ ] **T5. 트레이 메뉴 페이지(placeholder)** *(~0.5h)*
+- [x] **T5. 트레이 메뉴 페이지(placeholder)** *(~0.5h)*
   - **Type**: B
   - **Acceptance**: 트레이 메뉴 페이지에 "추후 추가 예정" 안내(InfoBar 또는 중앙 텍스트)가 표시된다(수동). 빌드 0/0.
   - **Files**: 주: `src/WorkGroup.App/Views/TrayMenuPage.xaml(.cs)`(T1 stub 채움; VM 없음)
@@ -155,7 +155,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: 없음.
   - **Depends on**: T1
 
-- [ ] **T6. 그룹 추가/수정 다이얼로그(설치앱 체크리스트 + 아이콘 설정)** *(~4h)*
+- [x] **T6. 그룹 추가/수정 다이얼로그(설치앱 체크리스트 + 아이콘 설정)** *(~4h)*
   - **Type**: D
   - **Acceptance**: `GroupEditDialog`(ContentDialog)가 **상단**에 그룹 이름 + 아이콘 설정(DU3 기존 옵션 + 미리보기 + 이미지 선택 FileOpenPicker), **하단**에 설치 앱 목록(아이콘 + 이름 + 체크박스, 검색)을 표시한다. 신규/편집 모드(편집=프리필) 지원. 확인 시 선택 앱·이름·아이콘으로 `AppGroup`을 만들어 `IGroupAppService.SaveAsync` 호출, 성공 시 닫힘(수동). 빌드 0/0.
   - **Files**:
@@ -165,7 +165,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "XamlRoot?" → DU2(호출 페이지). "이미지 선택 HWND?" → 기존 `App.MainWindow` 이식. "아이콘 옵션?" → DU3(기존 이식). "앱 아이콘 로드?" → `AppIconLoader` 재사용(SelectableAppItem). "저장 흐름?" → 기존 `MainViewModel.SaveGroup`/`BuildIconSource`/`CreateNew` 로직 이식.
   - **Depends on**: T1
 
-- [ ] **T7. 작업 그룹 페이지(그룹 목록 2라인 + 아이콘 버튼 + 추가 버튼 + 드래그 핀)** *(~4h)*
+- [x] **T7. 작업 그룹 페이지(그룹 목록 2라인 + 아이콘 버튼 + 추가 버튼 + 드래그 핀)** *(~4h)*
   - **Type**: D
   - **Acceptance**: 작업 그룹 페이지 **상단**에 "그룹 추가" 버튼(아이콘+라벨), 아래에 그룹 목록. 각 항목 = 그룹 아이콘 + 2라인(이름 / 멤버 앱 아이콘들, DU7) + **수정·삭제 아이콘 버튼(아이콘 전용)**. "그룹 추가"/수정 클릭 시 `GroupEditDialog`(신규/편집) 오픈, 삭제 시 `IGroupAppService.DeleteAsync`. 항목을 작업 표시줄로 **드래그하면 .lnk 핀**(기존 검증 로직 이식). 저장/삭제 후 목록 갱신(수동). 페이지가 `WorkGroupsViewModel`을 resolve(B2). 빌드 0/0.
   - **Files**:
@@ -176,7 +176,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
   - **Halt Forecast**: "드래그 방식?" → 기존 `MainPage.OnGroupDragStarting`(임시복사+지연 SetDataProvider) 이식. "그룹 아이콘 로드?" → M2. "수정/삭제 아이콘?" → `SymbolIcon`(Edit/Delete).
   - **Depends on**: T6
 
-- [ ] **T8. 정리(MainPage/MainViewModel 제거) + 문서 갱신** *(~1.5h)*
+- [x] **T8. 정리(MainPage/MainViewModel 제거) + 문서 갱신** *(~1.5h)*
   - **Type**: C
   - **Acceptance**: `MainPage.xaml(.cs)`/`MainViewModel.cs` 제거, `ServiceConfiguration`에서 `MainViewModel` 등록(현 L57) 제거. **`grep -rn "MainPage\|MainViewModel" src/ ':!*/obj/*'` → 0 hit(M4)** 으로 잔여 참조 없음을 확정. 전체 빌드 0/0 + 기존 테스트 80건 통과. `README.md`(새 UI·메뉴 구조·테마·설정) 및 `notes.md` 갱신.
   - **Files**:
@@ -202,6 +202,15 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
 - **follow-up(T6 품질 M2)**: 편집 모드 저장이 `AppGroup.Restore`(리포지토리 전용)를 ViewModel에서 직접 호출 — 기존 `MainViewModel`의 RECURRING 패턴. 근본 해결은 Domain에 `Update(name, icon, apps)` 추가이나 Domain 공개 API 변경이라 별도 승인 필요(본 plan 범위 밖).
 - **T1-T2 완료** (커밋 cd91cd6, 다음): T1=MainShell(NavigationView 4메뉴)+4 stub 페이지. T2=ThemeService(LocalSettings 영속, 루트 RequestedTheme)+App 통합(Navigate→MainShell, Mica 1회, rootFrame 테마 Initialize)+팝업 테마 적용(M1)+DI 등록. 빌드 0/0, 테스트 80/80. spec/quality OK(quality M1 직렬화 대칭 수정 반영). App은 이제 MainShell로 navigate, MainPage는 고아(T8 제거 예정).
 - **T3-T4 완료** (커밋 15057a5, 다음): T3=SettingsViewModel(자동시작 토글 + 테마 3택, Loaded suppress 로드 M3)+SettingsPage(카드형). T4=AboutViewModel(Package 버전 + 폴백)+LicenseCatalog(배포 런타임 의존성만, MS 독점 정확표기 DU4)+AboutPage(ItemsControl + HyperlinkButton). 빌드 0/0, 테스트 80/80. spec OK(T4 MINOR=Logging.Abstractions 그룹화 주석 처리). VM 3종 DI 등록(Main/Settings/About).
+- **T5-T6 완료** (커밋 14e22fe, 539604f): T5=트레이 메뉴 placeholder(InfoBar). T6=GroupEditDialog(ContentDialog: 이름+아이콘 옵션+미리보기+FileOpenPicker / 설치앱 체크목록+검색+ProgressRing, 신규·편집 프리필, 저장 실패 시 유지)+GroupEditViewModel+SelectableAppItem. 품질 수정 B1/M3/m1, M2(편집 Restore)는 follow-up. 빌드 0/0, 테스트 80/80.
+- **T7-T8 완료** (커밋 95c6a04, 다음): T7=WorkGroupsPage(그룹 아이콘+2라인+수정/삭제 아이콘버튼+추가버튼+드래그핀+삭제확인+빈상태)+WorkGroupsViewModel/GroupListItem(.ico 로드 M2+ImageFailed 폴백, 멤버 8+N)/GroupIconLoader. 품질 수정 B1/M2/M3/M4. T8=MainPage/MainViewModel 제거(grep 0 hit)+ServiceConfiguration 정리+README/notes 갱신. 빌드 0/0, 테스트 80/80. **Plan 3 전체 완료(T1~T8).**
+
+## Next Steps
+- **현재 상태(2026-06-02)**: ✅ Plan 3 전체 완료(T1~T8). NavigationView 셸 + 설정/정보 + 그룹 다이얼로그 + Fluent/테마. 빌드 0/0, 테스트 80/80. **GUI 시각 검증은 사용자 수동 확인 필요**(자율 실행 관찰 불가).
+- 사용자 수동 검증 항목: ① 4메뉴 전환 + Mica + 테마(시스템/다크/라이트, 재시작 유지) ② 그룹 추가 다이얼로그(앱 체크/아이콘/미리보기)→목록 2라인 표시→수정/삭제(확인)→작업 표시줄 드래그 핀 ③ 정보(버전/라이선스 링크) ④ 자동 시작 토글.
+- 권장 다음 액션: 사용자 GUI 검증 → 이상 시 보고 후 수정 / 정상 시 PR 생성.
+- 남은 follow-up(선택): T6 품질 M2(Domain `AppGroup.Update` 도입 — 편집 시 Restore 직접 호출 대체, Domain API 변경이라 승인 필요).
+- Suggested skills: 공식 /code-review, /security-review, PR 생성.
 
 ## Open Questions (모두 해결됨)
 - [x] 자동 시작 토글 위치 → **설정 메뉴 신설**, 자동시작 토글 + 테마(시스템/다크/라이트) 포함(사용자).
