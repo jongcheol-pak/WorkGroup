@@ -3,50 +3,50 @@
     x:Class="WorkGroup.App.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <ScrollViewer Padding="24">
-        <StackPanel Spacing="12" MaxWidth="720" HorizontalAlignment="Left">
-            <TextBlock Text="설정" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,0,8" />
+    <ScrollViewer Padding="{StaticResource PageContentPadding}" HorizontalScrollMode="Disabled">
+        <StackPanel MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch" Spacing="4">
+
+            <!-- 페이지 헤더 -->
+            <StackPanel Spacing="4" Margin="0,0,0,8">
+                <TextBlock Text="설정" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="자동 시작과 앱 테마를 설정합니다."
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
 
             <InfoBar IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
-                     Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+                     Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                     Margin="0,0,0,8" />
 
-            <!-- 자동 시작 -->
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="16">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="로그인 시 자동 시작" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <TextBlock Text="Windows 로그인 시 백그라운드(트레이)로 시작합니다."
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" OnContent="켜짐" OffContent="꺼짐"
-                                  IsOn="{x:Bind ViewModel.AutoStartEnabled, Mode=TwoWay}" />
-                </Grid>
-            </Border>
+            <!-- 일반 -->
+            <TextBlock Text="일반" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <controls:SettingsCard Header="로그인 시 자동 시작"
+                                   Description="Windows 로그인 시 백그라운드(트레이)로 시작합니다.">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE7E8;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ToggleSwitch OnContent="켜짐" OffContent="꺼짐"
+                              IsOn="{x:Bind ViewModel.AutoStartEnabled, Mode=TwoWay}" />
+            </controls:SettingsCard>
 
-            <!-- 앱 테마 -->
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="16">
-                <StackPanel Spacing="8">
-                    <TextBlock Text="앱 테마" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                    <RadioButtons SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
-                        <x:String>시스템 설정 사용</x:String>
-                        <x:String>라이트</x:String>
-                        <x:String>다크</x:String>
-                    </RadioButtons>
-                </StackPanel>
-            </Border>
+            <!-- 모양 -->
+            <TextBlock Text="모양" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <controls:SettingsCard Header="앱 테마"
+                                   Description="시스템 설정을 따르거나 라이트/다크를 선택합니다.">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE790;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox MinWidth="160" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                    <x:String>시스템 설정 사용</x:String>
+                    <x:String>라이트</x:String>
+                    <x:String>다크</x:String>
+                </ComboBox>
+            </controls:SettingsCard>
         </StackPanel>
     </ScrollViewer>
 </Page>
