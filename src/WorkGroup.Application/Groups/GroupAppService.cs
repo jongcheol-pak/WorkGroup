@@ -15,30 +15,33 @@ namespace WorkGroup.Application.Groups;
 /// </summary>
 public sealed class GroupAppService : IGroupAppService
 {
-    private const string IconExtension = ".ico";
-    private const string PngExtension = ".png";
-
     private readonly IIconService _iconService;
     private readonly IShortcutService _shortcutService;
     private readonly IGroupRepository _repository;
-    private readonly string _iconsDirectory;
+    private readonly string _groupsDirectory;
     private readonly ILogger<GroupAppService> _logger;
 
     public GroupAppService(
         IIconService iconService,
         IShortcutService shortcutService,
         IGroupRepository repository,
-        string iconsDirectory,
+        string groupsDirectory,
         ILogger<GroupAppService>? logger = null)
     {
         _iconService = iconService ?? throw new ArgumentNullException(nameof(iconService));
         _shortcutService = shortcutService ?? throw new ArgumentNullException(nameof(shortcutService));
         _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-        if (string.IsNullOrWhiteSpace(iconsDirectory))
-            throw new ArgumentException("아이콘 디렉터리가 비어 있습니다.", nameof(iconsDirectory));
-        _iconsDirectory = iconsDirectory;
+        if (string.IsNullOrWhiteSpace(groupsDirectory))
+            throw new ArgumentException("그룹 디렉터리가 비어 있습니다.", nameof(groupsDirectory));
+        _groupsDirectory = groupsDirectory;
         _logger = logger ?? NullLogger<GroupAppService>.Instance;
     }
+
+    /// <summary>그룹별 폴더(Groups\{groupId}). 아이콘·.lnk를 이 폴더에 모은다.</summary>
+    private string GroupFolder(GroupId id) => Path.Combine(_groupsDirectory, id.Value);
+
+    /// <summary>그룹 아이콘(.ico/.png) 디렉터리(Groups\{groupId}\Icons).</summary>
+    private string IconsFolder(GroupId id) => Path.Combine(GroupFolder(id), "Icons");
 
     public Task<IReadOnlyList<AppGroup>> GetAllAsync(CancellationToken cancellationToken = default)
         => _repository.LoadAllAsync(cancellationToken);
@@ -47,27 +50,27 @@ public sealed class GroupAppService : IGroupAppService
     {
         ArgumentNullException.ThrowIfNull(group);
 
-        // (1) 아이콘 생성 — 실패 시 아무것도 저장하지 않는다.
+        // (1) 아이콘 생성(그룹 폴더의 Icons 하위) — 실패 시 아무것도 저장하지 않는다.
         var iconResult = await _iconService
-            .CreateGroupIconAsync(group.Id, group.Icon, group.Apps, _iconsDirectory, cancellationToken)
+            .CreateGroupIconAsync(group.Id, group.Icon, group.Apps, IconsFolder(group.Id), cancellationToken)
             .ConfigureAwait(false);
         if (iconResult.IsFailure)
             return Result.Fail(iconResult.Error!);
 
-        // (2) .lnk 생성/갱신 — 실패 시 방금 만든 아이콘 정리.
+        // (2) .lnk 생성/갱신(그룹 폴더 직하) — 실패 시 방금 만든 그룹 폴더 정리.
         var shortcutResult = _shortcutService.CreateOrUpdate(group, iconResult.Value);
         if (shortcutResult.IsFailure)
         {
-            TryDeleteIcon(group.Id);
+            TryDeleteGroupFolder(group.Id);
             return Result.Fail(shortcutResult.Error!);
         }
 
-        // (3) 영속화 — 성공해야 그룹이 "존재". 실패 시 .lnk·아이콘 정리.
+        // (3) 영속화 — 성공해야 그룹이 "존재". 실패 시 .lnk·그룹 폴더 정리.
         var saveResult = await _repository.SaveAsync(group, cancellationToken).ConfigureAwait(false);
         if (saveResult.IsFailure)
         {
             _shortcutService.Delete(group);
-            TryDeleteIcon(group.Id);
+            TryDeleteGroupFolder(group.Id);
             return saveResult;
         }
 
@@ -80,12 +83,12 @@ public sealed class GroupAppService : IGroupAppService
 
         var groups = await _repository.LoadAllAsync(cancellationToken).ConfigureAwait(false);
         var group = groups.FirstOrDefault(g => g.Id == id);
-        // 저장소에 그룹이 없으면 .lnk는 표시명 기반이라 경로를 추론할 수 없어 건너뛴다.
-        // 이 경우 남을 수 있는 고아 .lnk는 CleanupOrphansAsync가 정리한다.
+        // .lnk 삭제는 계약상 ShortcutService에 위임(그룹이 있을 때). 그룹 폴더 자체는 아래에서 통째로 제거한다.
         if (group is not null)
             _shortcutService.Delete(group);
 
-        TryDeleteIcon(id);
+        // 그룹 폴더(아이콘+.lnk 포함)를 통째로 삭제한다.
+        TryDeleteGroupFolder(id);
         return await _repository.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
@@ -93,50 +96,43 @@ public sealed class GroupAppService : IGroupAppService
     {
         var groups = await _repository.LoadAllAsync(cancellationToken).ConfigureAwait(false);
 
-        // .lnk 고아: ShortcutService가 자신의 디렉터리/명명 규칙으로 정리.
+        // 유효 그룹 폴더 내부의 잔여 .lnk(이름 변경 등)는 ShortcutService에 위임.
         _shortcutService.CleanupOrphans(groups);
 
-        // .ico 고아: {groupId}.ico 규칙으로 유효 그룹에 없는 파일 제거.
+        // 고아 그룹 폴더(유효 id가 아닌 Groups\{name}) 통째로 제거(아이콘+.lnk 동시).
         try
         {
-            if (Directory.Exists(_iconsDirectory))
+            if (Directory.Exists(_groupsDirectory))
             {
                 var validIds = groups
                     .Select(g => g.Id.Value)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                // {groupId}.ico / {groupId}.png 모두 유효 그룹 기준으로 정리.
-                foreach (var ext in new[] { IconExtension, PngExtension })
-                    foreach (var file in Directory.EnumerateFiles(_iconsDirectory, "*" + ext))
-                    {
-                        if (!validIds.Contains(Path.GetFileNameWithoutExtension(file)))
-                            TryDeleteFile(file);
-                    }
+                foreach (var dir in Directory.EnumerateDirectories(_groupsDirectory))
+                {
+                    if (!validIds.Contains(Path.GetFileName(dir)))
+                        TryDeleteDirectory(dir);
+                }
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, "고아 아이콘 정리 실패");
+            _logger.LogWarning(ex, "고아 그룹 폴더 정리 실패");
         }
     }
 
-    private void TryDeleteIcon(GroupId id)
-    {
-        // .ico(작업 표시줄)와 목록 표시용 .png를 함께 정리한다.
-        TryDeleteFile(Path.Combine(_iconsDirectory, id.Value + IconExtension));
-        TryDeleteFile(Path.Combine(_iconsDirectory, id.Value + PngExtension));
-    }
+    private void TryDeleteGroupFolder(GroupId id) => TryDeleteDirectory(GroupFolder(id));
 
-    private void TryDeleteFile(string path)
+    private void TryDeleteDirectory(string path)
     {
         try
         {
-            if (File.Exists(path))
-                File.Delete(path);
+            if (Directory.Exists(path))
+                Directory.Delete(path, recursive: true);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger.LogWarning(ex, "파일 정리 실패: {Path}", path);
+            _logger.LogWarning(ex, "폴더 정리 실패: {Path}", path);
         }
     }
 }

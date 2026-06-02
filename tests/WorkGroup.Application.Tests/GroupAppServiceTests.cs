@@ -11,21 +11,21 @@ namespace WorkGroup.Application.Tests;
 /// <summary>GroupAppService 오케스트레이션 순서·실패 시 정리(M3) 검증. 인프라는 페이크로 대체.</summary>
 public sealed class GroupAppServiceTests : IDisposable
 {
-    private readonly string _iconsDir;
+    private readonly string _groupsDir;
     private readonly FakeIconService _icons = new();
     private readonly FakeShortcutService _shortcuts = new();
     private readonly FakeRepository _repo = new();
 
     public GroupAppServiceTests()
-        => _iconsDir = Path.Combine(Path.GetTempPath(), "WorkGroupSvcTests", Guid.NewGuid().ToString("N"));
+        => _groupsDir = Path.Combine(Path.GetTempPath(), "WorkGroupSvcTests", Guid.NewGuid().ToString("N"));
 
     public void Dispose()
     {
-        try { if (Directory.Exists(_iconsDir)) Directory.Delete(_iconsDir, recursive: true); }
+        try { if (Directory.Exists(_groupsDir)) Directory.Delete(_groupsDir, recursive: true); }
         catch (IOException) { }
     }
 
-    private GroupAppService CreateSut() => new(_icons, _shortcuts, _repo, _iconsDir);
+    private GroupAppService CreateSut() => new(_icons, _shortcuts, _repo, _groupsDir);
     private static AppGroup Group() => AppGroup.Create("업무").Value;
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class GroupAppServiceTests : IDisposable
         Assert.True(result.IsFailure);
         Assert.Empty(_repo.Saved);
         // 아이콘 파일이 정리되어야 한다.
-        Assert.False(File.Exists(Path.Combine(_iconsDir, group.Id.Value + ".ico")));
+        Assert.False(File.Exists(Path.Combine(_groupsDir, group.Id.Value, "Icons", group.Id.Value + ".ico")));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public sealed class GroupAppServiceTests : IDisposable
 
         Assert.True(result.IsFailure);
         Assert.True(_shortcuts.Deleted);
-        Assert.False(File.Exists(Path.Combine(_iconsDir, group.Id.Value + ".ico")));
+        Assert.False(File.Exists(Path.Combine(_groupsDir, group.Id.Value, "Icons", group.Id.Value + ".ico")));
     }
 
     [Fact]
@@ -89,25 +89,26 @@ public sealed class GroupAppServiceTests : IDisposable
 
         Assert.True(result.IsSuccess);
         Assert.True(_shortcuts.Deleted);
-        Assert.False(File.Exists(Path.Combine(_iconsDir, group.Id.Value + ".ico")));
+        Assert.False(File.Exists(Path.Combine(_groupsDir, group.Id.Value, "Icons", group.Id.Value + ".ico")));
         Assert.Empty(_repo.Saved);
     }
 
     [Fact]
-    public async Task CleanupOrphansAsync_유효하지_않은_아이콘_제거_및_lnk_정리_위임()
+    public async Task CleanupOrphansAsync_유효하지_않은_그룹폴더_제거_및_lnk_정리_위임()
     {
         var group = Group();
         var sut = CreateSut();
-        await sut.SaveAsync(group); // 유효 그룹 1개 + {id}.ico 생성
+        await sut.SaveAsync(group); // 유효 그룹 폴더 1개 + Icons\{id}.ico 생성
 
-        // 유효 그룹에 없는 고아 아이콘 생성
-        var orphanIco = Path.Combine(_iconsDir, "orphan-id.ico");
-        File.WriteAllText(orphanIco, "x");
+        // 유효 그룹에 없는 고아 그룹 폴더 생성
+        var orphanDir = Path.Combine(_groupsDir, "orphan-id");
+        Directory.CreateDirectory(orphanDir);
+        File.WriteAllText(Path.Combine(orphanDir, "x.ico"), "x");
 
         await sut.CleanupOrphansAsync();
 
-        Assert.False(File.Exists(orphanIco));                                  // 고아 제거
-        Assert.True(File.Exists(Path.Combine(_iconsDir, group.Id.Value + ".ico"))); // 유효 보존
+        Assert.False(Directory.Exists(orphanDir));                              // 고아 폴더 제거
+        Assert.True(File.Exists(Path.Combine(_groupsDir, group.Id.Value, "Icons", group.Id.Value + ".ico"))); // 유효 보존
         Assert.True(_shortcuts.CleanedOrphans);                                 // .lnk 정리 위임
     }
 
