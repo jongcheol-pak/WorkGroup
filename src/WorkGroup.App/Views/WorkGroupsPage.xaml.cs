@@ -1,11 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Graphics.Imaging;
 using Windows.Storage;
+using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Shortcuts;
+using WorkGroup.Domain.Groups;
 
 namespace WorkGroup.App.Views;
 
@@ -65,14 +67,10 @@ public sealed partial class WorkGroupsPage : Page
     /// 그룹 카드를 작업 표시줄로 드래그(plan.md T7). 검증된 방식: .lnk 임시 복사 + 지연 SetDataProvider.
     /// 드래그 비주얼은 그룹 아이콘으로 표시한다(DragUI). DragStarting에는 Cancel이 없어, 중단은 데이터 미설정으로 처리.
     /// </summary>
-    private void OnGroupDragStarting(UIElement sender, DragStartingEventArgs e)
+    private async void OnGroupDragStarting(UIElement sender, DragStartingEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not GroupListItem item)
             return;
-
-        // 드래그 비주얼을 항목 카드 스냅샷 대신 그룹 아이콘으로(이미 로드된 BitmapImage 재사용; 없으면 기본 비주얼).
-        if (item.Icon is BitmapImage iconBitmap)
-            e.DragUI.SetContentFromBitmapImage(iconBitmap);
 
         var shortcuts = App.Services.GetRequiredService<IShortcutService>();
         var lnkPath = shortcuts.GetShortcutPath(item.Group);
@@ -99,7 +97,7 @@ public sealed partial class WorkGroupsPage : Page
             e.Data.SetText(lnkPath);
             e.Data.SetDataProvider(StandardDataFormats.StorageItems, async request =>
             {
-                var deferral = request.GetDeferral();
+                var providerDeferral = request.GetDeferral();
                 try
                 {
                     var folder = await StorageFolder.GetFolderFromPathAsync(tempDir);
@@ -108,13 +106,42 @@ public sealed partial class WorkGroupsPage : Page
                 }
                 finally
                 {
-                    deferral.Complete();
+                    providerDeferral.Complete();
                 }
             });
+
+            // 드래그 비주얼을 그룹 아이콘으로. 화면 Image에 쓰이는 BitmapImage를 그대로 넘기면
+            // 드래그 표면에 빈 이미지로 렌더되므로, 아이콘 파일을 SoftwareBitmap으로 새로 로드해 지정한다(비동기 → deferral).
+            var deferral = e.GetDeferral();
+            try
+            {
+                await SetDragVisualFromIconAsync(e, item.Group.Id);
+            }
+            finally
+            {
+                deferral.Complete();
+            }
         }
         catch (Exception ex)
         {
             ViewModel.StatusMessage = $"드래그 준비 실패: {ex.Message}";
         }
+    }
+
+    /// <summary>그룹 아이콘 파일(PNG 우선, 없으면 .ico)을 SoftwareBitmap으로 로드해 드래그 비주얼로 지정한다.</summary>
+    private static async Task SetDragVisualFromIconAsync(DragStartingEventArgs e, GroupId id)
+    {
+        var path = GroupIconLoader.GetPngPath(id);
+        if (!File.Exists(path))
+            path = GroupIconLoader.GetIconPath(id);
+        if (!File.Exists(path))
+            return;
+
+        var file = await StorageFile.GetFileFromPathAsync(path);
+        using var stream = await file.OpenReadAsync();
+        var decoder = await BitmapDecoder.CreateAsync(stream);
+        // SetContentFromSoftwareBitmap은 BGRA8(Premultiplied)을 요구한다.
+        var bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+        e.DragUI.SetContentFromSoftwareBitmap(bitmap);
     }
 }
