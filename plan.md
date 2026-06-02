@@ -200,6 +200,7 @@ UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전�
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
 - **T1-T2 완료** (커밋 cd91cd6, 다음): T1=MainShell(NavigationView 4메뉴)+4 stub 페이지. T2=ThemeService(LocalSettings 영속, 루트 RequestedTheme)+App 통합(Navigate→MainShell, Mica 1회, rootFrame 테마 Initialize)+팝업 테마 적용(M1)+DI 등록. 빌드 0/0, 테스트 80/80. spec/quality OK(quality M1 직렬화 대칭 수정 반영). App은 이제 MainShell로 navigate, MainPage는 고아(T8 제거 예정).
+- **T3-T4 완료** (커밋 15057a5, 다음): T3=SettingsViewModel(자동시작 토글 + 테마 3택, Loaded suppress 로드 M3)+SettingsPage(카드형). T4=AboutViewModel(Package 버전 + 폴백)+LicenseCatalog(배포 런타임 의존성만, MS 독점 정확표기 DU4)+AboutPage(ItemsControl + HyperlinkButton). 빌드 0/0, 테스트 80/80. spec OK(T4 MINOR=Logging.Abstractions 그룹화 주석 처리). VM 3종 DI 등록(Main/Settings/About).
 
 ## Open Questions (모두 해결됨)
 - [x] 자동 시작 토글 위치 → **설정 메뉴 신설**, 자동시작 토글 + 테마(시스템/다크/라이트) 포함(사용자).

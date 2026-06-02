@@ -5,9 +5,50 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:svc="using:WorkGroup.App.Services"
     mc:Ignorable="d">
 
-    <!-- T1 stub. 버전/라이선스는 T4에서 채운다. -->
-    <TextBlock Text="정보" Style="{ThemeResource TitleTextBlockStyle}"
-               HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+            <TextBlock Text="정보" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,0,8" />
+
+            <!-- 앱 이름/버전 -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Bind ViewModel.AppName}" Style="{ThemeResource SubtitleTextBlockStyle}" />
+                    <TextBlock Style="{ThemeResource CaptionTextBlockStyle}"
+                               Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                        <Run Text="버전" /><Run Text=" " /><Run Text="{x:Bind ViewModel.Version}" />
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="오픈소스 라이선스" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="4,8,0,0" />
+
+            <ItemsControl ItemsSource="{x:Bind ViewModel.Licenses}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="svc:LicenseInfo">
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,8">
+                            <Grid ColumnSpacing="12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                                    <TextBlock Text="{x:Bind License}" Style="{ThemeResource CaptionTextBlockStyle}"
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </StackPanel>
+                                <HyperlinkButton Grid.Column="1" Content="프로젝트" NavigateUri="{x:Bind Link}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </ScrollViewer>
 </Page>
