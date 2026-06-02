@@ -1,7 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Windows.AppLifecycle;
 using WorkGroup.App.Activation;
 using WorkGroup.App.Views;
+using WorkGroup.Application.Groups;
 
 namespace WorkGroup.App
 {
@@ -13,9 +15,13 @@ namespace WorkGroup.App
     {
         private Window? _window;
 
+        /// <summary>전역 DI 컨테이너(plan.md T9 조립).</summary>
+        public static IServiceProvider Services { get; private set; } = default!;
+
         public App()
         {
             this.InitializeComponent();
+            Services = ServiceConfiguration.Build();
         }
 
         /// <summary>
@@ -32,6 +38,9 @@ namespace WorkGroup.App
                 _window.Activate();
                 return;
             }
+
+            // 메인 시작 시 저장소와 불일치하는 고아 .lnk/.ico 정리(plan.md T8 연결).
+            _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();
 
             LaunchMainWindow(e);
         }
