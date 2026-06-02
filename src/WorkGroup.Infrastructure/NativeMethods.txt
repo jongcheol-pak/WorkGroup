@@ -1,3 +1,8 @@
 GetCursorPos
 MonitorFromPoint
 GetMonitorInfo
+SHCreateItemFromParsingName
+IShellItemImageFactory
+GetObject
+DIBSECTION
+DeleteObject

@@ -97,7 +97,7 @@ public sealed class IconService : IIconService
         if (member.Kind == AppKind.Packaged)
         {
             using var logo = await PackagedAppIcon
-                .OpenLogoStreamAsync(member.LaunchTarget, (uint)CanvasSize, cancellationToken).ConfigureAwait(false);
+                .OpenIconStreamAsync(member.LaunchTarget, (uint)CanvasSize, cancellationToken).ConfigureAwait(false);
             if (logo is not null)
                 return await DecodeStreamAsync(logo, cancellationToken).ConfigureAwait(false);
         }
