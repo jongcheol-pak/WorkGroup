@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using WorkGroup.App.Services;
 using WorkGroup.Application.Groups;
 using WorkGroup.Application.Inventory;
 using WorkGroup.Domain.Groups;
@@ -17,14 +18,17 @@ public sealed partial class MainViewModel : ObservableObject
 {
     private readonly IAppInventory _inventory;
     private readonly IGroupAppService _groupService;
+    private readonly StartupService _startup;
 
     private readonly List<AppEntry> _allApps = new();
     private GroupId? _editingId;
+    private bool _suppressAutoStart;
 
-    public MainViewModel(IAppInventory inventory, IGroupAppService groupService)
+    public MainViewModel(IAppInventory inventory, IGroupAppService groupService, StartupService startup)
     {
         _inventory = inventory;
         _groupService = groupService;
+        _startup = startup;
 
         // partial property는 선언부 초기화가 불가하므로 기본값을 생성자에서 설정.
         SearchText = string.Empty;
@@ -66,10 +70,27 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
 
+    [ObservableProperty]
+    public partial bool AutoStartEnabled { get; set; }
+
     /// <summary>상태 메시지 표시 여부(InfoBar.IsOpen 바인딩용).</summary>
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    async partial void OnAutoStartEnabledChanged(bool value)
+    {
+        if (_suppressAutoStart) return;
+        var actual = await _startup.SetEnabledAsync(value);
+        if (actual != value)
+        {
+            // 정책 등으로 적용이 거부되면 실제 상태로 되돌린다.
+            _suppressAutoStart = true;
+            AutoStartEnabled = actual;
+            _suppressAutoStart = false;
+            StatusMessage = "자동 시작 설정이 적용되지 않았습니다(정책/권한).";
+        }
+    }
 
     /// <summary>설치 앱과 그룹을 불러온다.</summary>
     public async Task LoadAsync()
@@ -81,6 +102,11 @@ public sealed partial class MainViewModel : ObservableObject
             _allApps.AddRange(await _inventory.GetInstalledAppsAsync());
             ApplyFilter();
             await ReloadGroupsAsync();
+
+            // 자동 시작 상태 로드(변경 핸들러 재진입 억제).
+            _suppressAutoStart = true;
+            AutoStartEnabled = await _startup.IsEnabledAsync();
+            _suppressAutoStart = false;
         }
         catch (Exception ex)
         {

@@ -47,13 +47,19 @@
         <!-- .lnk 타깃으로 쓸 실행 별칭(plan.md D2). 핀된 바로가기가 이 별칭을 호출한다. -->
         <uap5:Extension Category="windows.appExecutionAlias">
           <uap5:AppExecutionAlias>
-            <uap5:ExecutionAlias Alias="WorkGroupSpike.exe" />
+            <uap5:ExecutionAlias Alias="WorkGroup.exe" />
           </uap5:AppExecutionAlias>
         </uap5:Extension>
         <!-- 보조 활성화 경로(plan.md D2): workgroup://group/{id} -->
         <uap:Extension Category="windows.protocol">
           <uap:Protocol Name="workgroup" />
         </uap:Extension>
+        <!-- 로그인 시 자동 시작(plan.md T12). 기본 비활성, 사용자가 토글. -->
+        <uap5:Extension Category="windows.startupTask"
+                        Executable="$targetnametoken$.exe"
+                        EntryPoint="$targetentrypoint$">
+          <uap5:StartupTask TaskId="WorkGroupStartupTask" Enabled="false" DisplayName="WorkGroup" />
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>

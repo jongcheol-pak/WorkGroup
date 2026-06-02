@@ -343,7 +343,7 @@
   - **Halt Forecast**: "패키지 앱 실행 방법?" → IApplicationActivationManager.ActivateApplication(AUMID). "포커스 손실 닫힘?" → Window Deactivated 처리(WinUIEx). "정확 좌표?" → D4. "디자인?" → D17.
   - **Depends on**: T2(C1~C3 통과), T8
 
-- [ ] **T12. 자동 시작 + 마무리(설정/트레이/문서)**
+- [/] **T12. 자동 시작 + 마무리(설정/트레이/문서)** (빌드 완료 / 동작 검증 사용자 대기 — Win32 트레이 + StartupTask, 별칭 finalize, 문서 갱신)
   - **Type**: C
   - **Acceptance**: 로그인 시 백그라운드 상주(StartupTask extension, 사용자 토글 가능), 트레이 아이콘에서 메인 창 열기/종료. `README.md`(개요·기능·실행·아키텍처) 및 `notes.md` 최종 갱신.
   - **Files**:

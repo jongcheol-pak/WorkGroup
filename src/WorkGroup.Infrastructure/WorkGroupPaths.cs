@@ -10,7 +10,7 @@ namespace WorkGroup.Infrastructure;
 public static class WorkGroupPaths
 {
     /// <summary>MSIX 실행 별칭 이름(매니페스트의 AppExecutionAlias와 일치해야 함).</summary>
-    public const string AliasExeName = "WorkGroupSpike.exe";
+    public const string AliasExeName = "WorkGroup.exe";
 
     /// <summary>데이터 루트 (%USERPROFILE%\WorkGroup) — 비가상화.</summary>
     public static string RootDirectory => Path.Combine(

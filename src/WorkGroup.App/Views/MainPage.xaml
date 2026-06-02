@@ -20,8 +20,15 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="WorkGroup — 작업 그룹 관리"
-                   Style="{ThemeResource TitleTextBlockStyle}" />
+        <Grid Grid.Row="0" Grid.ColumnSpan="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="WorkGroup — 작업 그룹 관리" Style="{ThemeResource TitleTextBlockStyle}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" Header="로그인 시 자동 시작" OnContent="켜짐" OffContent="꺼짐"
+                          IsOn="{x:Bind ViewModel.AutoStartEnabled, Mode=TwoWay}" />
+        </Grid>
 
         <InfoBar Grid.Row="1" Grid.ColumnSpan="3" x:Name="StatusBar" IsClosable="False"
                  IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}"

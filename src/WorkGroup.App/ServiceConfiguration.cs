@@ -50,6 +50,9 @@ public static class ServiceConfiguration
                 WorkGroupPaths.IconsDirectory,
                 sp.GetRequiredService<ILogger<GroupAppService>>()));
 
+        // 자동 시작 토글(plan.md T12).
+        services.AddSingleton<Services.StartupService>();
+
         // ViewModel (plan.md T9).
         services.AddTransient<ViewModels.MainViewModel>();
 
