@@ -8,21 +8,29 @@
     xmlns:vm="using:WorkGroup.App.ViewModels"
     mc:Ignorable="d">
 
-    <Grid Padding="24" RowSpacing="12">
+    <!-- 목록이 가용 높이를 채우고 ListView 내부에서 스크롤되도록 ScrollViewer 대신 Grid(행 *)를 쓴다(DG6 변형). -->
+    <Grid Padding="{StaticResource PageContentPadding}" RowSpacing="12"
+          MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 제목 + 그룹 추가 -->
-        <Grid Grid.Row="0">
+        <!-- 헤더: 제목/부제 + 그룹 추가 -->
+        <Grid Grid.Row="0" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="작업 그룹" Style="{ThemeResource TitleTextBlockStyle}" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Click="OnAddClick" Style="{ThemeResource AccentButtonStyle}">
+            <StackPanel Spacing="4" VerticalAlignment="Center">
+                <TextBlock Text="작업 그룹" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="앱을 묶어 그룹을 만들고 작업 표시줄에 핀합니다."
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <Button Grid.Column="1" Click="OnAddClick" Style="{StaticResource PrimaryActionStyle}"
+                    VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <SymbolIcon Symbol="Add" />
                     <TextBlock Text="그룹 추가" />
@@ -34,63 +42,65 @@
                  Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
         <Grid Grid.Row="2">
-            <ListView x:Name="GroupsList" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
-                      SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting"
-                      BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
-                <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="vm:GroupListItem">
-                        <Grid ColumnSpacing="12" Padding="4" MinHeight="48">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource CardStyle}" Padding="4">
+                <!-- ListView 세로 패딩으로 첫/마지막 항목이 카드 둥근 모서리에 클리핑되지 않게 한다. -->
+                <ListView x:Name="GroupsList" Padding="0,4" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                          SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting">
+                    <ListView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:GroupListItem">
+                            <Grid ColumnSpacing="12" Padding="4" MinHeight="48">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
 
-                            <!-- 그룹 아이콘 -->
-                            <Border Width="40" Height="40" CornerRadius="8" VerticalAlignment="Center"
-                                    Background="{x:Bind IconFallback, Mode=OneWay}">
-                                <Image Width="32" Height="32" Source="{x:Bind Icon, Mode=OneWay}" />
-                            </Border>
+                                <!-- 그룹 아이콘 -->
+                                <Border Width="40" Height="40" CornerRadius="8" VerticalAlignment="Center"
+                                        Background="{x:Bind IconFallback, Mode=OneWay}">
+                                    <Image Width="32" Height="32" Source="{x:Bind Icon, Mode=OneWay}" />
+                                </Border>
 
-                            <!-- 2라인: 이름 / 멤버 아이콘 -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
-                                <TextBlock Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}"
-                                           TextTrimming="CharacterEllipsis" />
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <ItemsControl ItemsSource="{x:Bind MemberIcons}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <StackPanel Orientation="Horizontal" Spacing="4" />
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:PopupAppItem">
-                                                <Image Width="16" Height="16" Source="{x:Bind Icon, Mode=OneWay}" />
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <TextBlock Text="{x:Bind MoreCount, Mode=OneWay}" VerticalAlignment="Center"
-                                               Style="{ThemeResource CaptionTextBlockStyle}"
-                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <!-- 2라인: 이름 / 멤버 아이콘 -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <ItemsControl ItemsSource="{x:Bind MemberIcons}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:PopupAppItem">
+                                                    <Image Width="16" Height="16" Source="{x:Bind Icon, Mode=OneWay}" />
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="{x:Bind MoreCount, Mode=OneWay}" VerticalAlignment="Center"
+                                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
 
-                            <!-- 수정/삭제(아이콘 전용) -->
-                            <Button Grid.Column="2" Tag="{x:Bind}" Click="OnEditClick"
-                                    Background="Transparent" BorderThickness="0"
-                                    ToolTipService.ToolTip="수정">
-                                <SymbolIcon Symbol="Edit" />
-                            </Button>
-                            <Button Grid.Column="3" Tag="{x:Bind}" Click="OnDeleteClick"
-                                    Background="Transparent" BorderThickness="0"
-                                    ToolTipService.ToolTip="삭제">
-                                <SymbolIcon Symbol="Delete" />
-                            </Button>
-                        </Grid>
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+                                <!-- 수정/삭제(아이콘 전용) -->
+                                <Button Grid.Column="2" Tag="{x:Bind}" Click="OnEditClick"
+                                        Background="Transparent" BorderThickness="0"
+                                        ToolTipService.ToolTip="수정">
+                                    <SymbolIcon Symbol="Edit" />
+                                </Button>
+                                <Button Grid.Column="3" Tag="{x:Bind}" Click="OnDeleteClick"
+                                        Background="Transparent" BorderThickness="0"
+                                        ToolTipService.ToolTip="삭제">
+                                    <SymbolIcon Symbol="Delete" />
+                                </Button>
+                            </Grid>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Border>
 
             <!-- 빈 상태 -->
             <StackPanel Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"

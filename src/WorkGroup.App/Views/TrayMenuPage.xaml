@@ -7,10 +7,17 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <StackPanel Padding="24" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
-        <TextBlock Text="트레이 메뉴" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,0,8" />
-        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
-                 Title="추후 추가 예정"
-                 Message="트레이 메뉴 설정 기능은 작업 그룹 기능 완료 후 추가될 예정입니다." />
-    </StackPanel>
+    <ScrollViewer Padding="{StaticResource PageContentPadding}" HorizontalScrollMode="Disabled">
+        <StackPanel MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch" Spacing="4">
+            <StackPanel Spacing="4" Margin="0,0,0,8">
+                <TextBlock Text="트레이 메뉴" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="알림 영역(트레이) 관련 설정입니다."
+                           Style="{ThemeResource BodyTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </StackPanel>
+            <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+                     Title="추후 추가 예정"
+                     Message="트레이 메뉴 설정 기능은 작업 그룹 기능 완료 후 추가될 예정입니다." />
+        </StackPanel>
+    </ScrollViewer>
 </Page>
