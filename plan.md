@@ -36,7 +36,7 @@
 |---|---|---|
 | `new Window()`(App.xaml.cs:84) | App.xaml.cs 1곳 | `new WindowEx()`로 교체(로컬 변수 경유 후 `_window`에 대입). |
 | `_window.SystemBackdrop = new MicaBackdrop()`(L86) | App.xaml.cs 1곳 | 제거 → WinUIEx `WindowEx.Backdrop = new MicaSystemBackdrop()`. |
-| `using Microsoft.UI.Xaml.Media;`(L2) | grep상 MicaBackdrop가 유일 사용(파일 내 타 Media 심볼 없음) | 제거 후 **빌드 0/0으로 확정**(타 심볼 의존 시 빌드 에러로 즉시 드러남). `using WinUIEx;` 추가. |
+| `using Microsoft.UI.Xaml.Media;`(L2) | MicaBackdrop가 유일 사용 | **유지**(DW2 교정 — Mica를 표준 `MicaBackdrop`로 두므로 이 using 필요). `using WinUIEx;` 추가. |
 | `_window`(Window? 필드) / `MainWindow`(static Window?) | App.xaml.cs 내부(팝업 L50 `_window=popup` 공유) + GroupEditDialog(App.MainWindow HWND) | **둘 다 `Window?` 타입 유지.** WindowEx 전용 멤버(Backdrop/PersistenceId/MinWidth/MinHeight)는 ShowMainWindow 내 **로컬 `WindowEx win` 변수**로만 설정 후 `_window = win` 대입. 팝업 분기(`_window = popup`)·HWND 획득(`WindowNative.GetWindowHandle(MainWindow)`)은 그대로 동작(WindowEx는 Window). |
 | `GroupPopupWindow`(: Window) | 팝업 분기 `_window = popup` | **영향 없음**(WindowEx 미적용, `_window`가 Window? 유지라 대입 호환). |
 | 트레이 종료 핸들러(`ExitRequested`, L71-76) | App.xaml.cs | **변경**: `Exit()` 앞에 `_window?.Close()` 추가(DW5 — persistence 저장 보장). |
