@@ -17,8 +17,8 @@ namespace WorkGroup.Infrastructure.Icons;
 /// </summary>
 public sealed class IconService : IIconService
 {
-    // .ico에 담을 다중 해상도. 256은 PNG 프레임으로 저장된다.
-    private static readonly uint[] FrameSizes = { 256, 48, 32, 16 };
+    // .ico 표준 해상도 후보. 실제로는 원본 크기 이하만 생성한다(업스케일 금지 → 흐림 방지).
+    private static readonly int[] StandardSizes = { 16, 24, 32, 48, 64, 128, 256 };
     private const int CanvasSize = 256;
 
     private readonly ILogger<IconService> _logger;
@@ -165,24 +165,70 @@ public sealed class IconService : IIconService
 
     private static async Task WriteIcoAsync(SoftwareBitmap bitmap, string outputPath, CancellationToken cancellationToken)
     {
-        var frames = new List<IconFrame>(FrameSizes.Length);
-        foreach (var size in FrameSizes)
+        // 원본보다 큰 프레임은 만들지 않는다(업스케일=흐림). 최상위 프레임은 원본 크기로 두어 선명도를 보존한다.
+        var native = Math.Min(256, Math.Max(bitmap.PixelWidth, bitmap.PixelHeight));
+        var sizes = StandardSizes.Where(s => s <= native).ToList();
+        if (sizes.Count == 0 || sizes[^1] != native)
+            sizes.Add(native);
+
+        var frames = new List<IconFrame>(sizes.Count);
+        foreach (var size in sizes)
         {
-            var png = await EncodePngAsync(bitmap, size, cancellationToken).ConfigureAwait(false);
-            frames.Add(new IconFrame((int)size, png));
+            var png = await EncodeFrameAsync(bitmap, size, cancellationToken).ConfigureAwait(false);
+            frames.Add(new IconFrame(size, png));
         }
 
         await IcoWriter.WriteAsync(outputPath, frames, cancellationToken).ConfigureAwait(false);
     }
 
-    private static async Task<byte[]> EncodePngAsync(SoftwareBitmap bitmap, uint size, CancellationToken cancellationToken)
+    /// <summary>종횡비를 보존(업스케일 금지)해 축소하고 size×size 투명 캔버스 중앙에 배치한 PNG 프레임을 만든다.</summary>
+    private static async Task<byte[]> EncodeFrameAsync(SoftwareBitmap source, int size, CancellationToken cancellationToken)
+    {
+        int srcW = source.PixelWidth, srcH = source.PixelHeight;
+        var scale = Math.Min((double)size / srcW, (double)size / srcH);
+        if (scale > 1.0)
+            scale = 1.0; // 업스케일 금지(흐림 방지)
+        int tw = Math.Max(1, (int)Math.Round(srcW * scale));
+        int th = Math.Max(1, (int)Math.Round(srcH * scale));
+
+        using var scaled = await ScaleAsync(source, (uint)tw, (uint)th, cancellationToken).ConfigureAwait(false);
+
+        // 정사각 프레임 중앙에 배치(byte 단위 복사, BGRA8 스트라이드 = width*4).
+        var scaledBytes = new byte[tw * th * 4];
+        scaled.CopyToBuffer(scaledBytes.AsBuffer());
+
+        var canvas = new byte[size * size * 4]; // 0 = 완전 투명
+        int left = (size - tw) / 2, top = (size - th) / 2;
+        for (var r = 0; r < th; r++)
+            Array.Copy(scaledBytes, r * tw * 4, canvas, ((top + r) * size + left) * 4, tw * 4);
+
+        using var canvasBmp = SoftwareBitmap.CreateCopyFromBuffer(
+            canvas.AsBuffer(), BitmapPixelFormat.Bgra8, size, size, BitmapAlphaMode.Premultiplied);
+        return await EncodePngAsync(canvasBmp, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>소스를 지정 크기로 고품질(Fant) 축소한 BGRA8 SoftwareBitmap을 만든다(PNG 라운드트립).</summary>
+    private static async Task<SoftwareBitmap> ScaleAsync(SoftwareBitmap source, uint width, uint height, CancellationToken cancellationToken)
+    {
+        using var ras = new InMemoryRandomAccessStream();
+        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ras).AsTask(cancellationToken).ConfigureAwait(false);
+        encoder.SetSoftwareBitmap(source);
+        encoder.BitmapTransform.ScaledWidth = width;
+        encoder.BitmapTransform.ScaledHeight = height;
+        encoder.BitmapTransform.InterpolationMode = BitmapInterpolationMode.Fant;
+        await encoder.FlushAsync().AsTask(cancellationToken).ConfigureAwait(false);
+
+        ras.Seek(0);
+        var decoder = await BitmapDecoder.CreateAsync(ras).AsTask(cancellationToken).ConfigureAwait(false);
+        var bitmap = await decoder.GetSoftwareBitmapAsync().AsTask(cancellationToken).ConfigureAwait(false);
+        return ToBgra8(bitmap);
+    }
+
+    private static async Task<byte[]> EncodePngAsync(SoftwareBitmap bitmap, CancellationToken cancellationToken)
     {
         using var ras = new InMemoryRandomAccessStream();
         var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ras).AsTask(cancellationToken).ConfigureAwait(false);
         encoder.SetSoftwareBitmap(bitmap);
-        encoder.BitmapTransform.ScaledWidth = size;
-        encoder.BitmapTransform.ScaledHeight = size;
-        encoder.BitmapTransform.InterpolationMode = BitmapInterpolationMode.Fant;
         await encoder.FlushAsync().AsTask(cancellationToken).ConfigureAwait(false);
 
         var bytes = new byte[ras.Size];
