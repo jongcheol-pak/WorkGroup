@@ -177,6 +177,22 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
 - 빌드 `dotnet build WorkGroup.slnx` → 0/0. 테스트 `dotnet test` → 80/80.
 - 수동(GUI, 패키지 실행 — 자율 불가): ① 상단 아이콘+이름(15자 제한) ② 아이콘 클릭→사용자/리소스→적용 ③ 리소스 그리드(91) 선택 ④ "앱 추가"→설치앱 팝업→선택→목록 추가 ⑤ 항목 삭제 ⑥ 빈 목록/중복 이름→확인 차단 ⑦ 정상→그룹 추가 ⑧ 편집 시 기존 아이콘/앱 복원 ⑨ 아이콘 Flyout→사용자 파일 선택기→다이얼로그 정상 복귀(m2).
 
+## Debug: 그룹 수정 다이얼로그 — 앱 목록 지연 + 취소 지연
+### Symptom
+편집 다이얼로그에서 선택 앱 목록이 늦게 뜨고, 취소 버튼이 늦게 닫힘.
+### Phase 1 — Failing layer
+ViewModel `GroupEditViewModel.InitializeAsync`(OnOpened, UI 스레드). 인벤토리는 Infrastructure(`InstalledAppInventory`)에서 느리게 열거(PackageManager + 시작메뉴 .lnk walk).
+### Phase 2 — Hypotheses
+- H1: 편집 멤버(SelectedApps)가 `GetInstalledAppsAsync` 완료 후 AddApp로 채워져 느린 인벤토리에 종속 → ✅
+- H2: 오픈 시 모든 설치 앱에 `LoadIconAsync`(셸 썸네일 I/O) fire-and-forget 수백 개 → UI 스레드 포화로 취소 지연 → ✅
+- H4: ResourceIcons 91 BitmapImage 생성 → ❌(그리드 Collapsed, 디코드 지연)
+### Phase 3 — Root cause
+"앱 추가" 팝업 전용 데이터(설치앱 인벤토리+전체 아이콘)를 다이얼로그 오픈 시 eager 로드하고, 편집 멤버 목록을 그 느린 인벤토리에 종속시킴.
+### Phase 4 — Fix
+- 편집 멤버는 group.Apps에서 즉시 복원(인벤토리 무관).
+- 설치앱 인벤토리+아이콘 로드는 "앱 추가" Flyout Opening 시 lazy. 리소스 아이콘 그리드는 아이콘 Flyout Opening 시 lazy.
+- 회귀 테스트: UI 성능이라 단위테스트 불가 → 수동 재현(편집 다이얼로그 즉시 멤버 표시 + 취소 즉시 닫힘).
+
 ## Progress Log
 <!-- implement-task가 갱신 -->
 - **T1-T3 완료** (커밋 f76d050, 79873fb, 65e2f3f): T1=리소스 PNG 91개 번들(Assets/GroupIcons, build.appxrecipe 91개 확인). T2=IconService.DecodeImageFileAsync ms-appx 분기(GetFileFromApplicationUriAsync, IsImageFile 미수정, MemberApp 회귀 없음). T3=ResourceIconCatalog(URI 문자열 열거, 캐시, 빈목록 폴백)+DI Singleton. 빌드 0/0, 테스트 80/80. spec/quality OK.
