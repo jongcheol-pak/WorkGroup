@@ -141,8 +141,8 @@ public sealed partial class WorkGroupsPage : Page
         using var stream = await file.OpenReadAsync();
         var decoder = await BitmapDecoder.CreateAsync(stream);
 
-        // 원본 해상도 그대로면 드래그 비주얼이 너무 크다 → 최대 48px로 축소(종횡비 보존, 업스케일 금지).
-        const uint maxSize = 48;
+        // 원본 해상도 그대로면 드래그 비주얼이 너무 크다 → 최대 64px로 축소(종횡비 보존, 업스케일 금지).
+        const uint maxSize = 64;
         var scale = Math.Min(1.0, (double)maxSize / Math.Max(decoder.PixelWidth, decoder.PixelHeight));
         var transform = new BitmapTransform
         {
