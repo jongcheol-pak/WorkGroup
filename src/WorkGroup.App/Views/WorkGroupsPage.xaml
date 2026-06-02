@@ -17,26 +17,32 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 헤더: 제목/부제 + 그룹 추가 -->
-        <Grid Grid.Row="0" ColumnSpacing="12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Spacing="4" VerticalAlignment="Center">
+        <!-- 헤더: 제목/부제 → 그 아래 줄에 [그룹 개수(좌) · 그룹 추가(우)] -->
+        <StackPanel Grid.Row="0" Spacing="8">
+            <StackPanel Spacing="4">
                 <TextBlock Text="작업 그룹" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="앱을 묶어 그룹을 만들고 작업 표시줄에 핀합니다."
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
-            <Button Grid.Column="1" Click="OnAddClick" Style="{StaticResource PrimaryActionStyle}"
-                    VerticalAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <SymbolIcon Symbol="Add" />
-                    <TextBlock Text="그룹 추가" />
-                </StackPanel>
-            </Button>
-        </Grid>
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                           Text="{x:Bind ViewModel.GroupCountText, Mode=OneWay}"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Button Grid.Column="1" Click="OnAddClick" Style="{StaticResource PrimaryActionStyle}"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Add" />
+                        <TextBlock Text="그룹 추가" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </StackPanel>
 
         <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
                  Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />

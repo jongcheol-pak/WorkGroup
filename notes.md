@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 작업 그룹 헤더 개편 — "그룹 추가" 버튼을 설명글 아래 줄로 이동하고, 같은 줄 왼쪽에 등록 그룹 수 표시(예: "3 그룹"). WorkGroupsViewModel.GroupCountText 추가(LoadAsync에서 OnPropertyChanged 통지), WorkGroupsPage.xaml 헤더를 제목/부제 + [개수·추가] 2단 구성으로 변경. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 멤버 앱 아이콘에 앱 이름 툴팁 — 멤버 아이콘 타일에 `ToolTipService.ToolTip="{x:Bind DisplayName}"` 바인딩(마우스 오버 시 앱 이름). WorkGroupsPage.xaml만 변경. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 아이콘에 사각 테두리 — 그룹 아이콘 Border에 테두리선(CardStrokeColorDefaultBrush, 1px) 추가, 멤버 앱 미니 아이콘을 둥근 사각 타일(30×30, CornerRadius 6, 보조 배경+테두리)로 감쌈. WorkGroupsPage.xaml만 변경(바인딩/로직 불변). 빌드 0/0.
 - 2026-06-02: "앱 추가" 팝업 선택 체크 + 토글 — 추가된 앱을 팝업에서 제외하던 동작을 변경해, 목록에 남기고 항목 앞에 체크 아이콘 표시(LaunchTarget 기준). 항목 클릭 시 추가↔해제 토글(ToggleApp). PopupAppItem.IsSelected/SelectionGlyphVisibility 추가, RefreshAvailable 전체표시+IsSelected 계산, 픽커 DataTemplate에 고정폭 체크 열, OnAppPickerItemClick→ToggleApp. 본문 선택 목록/삭제는 현행 유지. 공개 API/도메인 불변. 빌드 0/0, 테스트 80/80.

@@ -31,6 +31,9 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
 
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
 
+    /// <summary>등록된 그룹 수 표시(예: "3 그룹"). 목록 변경 후 LoadAsync에서 갱신 통지한다.</summary>
+    public string GroupCountText => $"{Groups.Count} 그룹";
+
     /// <summary>빈 상태 안내 표시 여부(Visibility 바인딩용 — x:Bind는 bool→Visibility 자동변환 없음).</summary>
     public Visibility EmptyVisibility => IsEmpty ? Visibility.Visible : Visibility.Collapsed;
 
@@ -46,6 +49,7 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
             _ = item.LoadAsync();
         }
         IsEmpty = Groups.Count == 0;
+        OnPropertyChanged(nameof(GroupCountText));
     }
 
     /// <summary>그룹을 삭제하고 목록을 갱신한다.</summary>
