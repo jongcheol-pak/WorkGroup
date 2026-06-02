@@ -60,6 +60,7 @@ public static class ServiceConfiguration
         services.AddTransient<ViewModels.MainViewModel>();
         services.AddTransient<ViewModels.SettingsViewModel>();
         services.AddTransient<ViewModels.AboutViewModel>();
+        services.AddTransient<ViewModels.GroupEditViewModel>();
 
         return services.BuildServiceProvider();
     }
