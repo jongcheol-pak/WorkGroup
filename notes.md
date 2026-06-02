@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 작업 그룹 목록 그룹 아이콘 선명도 — 목록이 생성된 .ico(32/48 프레임, 미리 축소돼 흐림)를 쓰던 것을, CustomImage(리소스/사용자 이미지) 그룹은 원본을 네이티브 해상도로 직접 로드(편집 미리보기와 동일). GroupListItem.TryLoadCustomImage 추가(ms-appx 절대 URI/사용자 파일, IgnoreImageCache). BuiltIn/MemberApp은 기존 .ico 유지. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 그룹 아이콘 3종 버그 수정 — ① 수정 후 미반영: 같은 .ico 경로 재로드 시 WinUI 이미지 캐시가 옛 아이콘 반환 → `CreateOptions=IgnoreImageCache`. ② 잘림: Border(44/Padding4/테두리1) 내부 영역(≈34)보다 Image(36)가 커서 클리핑 → Image 36→32(Stretch=Uniform). ③ 흐림: DecodePixelWidth=32 디코드 후 확대 → `DecodePixelType=Logical`(+DecodePixelHeight)로 DPI 기준 디코드(.ico 48/256 프레임 활용). GroupListItem.cs/WorkGroupsPage.xaml. 빌드 0/0.
 - 2026-06-02: 작업 그룹 헤더-목록 간격 축소 — InfoBar가 별도 행이라 RowSpacing(12)이 이중 적용되던 문제. InfoBar를 콘텐츠 그리드 안으로 이동하고 외곽 행을 3→2개로 축소, 메시지 없을 때 InfoBar를 접도록 StatusVisibility 추가(WorkGroupsViewModel). 헤더→목록 간격 ≈24→12px. 빌드 0/0.
 - 2026-06-02: 그룹 삭제 시 상단 안내 메시지 제거 — WorkGroupsViewModel.DeleteAsync의 StatusMessage 설정 삭제(InfoBar는 다른 메시지에 계속 사용). 빌드 0/0.

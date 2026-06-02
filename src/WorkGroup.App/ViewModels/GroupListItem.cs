@@ -56,6 +56,11 @@ public sealed partial class GroupListItem : ObservableObject
 
     private async Task LoadGroupIconAsync()
     {
+        // CustomImage(사용자/리소스 이미지)는 원본을 직접 로드한다 → 편집 미리보기와 동일하게 선명
+        // (.ico의 32/48 프레임은 미리 축소·재인코딩돼 흐림).
+        if (TryLoadCustomImage())
+            return;
+
         var path = GroupIconLoader.GetIconPath(Group.Id);
         if (File.Exists(path))
         {
@@ -76,6 +81,36 @@ public sealed partial class GroupListItem : ObservableObject
         else
         {
             await ApplyFallbackAsync();
+        }
+    }
+
+    /// <summary>CustomImage(ms-appx 리소스/사용자 파일) 원본을 네이티브 해상도로 로드한다(선명). 성공 시 true.</summary>
+    private bool TryLoadCustomImage()
+    {
+        if (Group.Icon.Kind != IconSourceKind.CustomImage)
+            return false;
+
+        var value = Group.Icon.Value;
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        // ms-appx 리소스는 절대 URI, 사용자 이미지는 실파일 경로. 파일은 존재할 때만.
+        var isMsAppx = value.StartsWith("ms-appx", StringComparison.OrdinalIgnoreCase);
+        if (!isMsAppx && !File.Exists(value))
+            return false;
+
+        try
+        {
+            // DecodePixelWidth 미지정(네이티브 디코드) → 32px 타일로 축소 표시되어도 선명(편집 미리보기와 동일).
+            var bmp = new BitmapImage { CreateOptions = BitmapCreateOptions.IgnoreImageCache };
+            bmp.ImageFailed += (_, _) => _ = ApplyFallbackAsync();
+            bmp.UriSource = new Uri(value, UriKind.Absolute);
+            Icon = bmp;
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 
