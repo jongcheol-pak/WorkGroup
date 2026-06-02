@@ -226,7 +226,7 @@ T5에서 만든 셸 추출을 일반화해 Win32에도 동일 적용한다.
 - NativeMethods.txt 변경 없음(필요 심볼 이미 존재).
 
 ### Tasks
-- [ ] **T7 — 셸 아이콘 추출 일반화(Win32 포함) + 이름 변경** *(~1.5h)*
+- [x] **T7 — 셸 아이콘 추출 일반화(Win32 포함) + 이름 변경** *(~1.5h)*
   - **Type**: D
   - **Acceptance**:
     - `PackagedAppIcon` → `ShellIcon`(파일/클래스명). `OpenForAppAsync(AppEntry app, uint size, CancellationToken)`:
@@ -251,4 +251,5 @@ T5에서 만든 셸 추출을 일반화해 Win32에도 동일 적용한다.
 <!-- implement-task가 갱신 -->
 - T1-T2 완료 (커밋 9e94076, 5501ed4): T1=PackagedAppIcon.OpenLogoStreamAsync 신규(AUMID→FindPackagesForUser→GetAppListEntries→DisplayInfo.GetLogo→IRandomAccessStream, OS 19041 가드, 실패 null). T2=IconService.ResolveMemberBitmapAsync에 Packaged 분기(GetLogo 우선)+DecodeStreamAsync 공통화(이미지/썸네일/로고 3경로 통일). 빌드 0/0, 테스트 80/80, spec OK.
 - T3-T4 완료 (커밋 a3f02c7, 다음): T3=AppIconLoader.LoadAsync에 Packaged 분기(GetLogo→BitmapImage.SetSourceAsync, 실패 시 기존 폴백). T4=문서(README 핵심기능 아이콘 추출 항목 + notes 최신 항목). 빌드 0/0, 테스트 80/80, spec OK.
-- T5-T6 완료 (커밋 65543c8, c3f8e51, +보강): 사용자 피드백(아이콘 크기 불균일)→GetLogo는 앱별 매니페스트 로고 여백 편차. PackagedAppIcon을 shell:AppsFolder\AUMID + IShellItemImageFactory.GetImage(셸 렌더, 시작메뉴 동일)로 재작성. HBITMAP(DIBSection)→SoftwareBitmap(BGRA8, bottom-up 방어)→PNG 스트림. CsWin32 P/Invoke(SHCreateItemFromParsingName/IShellItemImageFactory/GetObject/DIBSECTION/DeleteObject), System.Drawing/새 NuGet 없음. 메서드명 OpenLogoStreamAsync→OpenIconStreamAsync(호출처 2곳 갱신). quality 리뷰 M2/m1 보강. 빌드 0/0, 테스트 80/80. **plan 전체 완료(T1~T6).** GUI 시각 검증만 잔여(R5/R6).
+- T5-T6 완료 (커밋 65543c8, c3f8e51, +보강): 사용자 피드백(아이콘 크기 불균일)→GetLogo는 앱별 매니페스트 로고 여백 편차. PackagedAppIcon을 shell:AppsFolder\AUMID + IShellItemImageFactory.GetImage(셸 렌더, 시작메뉴 동일)로 재작성. HBITMAP(DIBSection)→SoftwareBitmap(BGRA8, bottom-up 방어)→PNG 스트림. CsWin32 P/Invoke(SHCreateItemFromParsingName/IShellItemImageFactory/GetObject/DIBSECTION/DeleteObject), System.Drawing/새 NuGet 없음. 메서드명 OpenLogoStreamAsync→OpenIconStreamAsync(호출처 2곳 갱신). quality 리뷰 M2/m1 보강. 빌드 0/0, 테스트 80/80.
+- T7 완료 (커밋 74e67f7): 사용자 피드백(Win32 .lnk 아이콘 누락: CPAN/VS 개발자 프롬프트 등)→GetThumbnailAsync 실패. PackagedAppIcon→ShellIcon 일반화, OpenForAppAsync(AppEntry)가 packaged=shell:AppsFolder\AUMID·Win32=파일경로로 IShellItemImageFactory 추출(DevDashboard 동일). 크기 캐스케이드+플래그 폴백(ICONONLY→일반). IconService/AppIconLoader 모든 Kind에 셸 아이콘 우선, 실패 시 기존 폴백. 잔존 참조 0, 새 의존성 없음. 빌드 0/0, 테스트 80/80, spec OK. **plan 전체 완료(T1~T7).** GUI 시각 검증만 잔여.
