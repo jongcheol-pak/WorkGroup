@@ -34,7 +34,7 @@ public sealed class ShortcutServiceTests : IDisposable
         var result = sut.CreateOrUpdate(group, _alias);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(Path.Combine(_dir, "업무 그룹.lnk"), result.Value);
+        Assert.Equal(Path.Combine(_dir, group.Id.Value, "업무 그룹.lnk"), result.Value);
         Assert.True(File.Exists(result.Value));
     }
 
@@ -91,22 +91,22 @@ public sealed class ShortcutServiceTests : IDisposable
     }
 
     [Fact]
-    public void CleanupOrphans_유효_그룹에_없는_lnk_제거()
+    public void CleanupOrphans_그룹_폴더_내_잔여_lnk_제거()
     {
         var sut = CreateSut();
         var keep = AppGroup.Create("유지").Value;
-        sut.CreateOrUpdate(keep, _alias);
+        var keepPath = sut.CreateOrUpdate(keep, _alias).Value;
 
-        // 고아 .lnk 직접 생성
-        Directory.CreateDirectory(_dir);
-        var orphan = Path.Combine(_dir, "고아.lnk");
-        File.WriteAllText(orphan, "x");
+        // 같은 그룹 폴더에 이름 변경 잔여 .lnk를 직접 생성
+        var folder = Path.GetDirectoryName(keepPath)!;
+        var stale = Path.Combine(folder, "옛이름.lnk");
+        File.WriteAllText(stale, "x");
 
         var result = sut.CleanupOrphans(new[] { keep });
 
         Assert.True(result.IsSuccess);
-        Assert.False(File.Exists(orphan));
-        Assert.True(File.Exists(Path.Combine(_dir, "유지.lnk")));
+        Assert.False(File.Exists(stale));          // 잔여 제거
+        Assert.True(File.Exists(keepPath));         // 현재 것 보존
     }
 
     private sealed class ThrowingWriter : IShortcutWriter
