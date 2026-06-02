@@ -116,7 +116,7 @@ public sealed partial class WorkGroupsPage : Page
             try
             {
                 // 드래그 비주얼 크기(최대 변, 물리 px). 필요 시 이 값만 조정.
-                const uint dragSize = 96;
+                const uint dragSize = 128;
                 await SetDragVisualFromIconAsync(e, item.Group.Id, dragSize);
             }
             finally
