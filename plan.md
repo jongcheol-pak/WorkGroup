@@ -150,6 +150,59 @@
 - [x] 캐시 → 도입 안 함, 추출 품질만 개선 (D2, 사용자).
 - [x] 적용 범위 → AppIconLoader + IconService 두 곳 (D3, 사용자).
 
+---
+
+## 후속 — 패키지 앱 셸 아이콘 전환 (T5~T6)
+
+### 배경
+T1~T4의 `GetLogo`는 각 앱이 배포한 매니페스트 로고를 반환한다. 일부 앱(targetsize-unplated 에셋만 제공: ChatGPT/Codex 등)은
+로고 캔버스에 여백이 있어 작게 보이고, `Square44x44Logo.png`(꽉 찬) 를 제공하는 앱(Claude 등)과 크기가 들쭉날쭉하다.
+시작 메뉴는 셸이 아이콘을 직접 렌더해 균일하다. 따라서 **패키지 앱도 셸 렌더 아이콘**(`shell:AppsFolder\AUMID` →
+`IShellItemImageFactory.GetImage`)을 사용해 균일성을 확보한다(사용자 결정).
+
+### 결정 사항 (사용자 승인)
+- **D4**: 패키지 앱 아이콘을 `IShellItemImageFactory`(셸 렌더)로 추출. Win32는 현행 셸 썸네일 유지(결과적으로 둘 다 셸 아이콘).
+- **D5**: P/Invoke는 **이미 있는 CsWin32**로 생성(새 NuGet 의존성 없음). System.Drawing 미사용 — HBITMAP을 GDI(`GetObject`/DIBSECTION)로
+  읽어 `SoftwareBitmap`(BGRA8)로 변환 후 PNG 스트림 인코딩.
+- **D6**: `PackagedAppIcon`의 반환 계약(`Task<IRandomAccessStream?>`)을 유지해 T2(IconService)·T3(AppIconLoader) 소비자는 **무수정**.
+  메서드명만 `OpenLogoStreamAsync` → `OpenIconStreamAsync`로 변경(의미 정확화), 호출처 2곳 동시 갱신.
+
+### 위험
+- **R5**: COM/GDI interop은 헤드리스 GUI 실측 불가 — 빌드(컴파일 타임 시그니처 검증) + 정적 코드 경로로만 검증(R3 동일).
+- **R6**: HBITMAP은 top-down 32bpp DIBSection(BGRA, premultiplied) 가정. `GetObject(DIBSECTION)`의 `dsBm.bmBits`로 픽셀 직접 접근,
+  음수 height(top-down)면 행 역순 불필요. premultiplied 가정이 틀리면 알파 합성 오류 → 단, `SIIGBF_ICONONLY`로 아이콘만 요청해 위험 최소화.
+- **R7**: CsWin32가 요청 심볼(`SHCreateItemFromParsingName`/`IShellItemImageFactory`/`GetObject`/`DIBSECTION`/`DeleteObject`)을
+  생성하는지 빌드로 확인. 생성 실패 시 → 해당 task에서 심볼명/네임스페이스 조정(Halt 아님).
+
+### 영향 범위
+- `PackagedAppIcon.cs`(전면 재작성: GetLogo → 셸 아이콘). `NativeMethods.txt`(심볼 추가).
+- `IconService.cs`/`AppIconLoader.cs`: 메서드명 변경에 따른 호출 1줄씩만 수정(분기 로직 불변).
+- 호출처 grep: `OpenLogoStreamAsync` = IconService.cs:98, AppIconLoader.cs:21 (2곳).
+
+### Tasks
+- [ ] **T5 — 셸 아이콘 추출로 전환 (Infrastructure)** *(~2.5h)*
+  - **Type**: D
+  - **Acceptance**:
+    - `NativeMethods.txt`에 `SHCreateItemFromParsingName`, `IShellItemImageFactory`, `GetObject`, `DIBSECTION`, `DeleteObject` 추가 → 빌드로 CsWin32 생성 확인(R7).
+    - `PackagedAppIcon.OpenIconStreamAsync(string aumid, uint size, CancellationToken)`로 재작성:
+      `Task.Run` 안에서 `shell:AppsFolder\{aumid}` → `SHCreateItemFromParsingName(..., IShellItemImageFactory)` →
+      `GetImage(new SIZE(size,size), SIIGBF_BIGGERSIZEOK|SIIGBF_ICONONLY)` → HBITMAP.
+      HBITMAP → `GetObject`로 `DIBSECTION` 채워 폭/높이/비트 포인터 획득 → `SoftwareBitmap.CreateCopyFromBuffer`(Bgra8, Premultiplied) →
+      `DeleteObject(HBITMAP)`. 그 뒤(밖 또는 안에서) PNG로 `InMemoryRandomAccessStream` 인코딩(`BitmapEncoder`) → `IRandomAccessStream` 반환.
+      전 구간 try/catch + COM/GDI 핸들 해제(finally) → 실패 시 null.
+    - 빌드 0/0(경고 0), 테스트 회귀 없음.
+  - **Files**: `src/WorkGroup.Infrastructure/Icons/PackagedAppIcon.cs`, `src/WorkGroup.Infrastructure/NativeMethods.txt`
+  - **Edge Cases**: SHCreateItem 실패/HBITMAP 0/GetObject 실패/비-32bpp/구버전 → null. 핸들 누수 방지(finally Delete/Release).
+  - **Halt Forecast**: CsWin32 심볼 미생성(R7) → 심볼명 조정. premultiplied/스트라이드 가정 오류(R6) → 빌드는 통과하나 시각 오류 가능, GUI 수동 검증 항목으로 남김.
+  - **Depends on**: -
+
+- [ ] **T6 — 호출처 메서드명 갱신 + 문서/검증** *(~0.5h)*
+  - **Type**: C
+  - **Acceptance**: `IconService.cs`·`AppIconLoader.cs`의 `OpenLogoStreamAsync` 호출을 `OpenIconStreamAsync`로 변경(분기 로직 불변).
+    `OpenLogoStreamAsync` 잔존 참조 0(grep). README/notes를 "패키지 앱 = 셸 렌더 아이콘(IShellItemImageFactory)"으로 갱신. 빌드 0/0, 테스트 회귀 없음.
+  - **Files**: `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.App/Services/AppIconLoader.cs`, `README.md`, `notes.md`
+  - **Depends on**: T5
+
 ## Next Steps
 - 현재 상태(2026-06-02): ✅ 패키지 앱 아이콘 추출 개선 완료(T1~T4). 빌드 0/0, 테스트 80/80. 새 의존성/공개 API/직렬화 무변경.
 - GUI 수동 검증 필요(패키지 실행, 헤드리스 불가): ① 설치 앱 목록/"앱 추가" 팝업에서 UWP/Store 앱(예: Teams, Discord) 아이콘 표시 ② 해당 패키지 앱을 멤버로 한 그룹의 대표 .ico에 로고 반영.
