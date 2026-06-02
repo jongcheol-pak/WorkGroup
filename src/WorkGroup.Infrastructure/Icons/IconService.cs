@@ -118,7 +118,12 @@ public sealed class IconService : IIconService
 
     private static async Task<SoftwareBitmap> DecodeImageFileAsync(string path, CancellationToken cancellationToken)
     {
-        var file = await StorageFile.GetFileFromPathAsync(path).AsTask(cancellationToken).ConfigureAwait(false);
+        // 번들 리소스 아이콘은 실파일 경로가 아니라 ms-appx 패키지 URI로 열어야 한다(GetFileFromPathAsync 불가).
+        // MemberApp 분기는 File.Exists/IsImageFile 가드를 거친 실파일만 전달하므로 이 분기에 진입하지 않는다.
+        // 비패키지(테스트/언패키지드) 환경에서는 GetFileFromApplicationUriAsync가 예외를 던지며, 상위 CreateGroupIconAsync catch에서 기본 폴백으로 흡수된다.
+        var file = path.StartsWith("ms-appx:", StringComparison.OrdinalIgnoreCase)
+            ? await StorageFile.GetFileFromApplicationUriAsync(new Uri(path)).AsTask(cancellationToken).ConfigureAwait(false)
+            : await StorageFile.GetFileFromPathAsync(path).AsTask(cancellationToken).ConfigureAwait(false);
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken).ConfigureAwait(false);
         var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken).ConfigureAwait(false);
         var bitmap = await decoder.GetSoftwareBitmapAsync().AsTask(cancellationToken).ConfigureAwait(false);
