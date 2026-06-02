@@ -101,7 +101,15 @@
 - 구조/공개 API/의존성 변경 없음(ViewModel 바인딩 속성 추가뿐). 승인 후 implement-task 자율 진행.
 
 ## Task 체크리스트
-- [ ] T1. GroupEditViewModel 상태 추가
-- [ ] T2. GroupEditDialog.xaml 이름 전환 UI + 경고 InfoBar
-- [ ] T3. GroupEditDialog.xaml.cs 클릭 핸들러
-- [ ] T4. 문서 갱신
+- [x] T1. GroupEditViewModel 상태 추가
+- [x] T2. GroupEditDialog.xaml 이름 전환 UI + 경고 InfoBar
+- [x] T3. GroupEditDialog.xaml.cs 클릭 핸들러
+- [x] T4. 문서 갱신
+
+## Progress Log
+- T1-T3 완료 (커밋: 그룹 이름 클릭-편집 + 핀 재등록 경고): GroupEditViewModel 상태 + XAML 전환 UI + code-behind 포커스. 빌드 0/0, 테스트 80/80, spec-compliance OK.
+- T4 완료: README/notes 갱신.
+
+## Next Steps
+- 권장 다음 액션: F5 MSIX 수동 GUI 검증(이름 읽기전용→클릭 전환, 경고 표시/원복, 신규 즉시 입력) 후 PR 생성.
+- Suggested skills: 공식 /code-review, 공식 /security-review
