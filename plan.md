@@ -1,118 +1,161 @@
-# Plan: WinUIEx 재도입 — 메인 창 관리(WindowEx)
+# Plan: WinUI Gallery Fluent 디자인 정합 (NapCat 참조 적용)
 
-> 이전 plan(UI 개편 Plan 3, T1~T8)은 완료되어 git 이력에 보존됨. 본 plan은 **WinUIEx 의존성 재도입 + 메인 창 관리 적용**(사용자 지시 B). 트레이/팝업은 범위 밖.
+> 이전 plan들(UI 개편·WinUIEx)은 완료되어 git 이력에 보존. 본 plan은 참조 프로젝트 `D:\Personal Project\Windows\rest\NapCat`(WinUI Gallery Fluent 정석)의 디자인 시스템을 WorkGroup에 동일 적용한다. **기능/동작 변경 없음 — 순수 룩앤필.**
 
 ## Goal
-이전에 제거됐던 **WinUIEx**(v2.9.1)를 다시 추가하고, 메인 창을 `WindowEx`로 전환해 (1) Mica 백드롭을 WinUIEx로 관리, (2) 창 크기/위치 지속(persistence), (3) 최소 크기 설정을 적용한다. 기존 동작(닫기→트레이 숨김, 저장된 테마 적용)은 **그대로 보존**한다.
+WorkGroup의 셸·페이지를 NapCat과 동일한 Fluent 룩으로 맞춘다: (1) 디자인 토큰 리소스 딕셔너리, (2) 커스텀 TitleBar(ExtendsContentIntoTitleBar), (3) NavigationView 정교화(280 pane·컨텐츠 보더 제거·FontIcon), (4) 공통 페이지 레이아웃(ScrollViewer+PageContentPadding+MaxWidth+헤더), (5) CardStyle 카드 + CommunityToolkit SettingsCard.
 
 ## Out of Scope
-- 트레이 아이콘 — WinUIEx는 시스템 트레이 미지원(검증됨). 기존 Win32 `Shell_NotifyIcon`(`TrayIconService`) 유지, 변경 없음.
-- 팝업 창(`GroupPopupWindow`) — 기존 OverlappedPresenter + `TaskbarPopupPositioner` 유지, 변경 없음.
-- 설정/정보/작업 그룹 페이지·다이얼로그·ViewModel — 변경 없음.
-- 코어/인프라/Domain — 변경 없음.
+- 기능/동작 변경: 그룹 CRUD, 드래그 핀, 테마 전환, 자동시작, 트레이(Win32), 팝업 런처(`GroupPopupWindow`), WinUIEx WindowEx/persistence/Mica — 모두 불변.
+- ViewModel/Service/Domain 로직 — 변경 없음(XAML 재구성 시 기존 x:Bind·이벤트 핸들러 시그니처 유지).
+- WinAppSDK 버전 상향(NapCat 2.1.3) — **불요**(검증: TitleBar는 1.7+, SettingsControls 8.2는 1.8 지원). 현재 1.8 유지.
+- NapCat 앱 전용 리소스(Colors.xaml 상태/위험색, Brushes.xaml 커스텀 테마, Typography.xaml 타이머 스타일) — 표준 ThemeResource로 대체, 이식 안 함.
+- `GroupEditDialog` 내부 — 이미 Fluent ContentDialog. 본 plan에서 토큰 정합 외 재구성 안 함.
 
 ## Investigation Log
-- WebFetch(github.com/dotMorten/WinUIEx) → 최신 **v2.9.1**(2026-05-31), NuGet 패키지 id **`WinUIEx`**.
-- WebFetch(nuget.org WinUIEx) → 대상 프레임워크 `net8.0-windows10.0.19041`(+net9/net10-windows 호환), 의존성 **`Microsoft.WindowsAppSDK.WinUI (>= 1.8.250906003)`**.
-- WebFetch(WindowManager 문서) → `WindowManager.Get(window)` 또는 `WindowEx`에서 `PersistenceId`/`Backdrop`/`MinWidth`/`MinHeight` 사용. 예(문서 예시값, 실채택값은 DW3): `manager.Backdrop = new WinUIEx.MicaSystemBackdrop(); manager.PersistenceId = "..."; manager.MinWidth=640;`.
-- WebFetch(WindowManager.cs 소스) → **persistence는 `Window_Closed`에서 `SavePersistence()` 호출로만 저장**(PositionChanged/SizeChanged는 저장 트리거 아님). 저장 위치 = `ApplicationData.Current.LocalSettings`의 `"WinUIEx"` 컨테이너, 키 `WindowPersistance_{PersistenceId}`. **닫기를 취소(Hide)하면 그 시점엔 저장 안 됨** → 본 앱은 트레이 종료 시 실제 `Window.Closed`가 발생하므로 그때 저장됨(아래 DW5).
-- Read(App.xaml.cs) → `ShowMainWindow`에서 `_window = new Window()`(L84) + `_window.SystemBackdrop = new MicaBackdrop()`(L86, `Microsoft.UI.Xaml.Media`) + `AppWindow.Closing += OnMainWindowClosing`(L88, 닫기→Hide) + `ThemeService.Initialize(rootFrame)`(L98). 팝업 분기(L47~52)는 `_window = popup`로 별도(별 프로세스).
-- grep(MicaBackdrop|SystemBackdrop|new Window\(|_window, obj 제외) → `MicaBackdrop`/`SystemBackdrop`은 **App.xaml.cs L86 1곳뿐**. `new Window()`도 App.xaml.cs L84 1곳. `_window`는 App.xaml.cs 내부 필드(외부 참조 없음).
-- Read(WorkGroup.App.csproj) → `Microsoft.WindowsAppSDK Version="1.*"`(메타패키지). WinUIEx가 요구하는 `Microsoft.WindowsAppSDK.WinUI >= 1.8`은 1.8 메타패키지에 포함 → `1.*`가 1.8+로 해석되면 충족(T1 빌드로 실측).
+- Explore(NapCat 전수) + Read(App.xaml, Resources/Spacing.xaml, Resources/ControlStyles.xaml, Views/MainPage.xaml) → 디자인 토큰·CardStyle·NavigationView 구조 확보(아래 Decisions에 정확값).
+- grep(NapCat csproj) → `CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219`, `Microsoft.WindowsAppSDK 2.1.3`, `WinUIEx 2.*`, TFM `net10.0-windows10.0.19041.0`(WorkGroup과 동일).
+- WebSearch(TitleBar) → `Microsoft.UI.Xaml.Controls.TitleBar`는 **WinAppSDK 1.7 도입**(1.6 없음). WorkGroup 1.8 → 사용 가능.
+- WebSearch(SettingsControls 8.2) → 8.2.251219는 **WinAppSDK 1.8 지원 첫 공식 빌드**(`Microsoft.WindowsAppSDK.WinUI` 의존).
+- **`dotnet list package --include-transitive`(실측, B1/B2 정정)** → WorkGroup `Microsoft.WindowsAppSDK 1.*`는 **1.8.260508005**로 해석되고, 전이 의존으로 **`Microsoft.WindowsAppSDK.WinUI 1.8.260505002`가 이미 포함**(1.8부터 meta가 `.WinUI` 분리 패키지를 견인). → SettingsControls 8.2가 요구하는 `.WinUI >= 1.8` 충족. (NapCat의 2.1.3은 근거 아님 — WorkGroup 실측 버전이 근거.) **최종 확정은 T1 복원·빌드 게이트.**
+- **Resources 포함 방식(B3 정정)**: NapCat은 `Resources\*.xaml`을 **명시적 `<Page Update= Generator=MSBuild:Compile>`로 등록**(자동 글로빙 의존 아님). → WorkGroup도 T1에서 신규 `Resources\*.xaml`을 **명시적 `<Page>`로 등록**해 컴파일·패키징 보장(런타임 StaticResource 미해석 방지).
+- grep(NapCat MainPage.xaml.cs, App.xaml.cs) → **SetTitleBar 호출 없음.** TitleBar 컨트롤은 창의 `ExtendsContentIntoTitleBar=true`와 **자동 동기화**(NapCat 주석·코드 확인, 단 NapCat=2.1.3). 창 아이콘은 별도 `AppWindow.SetIcon`(선택).
+- Read(WorkGroup App.xaml/App.xaml.cs/MainShell.xaml/각 페이지) → 현재 SymbolIcon 셸(작업그룹=AllApps/트레이=List/설정=Setting/정보=Help, MenuItems 2 + FooterMenuItems 2 분리), 페이지별 개별 Padding(16/24)·MaxWidth(720/760), 표준 ThemeResource 브러시 이미 사용 중. App.xaml에 템플릿 잔여 리소스(Primary/MyLabel/Action 등) 존재.
 
 ## Risks & Unknowns
 | 위험 | 영향 | 완화책 |
 |---|---|---|
-| `Microsoft.WindowsAppSDK 1.*`가 1.8 미만으로 해석되면 WinUIEx 2.9.1 복원 실패 | 빌드 실패 | T1 빌드 게이트. 실패 시 WinAppSDK 하한을 `[1.8,)`로 올리거나 WinUIEx 호환 하위 버전 선택(승인 후). |
-| `WindowEx`가 기본 타이틀바/백드롭을 자체 적용해 기존 룩과 충돌 | 시각 불일치 | DW2에서 Backdrop 명시 설정. T1 수동 시각 확인. |
-| persistence는 `Window.Closed`에서만 저장 + 닫기는 항상 Hide → 저장 기회가 종료뿐인데 `Exit()`가 `Closed`를 발생시킬지 미검증 | **persistence 0% 저장 가능(핵심 기능 불능)** | **DW5: 트레이 종료 시 `_window?.Close()`를 명시 호출**해 `Window.Closed`를 결정적으로 발생 → 저장 보장. `Exit()`의 `Closed` 발생 여부에 의존하지 않음. T1 수동검증 ②로 실측. |
-| WindowEx 전환이 `_window`(Window? 필드)·`MainWindow`(Window?)·HWND 획득(GroupEditDialog)과 충돌 | 런타임 오류 | `WindowEx : Window`라 대입·HWND 획득 호환(검증). T1 빌드+수동. |
+| SettingsControls 8.2가 WorkGroup에서 복원·빌드 실패 | 빌드 실패 | 실측 근거: WorkGroup이 WinAppSDK **1.8.260508005** + `.WinUI 1.8.260505002` 보유(SettingsControls 8.2 요구 `.WinUI>=1.8` 충족). **T1 복원·빌드 게이트로 최종 확정.** 실패 시 호환 하위 버전(8.1.x) 또는 SDK 조정(승인 후). |
+| 신규 Resources/*.xaml이 컴파일/패키징 누락 → 런타임 StaticResource 미해석(빌드는 통과) | 자율 루프 멈춤 | B3 정정: T1에서 **명시적 `<Page>` 등록**(NapCat 동일). 빌드 산출물에 `.g.cs`/`.xbf` 생성 확인. |
+| WinUIEx WindowEx의 deprecated Window.Icon이 XamlTypeInfo.g.cs에서 CS0612 경고 유발(TitleBar/Icon 경로 도입 시) | "빌드 0/0" 게이트 깨짐 | M1: T2에서 CS0612 발생 시 `<NoWarn>CS0612</NoWarn>`(csproj, NapCat 동일) 추가 — 단 직전 WinUIEx 작업에서 WindowEx 사용에도 미발생했으므로 발생 여부부터 확인. |
+| ExtendsContentIntoTitleBar + 기존 닫기→트레이 숨김/재표시와 충돌 | 타이틀바 깨짐 | T2 수동 확인. 창 재사용 구조는 불변, 속성만 추가. |
+| TitleBar 컨트롤이 SetTitleBar 없이 자동 동기 안 될 가능성 | 드래그/캡션버튼 영역 오작동 | NapCat 실증(자동 동기). 안 되면 `Window.SetTitleBar(titleBar)` 추가(T2 Halt Forecast). |
+| FontIcon 글리프 코드 오타 → 빈 네모 | 아이콘 안 보임(빌드는 통과) | 표준 Segoe Fluent 글리프 사용(DG5). T2 수동 확인으로 검출. |
+| ResourceDictionary StaticResource 키 해석 순서(병합 딕셔너리 간) | 런타임/빌드 오류 | ControlStyles.xaml이 Spacing.xaml을 자체 머지(NapCat 패턴). 빌드로 확정. |
 
 ## Impact Analysis
-메인 창 생성부 한정 변경. 외부 계약·시그니처 변경 없음.
+순수 UI(XAML/리소스/창 속성) 변경. ViewModel/Service/Domain 시그니처 불변.
 
-### 4-A. 변경/영향 심볼(전수)
-| 심볼 | 사용처(grep 전수) | 처리 |
+### 4-A. 변경 파일과 보존 계약
+| 파일 | 변경 | 보존(코드비하인드 계약) |
 |---|---|---|
-| `new Window()`(App.xaml.cs:84) | App.xaml.cs 1곳 | `new WindowEx()`로 교체(로컬 변수 경유 후 `_window`에 대입). |
-| `_window.SystemBackdrop = new MicaBackdrop()`(L86) | App.xaml.cs 1곳 | 제거 → WinUIEx `WindowEx.Backdrop = new MicaSystemBackdrop()`. |
-| `using Microsoft.UI.Xaml.Media;`(L2) | MicaBackdrop가 유일 사용 | **유지**(DW2 교정 — Mica를 표준 `MicaBackdrop`로 두므로 이 using 필요). `using WinUIEx;` 추가. |
-| `_window`(Window? 필드) / `MainWindow`(static Window?) | App.xaml.cs 내부(팝업 L50 `_window=popup` 공유) + GroupEditDialog(App.MainWindow HWND) | **둘 다 `Window?` 타입 유지.** WindowEx 전용 멤버(Backdrop/PersistenceId/MinWidth/MinHeight)는 ShowMainWindow 내 **로컬 `WindowEx win` 변수**로만 설정 후 `_window = win` 대입. 팝업 분기(`_window = popup`)·HWND 획득(`WindowNative.GetWindowHandle(MainWindow)`)은 그대로 동작(WindowEx는 Window). |
-| `GroupPopupWindow`(: Window) | 팝업 분기 `_window = popup` | **영향 없음**(WindowEx 미적용, `_window`가 Window? 유지라 대입 호환). |
-| 트레이 종료 핸들러(`ExitRequested`, L71-76) | App.xaml.cs | **변경**: `Exit()` 앞에 `_window?.Close()` 추가(DW5 — persistence 저장 보장). |
-| `OnMainWindowClosing`(AppWindow.Closing) / `ThemeService.Initialize(rootFrame)` | App.xaml.cs | **보존**(닫기→트레이 숨김·테마 적용 그대로). |
+| `App.xaml` | MergedDictionaries에 Spacing/ControlStyles 추가 | 기존 잔여 리소스(Primary 등) 유지(범위 밖). |
+| `App.xaml.cs` | WindowEx 초기화에 `ExtendsContentIntoTitleBar = true` 1줄 추가 | 나머지(Mica/PersistenceId/MinSize/트레이/테마) 불변. |
+| `Views/MainShell.xaml` | Grid(row0 TitleBar + row1 NavigationView 정교화 + FontIcon) | **x:Name `Nav`·`ContentFrame` 유지**(MainShell.xaml.cs가 참조), `Loaded`/`SelectionChanged` 핸들러명 유지, MenuItem `Tag`(WorkGroups/TrayMenu/Settings/About) 유지. |
+| `Views/WorkGroupsPage.xaml` | 공통 레이아웃 + CardStyle | **이벤트 핸들러(OnAddClick/OnEditClick/OnDeleteClick/OnGroupDragStarting), ListView `CanDragItems`/`DragItemsStarting`, x:Bind(ViewModel.*) 유지.** |
+| `Views/SettingsPage.xaml` | SettingsCard 레이아웃 | x:Bind(AutoStartEnabled/ThemeIndex/HasStatus/StatusMessage) 유지. |
+| `Views/AboutPage.xaml` | 공통 레이아웃 + SettingsCard/카드 | x:Bind(AppName/Version/Licenses), DataTemplate `svc:LicenseInfo`(Name/License/Link) 유지. |
+| `Views/TrayMenuPage.xaml` | 공통 레이아웃 | 정적(바인딩 없음). |
+| `WorkGroup.App.csproj` | SettingsControls PackageReference + Resources/*.xaml을 **명시적 `<Page Update Generator="MSBuild:Compile"/>` 등록**(B3 — 자동 글로빙 의존 안 함) | 기존 참조 유지. |
+| 신규 `Resources/Spacing.xaml`, `Resources/ControlStyles.xaml` | 생성 | - |
 
 ### 4-B. 계약·직렬화 변경
-- 없음. WinUIEx가 `LocalSettings`의 `"WinUIEx"` 컨테이너에 창 상태를 새로 저장(신규 키, 기존 데이터 영향 0, 마이그레이션 불필요).
+- **없음.** XAML 구조만 변경, 바인딩 경로·이벤트 시그니처·ViewModel 공개 멤버 불변.
 
 ### 4-C. 영향 받는 테스트
-- 없음(UI·창 생성은 단위 테스트 비대상, 기존 Verification대로 수동). 기존 80건은 무관 → 빌드/테스트로 회귀 확인.
+- 없음(UI). 기존 80건은 무관 → 빌드/테스트로 회귀 확인.
 
 ### Verified by
-- grep 전수로 MicaBackdrop/new Window/_window 사용처가 App.xaml.cs 내부로 한정됨을 확인.
+- 각 페이지 코드비하인드의 x:Name·이벤트 핸들러·x:Bind 참조를 Read로 확인(위 보존 목록). XAML 재구성 시 이들을 유지하면 .cs 변경 불요.
 
 ## Decisions
 
-### DW1. 적용 방식 — WindowEx 전환
-- **Options**: A) 메인 창을 `WindowEx`로 전환 / B) 기존 `new Window()` 유지 + `WindowManager.Get(window)`로 관리
-- **Chosen**: **A (WindowEx)** — 사용자 지시. `WindowEx`는 `PersistenceId`/`Backdrop`/`MinWidth`/`MinHeight`를 직접 노출하는 완성형. B는 동일 기능을 plain Window에 부착하는 대안(미채택, 기록만).
-- **Source**: 사용자 선택("메인 창"), WinUIEx WindowManager 문서.
+### DG1. WinAppSDK 유지(2.x 미상향)
+- **Chosen**: 현재 `Microsoft.WindowsAppSDK 1.*` 유지(실측 해석 = **1.8.260508005**, 전이 `.WinUI 1.8.260505002` 포함). 근거: TitleBar는 1.7+ 도입(1.8 보유), SettingsControls 8.2는 `.WinUI>=1.8` 요구(충족). NapCat의 2.x는 근거 아님 — WorkGroup 실측 버전이 근거. **복원 가능성 최종 확정 = T1 빌드 게이트.**
+- **실패 분기(사전 확정)**: T1에서 SettingsControls 8.2 복원 실패 시 → 8.1.x로 하향 시도, 그래도 실패면 Halt(SDK 상향은 승인 필요).
+- **Source**: `dotnet list package --include-transitive` 실측, WebSearch(TitleBar/SettingsControls).
 
-### DW2. Mica 백드롭 — 표준 SystemBackdrop 유지 (구현 시 빌드 교정)
-- **당초**: `WindowEx.Backdrop = new WinUIEx.MicaSystemBackdrop()`.
-- **교정(T1 빌드)**: WinUIEx 2.9.1이 `WindowEx.Backdrop`/`MicaSystemBackdrop`를 **CS0618 deprecated** 처리하고 표준 `Microsoft.UI.Xaml.Window.SystemBackdrop` + `Microsoft.UI.Xaml.Media.MicaBackdrop` 사용을 권장. → **`WindowEx.SystemBackdrop = new MicaBackdrop()`**(표준)로 확정. WinUIEx는 PersistenceId·MinSize에만 사용.
-- **Source**: T1 빌드 경고(CS0618) 기반 교정(Halt Forecast대로).
+### DG2. 새 의존성 — CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219
+- **Chosen**: 추가(사용자 승인). SettingsCard로 설정/정보 항목 표준화(NapCat 동일). 버전 핀 8.2.251219.
+- **Source**: 사용자 확인, NapCat csproj.
 
-### DW3. persistence·최소 크기 파라미터
-- **Chosen**: `PersistenceId = "WorkGroupMain"`, `MinWidth = 800`, `MinHeight = 560`(NavigationView 셸 + 컨텐츠가 좁아지지 않을 하한). PersistenceId는 Show 전에 설정해 복원이 적용되게 한다.
-- **Source**: 합리적 기본값(셸 레이아웃 기준).
+### DG3. 커스텀 TitleBar(자동 동기화 + SetTitleBar 폴백)
+- **Chosen**: WindowEx에 `ExtendsContentIntoTitleBar = true`. MainShell row0에 `Microsoft.UI.Xaml.Controls.TitleBar`(Title="WorkGroup" + IconSource=`ms-appx:///Assets/Square44x44Logo.scale-200.png`). 1차로 **SetTitleBar 미호출**(NapCat 자동 동기화 패턴).
+- **폴백(GUI 검증 의존, 사전 확정)**: 1.8에서 자동 동기가 드래그/캡션버튼을 정상 처리하지 못하면(사용자 GUI 확인), MainShell이 TitleBar를 노출하고 App.xaml.cs가 navigate 후 `_window.SetTitleBar(titleBar)` 호출하는 폴백을 추가한다(T2 범위 내). **자율 종료 기준은 빌드 0/0**이며, 드래그/캡션 시각 정상은 사용자 수동 확인.
+- **Source**: 사용자 승인, NapCat grep(단 2.1.3), TitleBar는 WorkGroup 1.8 보유.
 
-### DW4. WinUIEx 버전 — 2.9.1 고정
-- **Chosen**: `<PackageReference Include="WinUIEx" Version="2.9.1" />`(검증된 최신). MS 패키지는 `1.*` 와일드카드지만 서드파티(CommunityToolkit.Mvvm 8.4.2처럼)는 핀.
-- **Source**: nuget.org 실측.
+### DG4. Resources 범위 — Spacing + ControlStyles만
+- **Chosen**: 신규 `Resources/Spacing.xaml`(토큰: SpacingUnit/Element/CardGap/ContainerPadding, PageContentPadding=36,24,40,24, CardPaddingMd/Lg, RadiusSm/Default/Md/Lg/Xl/Full, SideNavWidth=280, ContentMaxWidth=1024) + `Resources/ControlStyles.xaml`(CardStyle, HeroCardStyle, PrimaryActionStyle, SecondaryActionStyle, SectionHeaderStyle, SettingsGroupHeaderStyle). ControlStyles는 Spacing을 자체 머지(StaticResource 해석). Colors/Brushes/Typography(커스텀)는 **제외** — 표준 ThemeResource 브러시·텍스트 스타일 사용.
+- **Rationale**: WorkGroup은 NapCat의 상태색/타이머 스타일이 불필요. CardStyle은 표준 `CardBackgroundFillColorDefaultBrush`+`OverlayCornerRadius`(전역) 기반이라 추가 색 정의 불요.
+- **Source**: NapCat Resources Read, WorkGroup 필요 분석.
 
-### DW5. 닫기→트레이 숨김과 persistence 저장 보장 (B1 해소)
-- **문제**: WinUIEx는 `Window.Closed`에서만 저장한다. 그런데 본 앱은 닫기(X)를 항상 취소·Hide하므로 정상 닫힘 경로에선 `Closed`가 안 난다. 트레이 "종료"는 현재 `_exiting=true → Exit()`만 호출하는데, **`Application.Exit()`가 메인 창의 `Window.Closed`를 발생시키는지는 미검증 가정**(발생 안 하면 persistence 0% 저장).
-- **Chosen**: 닫기→트레이 숨김은 **보존**. 트레이 종료 핸들러를 **`_exiting=true` → `_window?.Close()`(WinUIEx `Window.Closed` 발생 → SavePersistence 실행) → `Exit()`** 순으로 변경해 저장을 **결정적으로 보장**한다. `_exiting=true` 상태이므로 `OnMainWindowClosing`이 닫힘을 취소하지 않아 창이 실제로 닫히고 `Closed`가 발생한다.
-- **Rationale**: `Exit()`의 `Closed` 발생 여부에 의존하지 않고 명시적 `Close()`로 저장 시점을 확정. 숨김 상태의 창도 마지막 크기를 유지하므로 저장값 정확.
-- **분기 제거**: "Exit가 Closed를 알아서 발생시킬 것"이라는 추정 제거. 명시 `Close()`로 고정.
-- **Source**: WindowManager.cs 소스(Window_Closed→SavePersistence), App.xaml.cs(`_exiting`/`OnMainWindowClosing`).
+### DG5. 메뉴 아이콘 — 기존 SymbolIcon 유지(변경 없음)
+- **Chosen**: 현재 SymbolIcon(작업그룹=AllApps, 트레이=List, 설정=Setting, 정보=Help) **그대로 유지.** SymbolIcon과 FontIcon은 동일 Segoe Fluent 글리프를 렌더해 **시각 차이가 없으므로**, 아이콘 의미 변경·글리프 코드 오타 위험을 피하기 위해 전환하지 않는다(M3 반영). 디자인 차이는 NavigationView 레이아웃·카드·타이틀바에서 나오며 아이콘 폼은 무관.
+- **Source**: M3 정정(불필요한 변경 제거).
+
+### DG6. 페이지 공통 레이아웃
+- **Chosen**: 각 페이지 = `ScrollViewer Padding="{StaticResource PageContentPadding}" HorizontalScrollMode="Disabled"` → `StackPanel MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch" Spacing="24"` → 헤더(`TextBlock Style=TitleTextBlockStyle` 제목 + `TextBlock Style=BodyTextBlockStyle Foreground=TextFillColorSecondaryBrush` 부제) → 본문(CardStyle 카드 / SettingsCard).
+- **레이아웃 폭 변화(m3)**: 현재 페이지 MaxWidth(720/760) → `ContentMaxWidth`(1024)로 넓어진다(Gallery 표준). 의도된 변화.
+- **Source**: NapCat DashboardView/GeneralSettingsView 패턴.
+
+### DG7. App.xaml 잔여 템플릿 리소스 — 유지
+- **Chosen**: 기존 Primary/PrimaryBrush/WhiteBrush/BlackBrush/AppFontSize/MyLabel/Action/PrimaryAction는 **유지**(MergedDictionaries만 추가). 미사용이라도 제거는 범위 밖.
+- **follow-up**: 미사용 확인 시 별도 정리(승인 후).
+
+### DG8. 창 MinSize 유지
+- **Chosen**: 직전 작업의 `MinWidth=800`/`MinHeight=560` 유지. ExtendsContentIntoTitleBar만 추가.
 
 ## Tasks
 
-> 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 기존 테스트 80건 회귀 없음.
+> 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 테스트 80/80 회귀 없음. XAML 재구성 시 4-A 보존 목록(x:Name·핸들러·x:Bind) 유지 → .cs 변경 최소.
 
-- [x] **T1. WinUIEx 추가 + 메인 창 WindowEx 전환** *(~1.5h)*
-  - **Type**: D (의존성 추가 + 창 라이프사이클)
-  - **Acceptance**: `WorkGroup.App.csproj`에 `WinUIEx 2.9.1` 추가되어 복원·빌드 0/0. `App.xaml.cs` ShowMainWindow가 로컬 `WindowEx win`을 생성해 `SystemBackdrop=new MicaBackdrop()`(표준, DW2 교정), `PersistenceId="WorkGroupMain"`, `MinWidth=800`/`MinHeight=560` 설정 후 `_window=win` 대입(`_window`/`MainWindow`는 `Window?` 유지). 기존 `_window.SystemBackdrop=MicaBackdrop`는 제거. 트레이 `ExitRequested`를 `_exiting=true; _window?.Close(); _tray?.Dispose(); Exit();` 순으로 변경(DW5 — Close로 persistence 저장 보장). `OnMainWindowClosing`(닫기→트레이 숨김)·`ThemeService.Initialize(rootFrame)`·`MainShell` navigate 보존. 수동: ① Mica 유지 ② 창 크기 변경→트레이 종료→재실행 시 크기/위치 복원 ③ 800×560 이하 축소 불가 ④ 닫기(X)→트레이 숨김.
-  - **Files**:
-    - 주: `src/WorkGroup.App/WorkGroup.App.csproj`(PackageReference WinUIEx), `src/WorkGroup.App/App.xaml.cs`(ShowMainWindow: 로컬 WindowEx + Backdrop/PersistenceId/MinSize, ExitRequested: `_window?.Close()` 추가, `using` 정리)
-  - **Edge Cases**: WinAppSDK가 1.8 미만으로 해석→복원/빌드 실패(Risks 완화). 첫 실행(저장값 없음)→기본 크기. persistence 저장 실패(비패키지 등)→무해(기본 크기). 팝업 분기(`_window = popup`)는 WindowEx 미적용(불변). **복원 크기 < MinSize**(WinUIEx 도입 전 저장값 없음이라 사실상 미발생, 있어도 WinUIEx가 MinSize로 클램프 기대 — 수동 확인). **저장 위치가 현재 화면 밖**(멀티모니터 변경)→WinUIEx 복원 동작 수동 확인(미보정 시 사용자가 이동 가능, 무해).
-  - **Halt Forecast**: "WinAppSDK 버전 부족?" → Risks(하한 상향, 승인 후). "WindowEx 기본 백드롭 충돌?" → DW2 명시 설정. "MinWidth 단위?" → DIP(WinUIEx 처리). "`MicaSystemBackdrop`/`WindowEx.Backdrop`/`PersistenceId` 심볼명이 2.9.1과 불일치?" → 빌드 에러 기반으로 WinUIEx 2.9.1 실제 심볼로 교정(WindowManager 문서 예제 기준이나 컴파일로 확정).
+- [ ] **T1. SettingsControls 의존성 + Resources 토큰 + App.xaml 병합** *(~2h)*
+  - **Type**: D
+  - **Acceptance**: `WorkGroup.App.csproj`에 `CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219` 추가되어 복원·빌드 0/0. 신규 `Resources/Spacing.xaml`(DG4 토큰)·`Resources/ControlStyles.xaml`(CardStyle 등, Spacing 자체 머지) 생성. **csproj에 두 리소스를 명시적 `<Page Update="Resources\Spacing.xaml" Generator="MSBuild:Compile"/>`(및 ControlStyles)로 등록**(B3 — 컴파일·패키징 보장). `App.xaml` MergedDictionaries에 두 딕셔너리 추가(XamlControlsResources 다음). 기존 App.xaml 리소스 유지. 빌드 산출물에 두 ResourceDictionary가 컴파일됨(obj의 .g.cs/.g.i.cs 또는 .xbf 생성) 확인.
+  - **Files**: 주: `src/WorkGroup.App/WorkGroup.App.csproj`, `src/WorkGroup.App/Resources/Spacing.xaml`(신규), `src/WorkGroup.App/Resources/ControlStyles.xaml`(신규), `src/WorkGroup.App/App.xaml`
+  - **Edge Cases**: SettingsControls 복원 실패→DG1 실패 분기(8.1.x 하향, 안 되면 Halt). StaticResource 키 미해석→ControlStyles가 Spacing 머지로 해소. Resources xaml 컴파일 누락→명시적 Page 등록으로 방지.
+  - **Halt Forecast**: "SettingsControls 버전 비호환?" → Risks. "리소스 경로?" → `ms-appx:///Resources/...`(NapCat 동일). "CardStyle OverlayCornerRadius?" → 전역 ThemeResource(XamlControlsResources 제공).
   - **Depends on**: -
 
-- [x] **T2. 문서 갱신** *(~0.3h)*
+- [ ] **T2. 셸 — 커스텀 TitleBar + NavigationView 정교화** *(~2.5h)*
+  - **Type**: D
+  - **Acceptance**(자율 종료 = 빌드 0/0; 드래그/캡션 시각은 사용자 수동): `App.xaml.cs` WindowEx에 `ExtendsContentIntoTitleBar = true` 추가. `MainShell.xaml`을 Grid(row0=`TitleBar` Title="WorkGroup"+IconSource, row1=NavigationView)로 재구성: `OpenPaneLength=280`, `IsPaneToggleButtonVisible=False`, `IsSettingsVisible=False`, `IsTitleBarAutoPaddingEnabled=False`, `Background=Transparent`, NavigationView.Resources로 컨텐츠 마진/보더 0. **메뉴 아이콘은 기존 SymbolIcon 유지(DG5).** **MenuItems(작업그룹·트레이메뉴)/FooterMenuItems(설정·정보) 분리 유지(M2).** ContentFrame `Background=Transparent`. x:Name `Nav`/`ContentFrame`·핸들러(`OnLoaded`/`OnSelectionChanged`)·Tag(WorkGroups/TrayMenu/Settings/About) 유지(.cs 불변).
+  - **Files**: 주: `src/WorkGroup.App/App.xaml.cs`, `src/WorkGroup.App/Views/MainShell.xaml`
+  - **Edge Cases**: TitleBar 자동 동기 실패→DG3 폴백(`_window.SetTitleBar`). IconSource 자산 부재→Title만. 닫기→트레이 재표시 시 타이틀바 유지. CS0612(WinUIEx Window.Icon, XamlTypeInfo)→발생 시 NoWarn 추가(M1).
+  - **Halt Forecast**: "SetTitleBar 필요?" → 1차 자동 동기, GUI 실패 시 DG3 폴백(T2 내 추가). "TitleBar 네임스페이스?" → Microsoft.UI.Xaml.Controls(전역 using). "CS0612 빌드 경고?" → M1(NoWarn, csproj). "footer 분리?" → M2(유지).
+  - **Depends on**: T1
+  - **MainShell.xaml.cs 확인**: 재구성 후에도 `Nav.MenuItems[0]`(OnLoaded)·`Nav`(SelectionChanged 시그니처)·`ContentFrame.Content/Navigate`가 유효한지 빌드로 확정.
+
+- [ ] **T3. 설정 페이지 — SettingsCard** *(~2h)*
+  - **Type**: C
+  - **Acceptance**: `SettingsPage.xaml`을 공통 레이아웃(DG6) + 그룹 헤더(SettingsGroupHeaderStyle) + `controls:SettingsCard`(자동시작=ToggleSwitch, 테마=RadioButtons 또는 ComboBox)로 재구성. HeaderIcon=FontIcon. x:Bind(AutoStartEnabled/ThemeIndex/HasStatus/StatusMessage) 유지(.cs 불변). 빌드 0/0, 수동: 토글/테마 동작 동일.
+  - **Files**: 주: `src/WorkGroup.App/Views/SettingsPage.xaml`
+  - **Edge Cases**: SettingsCard.Content에 RadioButtons(세로 3개)→레이아웃 폭 확인. 상태 InfoBar 위치 유지. xmlns `controls` 선언 누락→빌드 에러로 검출.
+  - **Halt Forecast**: "SettingsCard xmlns?" → `using:CommunityToolkit.WinUI.Controls`. "테마 3택을 SettingsCard에?" → SettingsExpander 또는 SettingsCard+RadioButtons(폭 넓으면 별 카드).
+  - **Depends on**: T1, T2
+
+- [ ] **T4. 정보 페이지 — 공통 레이아웃 + SettingsCard/카드** *(~1.5h)*
+  - **Type**: C
+  - **Acceptance**: `AboutPage.xaml`을 공통 레이아웃(DG6)으로: 앱 이름/버전을 CardStyle 카드 또는 SettingsCard, 라이선스 목록을 ItemsControl(SettingsCard 또는 CardStyle 항목, HyperlinkButton 유지). x:Bind/DataTemplate(svc:LicenseInfo) 유지. 빌드 0/0, 수동: 버전·라이선스·링크 동작 동일.
+  - **Files**: 주: `src/WorkGroup.App/Views/AboutPage.xaml`
+  - **Edge Cases**: 라이선스 7개 ItemsControl 비가상화(소량 OK). 링크 HyperlinkButton 유지. 카드 간격 CardGap.
+  - **Halt Forecast**: "라이선스 항목을 SettingsCard로?" → SettingsCard(Header=이름, Description=종류, Content=HyperlinkButton) 권장.
+  - **Depends on**: T1, T2
+
+- [ ] **T5. 작업 그룹 + 트레이 페이지 공통 레이아웃** *(~2.5h)*
+  - **Type**: D
+  - **Acceptance**: `WorkGroupsPage.xaml`을 공통 레이아웃(DG6)으로: 헤더(제목+부제) + 우상단 "그룹 추가"(PrimaryActionStyle 또는 AccentButtonStyle), 그룹 목록을 CardStyle 카드 안에 ListView(드래그/아이콘버튼/2라인 유지). 모든 이벤트 핸들러·CanDragItems·x:Bind 유지(.cs 불변). `TrayMenuPage.xaml`도 공통 레이아웃(헤더 + InfoBar). 빌드 0/0, 수동: 추가/수정/삭제/드래그 핀 동작 동일.
+  - **Files**: 주: `src/WorkGroup.App/Views/WorkGroupsPage.xaml`, `src/WorkGroup.App/Views/TrayMenuPage.xaml`
+  - **Edge Cases**: ListView를 CardStyle Border로 감쌀 때 드래그 영역 유지. 빈 상태 안내 유지. 그룹 아이콘/멤버 미니아이콘 템플릿 유지. PageContentPadding 적용 시 ListView 높이(*).
+  - **Halt Forecast**: "드래그가 카드 래핑으로 깨지나?" → DragItemsStarting은 ListView 속성이라 무관, 래핑 무해. "그룹 추가 버튼 위치?" → 헤더 행 우측(Grid 2열) 또는 헤더 아래.
+  - **Depends on**: T1, T2
+
+- [ ] **T6. 문서 갱신 + 최종 점검** *(~0.5h)*
   - **Type**: A
-  - **Acceptance**: `notes.md`에 WinUIEx 재도입 항목 추가. `plan.md`(본 파일)는 결과 기록. `AGENTS.md`의 "승인된 의존성"에 WinUIEx가 이미 등재돼 있어 추가 변경 불필요(확인만). README는 기능 변화 없음(창 크기 지속은 내부 동작)이라 갱신 불요.
-  - **Files**: 문서: `notes.md`
+  - **Acceptance**: `README.md`(디자인 시스템·리소스·SettingsCard 반영), `notes.md`, `AGENTS.md`(승인된 의존성에 SettingsControls 추가) 갱신. 전체 빌드 0/0 + 테스트 80/80 최종 확인.
+  - **Files**: 문서: `README.md`, `notes.md`, `AGENTS.md`
   - **Edge Cases**: 없음.
   - **Halt Forecast**: 없음.
-  - **Depends on**: T1
+  - **Depends on**: T3, T4, T5
 
 ## Verification Strategy
-- 빌드: `dotnet build WorkGroup.slnx` → 0/0(WinUIEx 복원 포함).
-- 테스트: `dotnet test WorkGroup.slnx` → 80/80 회귀 없음.
-- 수동(GUI — 사용자 확인): ① 메인 창 Mica 유지 ② 창 크기 변경 → 트레이 종료 → 재실행 시 크기/위치 복원 ③ 최소 크기(800×560) 이하로 축소 불가 ④ 닫기(X) → 트레이로 숨김(종료 아님) ⑤ 테마 전환 정상.
+- **자율 종료 기준(각 task)**: `dotnet build WorkGroup.slnx` → 0/0 + `dotnet test` 80/80 회귀 없음. (UI 시각 정상은 빌드로 보장 불가 — 아래 수동.)
+- 수동(GUI — 사용자 확인, 자율 실행 관찰 불가): ① 커스텀 TitleBar(아이콘+제목, 드래그, 캡션버튼) ② NavigationView 280 pane·컨텐츠 보더 없음 ③ 페이지 공통 여백/카드/SettingsCard ④ 설정 토글·테마·정보 링크 동작 동일 ⑤ 그룹 추가/수정/삭제/드래그 핀 동작 동일 ⑥ 라이트/다크 테마 일관.
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
-- **T1-T2 완료** (커밋 39dad5b, 다음): T1=WinUIEx 2.9.1 추가 + 메인 창 WindowEx(PersistenceId/MinSize) + 트레이 종료 시 Close로 persistence 저장 보장(DW5). Mica는 표준 SystemBackdrop 유지(WinUIEx Backdrop=CS0618 deprecated → DW2 교정). T2=notes.md 갱신(AGENTS는 WinUIEx 이미 등재라 불요). 빌드 0/0, 테스트 80/80. spec/quality OK.
-
-## Next Steps
-- **현재 상태(2026-06-02)**: ✅ WinUIEx 재도입 완료. 메인 창 크기/위치 지속 + 최소 크기. **GUI 수동 검증 필요**: ① Mica 유지 ② 창 크기 변경→트레이 종료→재실행 시 복원 ③ 800×560 이하 축소 불가 ④ 닫기→트레이 숨김.
-- 권장 다음 액션: 사용자 GUI 검증 → 정상 시 PR 생성.
-- Suggested skills: 공식 /code-review, /security-review.
 
 ## Open Questions (모두 해결됨)
-- [x] 적용 범위 → **메인 창**(사용자). 트레이는 WinUIEx 미지원이라 제외.
-- [x] 적용 방식 → **WindowEx 전환**(DW1, 사용자 지시).
+- [x] 타이틀바 → **커스텀 TitleBar(NapCat 동일)**(사용자).
+- [x] SettingsCard 의존성 → **SettingsControls 8.2.251219 추가**(사용자).
+- [x] WinAppSDK → **1.8 유지**(검증: TitleBar 1.7+/SettingsControls 8.2가 1.8 지원).
