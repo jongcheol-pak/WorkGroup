@@ -133,9 +133,9 @@
 - **Chosen** (사용자 승인 완료):
   - WinUI3 / Windows App SDK(최신 안정), .NET 10, **MSIX 패키지**
   - MVVM: `CommunityToolkit.Mvvm`
-  - DI/호스팅: `Microsoft.Extensions.Hosting` + `Microsoft.Extensions.DependencyInjection`
-  - Win32 interop: `Microsoft.Windows.CsWin32`(소스 생성기) — IShellLink/IPropertyStore/SHGetFileInfo/GetCursorPos 등
-  - **창/트레이/백드롭 헬퍼: `WinUIEx`** — 창 위치·크기·지속성, 트레이 아이콘, always-on-top, HWND 헬퍼. T11 팝업 위치·T12 트레이에 활용.
+  - DI: `Microsoft.Extensions.DependencyInjection` + `Microsoft.Extensions.Logging` (자체 ServiceProvider 구성 — `IHost` 미사용이라 `Microsoft.Extensions.Hosting`은 **미채택**)
+  - Win32 interop: `Microsoft.Windows.CsWin32`(좌표 API) + 자체 P/Invoke(IShellLink, Shell_NotifyIcon 트레이)
+  - **갱신(현 구현)**: 팝업 위치는 `AppWindow.Move`/자체 `TaskbarPopupPositioner`, 트레이는 Win32 `Shell_NotifyIcon`으로 직접 구현 → **`WinUIEx`는 미사용으로 제거.** (당초 승인됐으나 실제 불필요.)
   - 직렬화: `System.Text.Json`
   - 테스트: `xUnit`
 - **Rationale**: 전역 CLAUDE.md / dotnet 스킬 컨벤션(CommunityToolkit.Mvvm, 한글 주석, 1500라인 제한, DDD)과 일치. CsWin32는 수동 P/Invoke 대비 안전·검증 용이. WinUIEx는 WinUI3 창 관리의 사실상 표준 커뮤니티 확장.
