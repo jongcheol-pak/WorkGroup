@@ -58,6 +58,7 @@ public static class ServiceConfiguration
 
         // ViewModel (plan.md T9).
         services.AddTransient<ViewModels.MainViewModel>();
+        services.AddTransient<ViewModels.SettingsViewModel>();
 
         return services.BuildServiceProvider();
     }

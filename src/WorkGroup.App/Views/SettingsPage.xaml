@@ -7,7 +7,46 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- T1 stub. 자동 시작/테마 설정은 T3에서 채운다. -->
-    <TextBlock Text="설정" Style="{ThemeResource TitleTextBlockStyle}"
-               HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <ScrollViewer Padding="24">
+        <StackPanel Spacing="12" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="설정" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,0,8" />
+
+            <InfoBar IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
+                     Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+
+            <!-- 자동 시작 -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="로그인 시 자동 시작" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Windows 로그인 시 백그라운드(트레이)로 시작합니다."
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" OnContent="켜짐" OffContent="꺼짐"
+                                  IsOn="{x:Bind ViewModel.AutoStartEnabled, Mode=TwoWay}" />
+                </Grid>
+            </Border>
+
+            <!-- 앱 테마 -->
+            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="앱 테마" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                    <RadioButtons SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
+                        <x:String>시스템 설정 사용</x:String>
+                        <x:String>라이트</x:String>
+                        <x:String>다크</x:String>
+                    </RadioButtons>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
 </Page>
