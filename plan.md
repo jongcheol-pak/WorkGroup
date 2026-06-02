@@ -59,7 +59,7 @@
 ## 작업 분해 (Tasks)
 > 공통: 한글 주석, UTF-8(BOM 없음), `dotnet build WorkGroup.slnx` 0/0, `dotnet test WorkGroup.slnx` 회귀 없음. 각 task는 컴파일 가능 상태 유지(런타임 정합은 T5 DI 완료 시점).
 
-- [ ] **T1 — WorkGroupPaths 그룹별 경로 추가** *(~0.5h)*
+- [x] **T1 — WorkGroupPaths 그룹별 경로 추가** *(~0.5h)*
   - **Type**: C
   - **P단계 확인**: `GroupId.Value` 포맷 Read로 확인(GUID "N" 형식이어야 폴더명 안전). 다르면 Halt.
   - **Acceptance**: 신규 멤버 추가(기존 `IconsDirectory`/`ShortcutsDirectory`는 T5까지 유지):
@@ -73,7 +73,7 @@
   - **Halt Forecast**: GroupId.Value가 경로 부적합 문자 포함 시 → Halt(설계 재확인).
   - **Depends on**: -
 
-- [ ] **T2 — ShortcutService 그룹별 폴더화 + 테스트** *(~1.5h)*
+- [x] **T2 — ShortcutService 그룹별 폴더화 + 테스트** *(~1.5h)*
   - **Type**: D
   - **Acceptance**:
     - ctor 인자 의미를 "Groups 루트"로(필드 `_groupsDirectory`로 명명, 빈 인자 검증 유지). 타입·검증 동일.
@@ -145,3 +145,4 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- T1-T2 완료 (커밋 후속): T1=WorkGroupPaths에 GroupsDirectory/GroupIconsDirectory(id) 추가(추가 전용). T2=ShortcutService를 Groups\{id}\{이름}.lnk로(ctor=Groups 루트, 생성 시 잔여 .lnk 정리, CleanupOrphans는 폴더 내 잔여 정리)+테스트 갱신. 인터페이스 불변. 빌드 0/0, 테스트 80/80, spec OK. (V-6 품질은 Phase F 일괄.)
