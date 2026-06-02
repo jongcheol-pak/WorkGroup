@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    레이아웃 토큰 (WinUI Gallery 페이지 표준).
+    실제 사용 토큰만 정의(YAGNI). 간격/코너반경은 리터럴 또는 표준 ThemeResource(OverlayCornerRadius 등)를 쓴다.
+-->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- 페이지 본문 패딩 (Gallery 표준 좌36/상24/우40/하24) -->
+    <Thickness x:Key="PageContentPadding">36,24,40,24</Thickness>
+
+    <!-- 본문 최대 폭 (광폭 창에서 콘텐츠 제한) -->
+    <x:Double x:Key="ContentMaxWidth">1024</x:Double>
+
+    <!-- NavigationView 좌측 pane 폭 -->
+    <x:Double x:Key="SideNavWidth">280</x:Double>
+
+</ResourceDictionary>

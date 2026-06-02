@@ -11,7 +11,9 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
+                <!-- 디자인 토큰/스타일(WinUI Gallery Fluent 정합) -->
+                <ResourceDictionary Source="ms-appx:///Resources/Spacing.xaml" />
+                <ResourceDictionary Source="ms-appx:///Resources/ControlStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!-- Other app resources here -->
             <Color x:Key="Primary">#512BD4</Color>

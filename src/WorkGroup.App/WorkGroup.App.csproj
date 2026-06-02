@@ -46,8 +46,15 @@
         <PackageReference Include="Microsoft.Web.WebView2" Version="1.*" />
         <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.*" />
         <PackageReference Include="WinUIEx" Version="2.9.1" />
+        <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
 
         <Manifest Include="$(ApplicationManifest)" />
+    </ItemGroup>
+
+    <!-- 디자인 토큰/스타일 리소스 딕셔너리 — 명시적 Page 등록으로 컴파일·패키징 보장(plan.md B3). -->
+    <ItemGroup>
+        <Page Update="Resources\Spacing.xaml" Generator="MSBuild:Compile" />
+        <Page Update="Resources\ControlStyles.xaml" Generator="MSBuild:Compile" />
     </ItemGroup>
 
     <!-- 
