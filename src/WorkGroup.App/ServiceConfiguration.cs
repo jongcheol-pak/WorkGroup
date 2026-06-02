@@ -37,7 +37,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IShortcutService>(sp =>
             new ShortcutService(
-                WorkGroupPaths.ShortcutsDirectory,
+                WorkGroupPaths.GroupsDirectory,
                 WorkGroupPaths.AliasExePath,
                 logger: sp.GetRequiredService<ILogger<ShortcutService>>()));
 
@@ -47,7 +47,7 @@ public static class ServiceConfiguration
                 sp.GetRequiredService<IIconService>(),
                 sp.GetRequiredService<IShortcutService>(),
                 sp.GetRequiredService<IGroupRepository>(),
-                WorkGroupPaths.IconsDirectory,
+                WorkGroupPaths.GroupsDirectory,
                 sp.GetRequiredService<ILogger<GroupAppService>>()));
 
         // 자동 시작 토글(plan.md T12).

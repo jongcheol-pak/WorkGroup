@@ -23,12 +23,6 @@ public static class WorkGroupPaths
     /// <summary>특정 그룹의 아이콘(.ico/.png) 디렉터리 (Groups\{groupId}\Icons).</summary>
     public static string GroupIconsDirectory(string groupId) => Path.Combine(GroupsDirectory, groupId, "Icons");
 
-    /// <summary>그룹별 .lnk 저장 디렉터리.</summary>
-    public static string ShortcutsDirectory => Path.Combine(RootDirectory, "Shortcuts");
-
-    /// <summary>그룹별 .ico 저장 디렉터리.</summary>
-    public static string IconsDirectory => Path.Combine(RootDirectory, "Icons");
-
     /// <summary>groups.json이 위치할 디렉터리.</summary>
     public static string ConfigDirectory => RootDirectory;
 
