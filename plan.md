@@ -203,6 +203,44 @@ T1~T4의 `GetLogo`는 각 앱이 배포한 매니페스트 로고를 반환한�
   - **Files**: `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.App/Services/AppIconLoader.cs`, `README.md`, `notes.md`
   - **Depends on**: T5
 
+---
+
+## 후속2 — Win32 앱도 셸 아이콘으로 (T7)
+
+### 배경
+설치 목록의 Win32 앱(.lnk 바로가기, 예: Strawberry Perl CPAN 도구·VS 개발자 명령 프롬프트)이 아이콘 미표시.
+현재 Win32 경로는 `GetThumbnailAsync(ThumbnailMode.SingleItem)`인데 콘솔/스크립트 .lnk에서 자주 실패.
+DevDashboard는 `IShellItemImageFactory`를 **파일 경로에도** 적용(탐색기/시작 메뉴와 동일 아이콘) + 크기/플래그 폴백.
+T5에서 만든 셸 추출을 일반화해 Win32에도 동일 적용한다.
+
+### 결정 (사용자 요청 — DevDashboard 동일 적용)
+- **D7**: 패키지 앱은 `shell:AppsFolder\AUMID`, Win32는 **파일 경로(.lnk/.exe)** 를 `SHCreateItemFromParsingName`에 넘겨
+  `IShellItemImageFactory.GetImage`로 추출(DevDashboard tier-1). 크기 캐스케이드 + 플래그 폴백(ICONONLY→일반) 추가.
+- **D8**: `PackagedAppIcon` → `ShellIcon`으로 이름 변경(이제 Win32 포함). 진입점 `OpenForAppAsync(AppEntry, size, ct)`.
+- **out of scope**: DevDashboard tier 2~4(SHGetImageList/ExtractIconEx/SHGetFileInfo, HICON→bitmap)는 미구현 — tier-1로 대다수 해결,
+  실패 시 기존 썸네일 폴백 유지. 필요 시 follow-up.
+
+### 영향 범위
+- `PackagedAppIcon.cs` → `ShellIcon.cs`(rename + 일반화). `IconService.cs`·`AppIconLoader.cs` 호출을 `OpenForAppAsync`로 교체(모든 Kind에 우선 적용).
+- 호출처 grep: `OpenIconStreamAsync` = IconService.cs, AppIconLoader.cs(2곳) → `OpenForAppAsync`로 변경.
+- NativeMethods.txt 변경 없음(필요 심볼 이미 존재).
+
+### Tasks
+- [ ] **T7 — 셸 아이콘 추출 일반화(Win32 포함) + 이름 변경** *(~1.5h)*
+  - **Type**: D
+  - **Acceptance**:
+    - `PackagedAppIcon` → `ShellIcon`(파일/클래스명). `OpenForAppAsync(AppEntry app, uint size, CancellationToken)`:
+      packaged → `shell:AppsFolder\{LaunchTarget}`, Win32 → `LaunchTarget`(파일 경로)로 parsingName 구성 후 셸 추출.
+    - `ExtractShellIcon(parsingName, size)`에 크기 캐스케이드(`size<=32?[32]:size<=48?[48,32]:[256,128,64,48,32]`)와
+      플래그 폴백(`BIGGERSIZEOK|ICONONLY` → `BIGGERSIZEOK`) 추가(DevDashboard 동일). 첫 성공 비트맵 반환.
+    - `IconService.ResolveMemberBitmapAsync`·`AppIconLoader.LoadAsync`: **모든 Kind**에 `ShellIcon.OpenForAppAsync` 우선 적용,
+      실패 시 기존 폴백(IconLocation 이미지/썸네일/단색·null) 유지.
+    - 코드 내 `PackagedAppIcon`/`OpenIconStreamAsync` 잔존 참조 0. 빌드 0/0, 테스트 회귀 없음.
+  - **Files**: `src/WorkGroup.Infrastructure/Icons/ShellIcon.cs`(rename), `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.App/Services/AppIconLoader.cs`, `README.md`, `notes.md`
+  - **Edge Cases**: .lnk 대상 없음/네트워크 경로/권한 → GetImage 예외 → 다음 크기·플래그, 최종 null → 기존 폴백. 모든 크기 실패 → null.
+  - **Halt Forecast**: 없음(T5 interop 재사용).
+  - **Depends on**: T5
+
 ## Next Steps
 - 현재 상태(2026-06-02): ✅ 패키지 앱 아이콘 추출 개선 완료(T1~T4). 빌드 0/0, 테스트 80/80. 새 의존성/공개 API/직렬화 무변경.
 - GUI 수동 검증 필요(패키지 실행, 헤드리스 불가): ① 설치 앱 목록/"앱 추가" 팝업에서 UWP/Store 앱(예: Teams, Discord) 아이콘 표시 ② 해당 패키지 앱을 멤버로 한 그룹의 대표 .ico에 로고 반영.
