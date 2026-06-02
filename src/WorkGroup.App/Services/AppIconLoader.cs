@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.FileProperties;
 using WorkGroup.Domain.Groups;
+using WorkGroup.Infrastructure.Icons;
 
 namespace WorkGroup.App.Services;
 
@@ -14,6 +15,18 @@ public static class AppIconLoader
     {
         try
         {
+            // 패키지(Store/UWP) 앱은 셸 공식 로고를 우선 사용한다(package.Logo 경로가 없어도 아이콘 확보 — plan.md T3).
+            if (app.Kind == AppKind.Packaged)
+            {
+                using var logo = await PackagedAppIcon.OpenLogoStreamAsync(app.LaunchTarget, 48);
+                if (logo is not null)
+                {
+                    var bitmap = new BitmapImage();
+                    await bitmap.SetSourceAsync(logo);
+                    return bitmap;
+                }
+            }
+
             // 패키지 로고 등 이미지 파일은 직접 사용.
             if (!string.IsNullOrWhiteSpace(app.IconLocation) && IsImageFile(app.IconLocation) && File.Exists(app.IconLocation))
                 return new BitmapImage(new Uri(app.IconLocation));
