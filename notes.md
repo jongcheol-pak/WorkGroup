@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 그룹 추가/수정 다이얼로그 전면 개편 — 상단 [아이콘 미리보기][이름(15자)], 아이콘 클릭 시 사용자 이미지/리소스 아이콘 선택(단일 Flyout 토글 + GridView), "앱 추가" Flyout로 설치 앱을 선택 목록에 추가(항목별 삭제), 확인 시 빈 목록·이름 중복 검증(GetAllAsync 스냅샷). 기존 ComboBox/체크박스 모델 제거(SelectableAppItem 삭제, PopupAppItem 재사용). 리소스 아이콘 91개 번들(Assets/GroupIcons) + IconService ms-appx 디코드 + ResourceIconCatalog. 도메인/직렬화 무변경(리소스=CustomImage ms-appx URI). 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 작업 그룹 목록을 항목별 개별 카드로 표시(SettingsCard 목록과 동일한 룩) — 단일 ListView 카드 래퍼 제거, 각 GroupListItem을 둥근 카드 Border(간격 8)로, ListViewItem 패딩 제거(전체 폭). 드래그 핀/수정·삭제/바인딩 계약 불변. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: WinUI Gallery Fluent 디자인 정합(참조: NapCat) — CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219 추가(WinAppSDK 1.8 호환). 디자인 토큰 리소스(Resources/Spacing.xaml=PageContentPadding/ContentMaxWidth/SideNavWidth, ControlStyles.xaml=CardStyle/Hero/Primary·SecondaryActionStyle/SettingsGroupHeaderStyle). 셸: 커스텀 TitleBar(ExtendsContentIntoTitleBar) + NavigationView 정교화(280 pane, 컨텐츠 보더 제거, Transparent). 설정/정보 페이지를 SettingsCard로, 작업그룹/트레이/정보/설정 전 페이지를 공통 레이아웃(ScrollViewer/PageContentPadding/MaxWidth/헤더)으로 통일. 기능/바인딩 불변(코드비하인드 미변경). 빌드 0/0, 테스트 80/80. (TitleBar 드래그/캡션 시각은 GUI 수동 확인 대상.)
 - 2026-06-02: WinUIEx 2.9.1 재도입 — 메인 창을 WindowEx로 전환해 창 크기/위치 지속(PersistenceId="WorkGroupMain")·최소 크기(800×560) 관리. Mica는 표준 SystemBackdrop 유지(WinUIEx 자체 Backdrop은 CS0618 deprecated). 트레이 종료 시 `_window.Close()`로 persistence 저장 보장(닫기→트레이 숨김 구조에서 Window.Closed 발생 시점 확보). 트레이는 WinUIEx 미지원이라 Win32 Shell_NotifyIcon 유지. 빌드 0/0, 테스트 80/80.

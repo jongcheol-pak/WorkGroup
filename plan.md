@@ -122,7 +122,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
 
 > 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 테스트 80/80(baseline 확인) 회귀 없음. 자율 종료=빌드/테스트, 시각·팝업 동작은 사용자 수동(패키지 실행).
 
-- [ ] **T1. 리소스 아이콘 91개 번들** *(~1h)*
+- [x] **T1. 리소스 아이콘 91개 번들** *(~1h)*
   - **Type**: C
   - **Acceptance**: `C:\Users\jongc\Desktop\icon` PNG 91개를 `src/WorkGroup.App/Assets/GroupIcons/`에 복사. csproj `<Content Include="Assets\GroupIcons\**\*.png" />` 추가. 빌드 0/0. (P단계: 기존 csproj Content/Assets glob 확인 — 중복 회피.)
   - **Files**: 주: `src/WorkGroup.App/WorkGroup.App.csproj`, `src/WorkGroup.App/Assets/GroupIcons/*.png`(91 신규)
@@ -130,7 +130,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
   - **Halt Forecast**: "복사?" → PowerShell Copy-Item. "중복?" → 현재 개별 Content(glob 없음). "그래도 duplicate Content 경고 시?"(m3) → wildcard 제거하고 SDK 암묵 포함에 의존(또는 개별 Content 나열 유지) — 빌드 0/0 되는 방식 채택.
   - **Depends on**: -
 
-- [ ] **T2. IconService ms-appx 디코드 지원** *(~1.5h)*
+- [x] **T2. IconService ms-appx 디코드 지원** *(~1.5h)*
   - **Type**: D
   - **Acceptance**: `DecodeImageFileAsync(string path, CancellationToken ct)`(정확 시그니처) 내부에서 `path.StartsWith("ms-appx:", OrdinalIgnoreCase)`면 `StorageFile.GetFileFromApplicationUriAsync(new Uri(path)).AsTask(ct)`, 아니면 기존 `GetFileFromPathAsync(path).AsTask(ct)`로 파일을 연 뒤 동일 디코드(ct 전파). `IsImageFile` **미수정**(MemberApp 전용, M1). 파일경로 동작·폴백 불변. 빌드 0/0, 기존 IconServiceTests 통과. ms-appx 테스트 미추가(런타임 전용, 4-C).
   - **호출자 2곳 확인(B1)**: `DecodeImageFileAsync`는 CustomImage 분기(L80, ms-appx 가능)와 **MemberApp 분기(L101)** 에서 호출된다. MemberApp의 `location`은 항상 실파일 경로(IsImageFile 가드 통과)라 `ms-appx:` 분기에 **진입하지 않음 → 회귀 없음**. 분기는 path 접두사 판정뿐이라 MemberApp 동작 불변.
@@ -139,7 +139,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
   - **Halt Forecast**: "ms-appx 읽기?" → `GetFileFromApplicationUriAsync`. "분기?" → `StartsWith("ms-appx:")`.
   - **Depends on**: -
 
-- [ ] **T3. ResourceIconCatalog(리소스 URI 열거)** *(~1h)*
+- [x] **T3. ResourceIconCatalog(리소스 URI 열거)** *(~1h)*
   - **Type**: C
   - **Acceptance**: `ResourceIconCatalog.GetIconUrisAsync()`가 `Package.Current.InstalledLocation`의 `Assets\GroupIcons` PNG를 열거해 `IReadOnlyList<string>`(ms-appx URI) 반환(UI 객체 미생성). 실패→빈 목록(try/catch). 1회 캐시. DI Singleton 등록. 빌드 0/0.
   - **Files**: 주: `src/WorkGroup.App/Services/ResourceIconCatalog.cs`(신규), `src/WorkGroup.App/ServiceConfiguration.cs`(등록)
@@ -148,7 +148,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
   - **Depends on**: T1
   - **Sub-skill**: 직접 구현.
 
-- [ ] **T4. GroupEditViewModel + GroupEditDialog 전면 재구성(병합)** *(~5h)*
+- [x] **T4. GroupEditViewModel + GroupEditDialog 전면 재구성(병합)** *(~5h)*
   - **Type**: D
   - **병합 사유**: VM 구 멤버 제거와 Dialog 바인딩 전환을 **한 task에서 동시**(task별 빌드 게이트).
   - **Acceptance(VM)**:
@@ -167,7 +167,7 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
   - **Halt Forecast**: "중첩 ContentDialog?" → DI4/DI9(Flyout). "중복 검사 소스?" → DI10(GetAllAsync). "BitmapImage 스레드?" → DI3(InitializeAsync 진입부). "항목 타입?" → DI11(PopupAppItem). "FileOpenPicker HWND?" → App.MainWindow 이식.
   - **Depends on**: T2, T3
 
-- [ ] **T5. 문서 갱신** *(~0.3h)*
+- [x] **T5. 문서 갱신** *(~0.3h)*
   - **Type**: A
   - **Acceptance**: `README.md`(그룹 구성 — 아이콘 사용자/리소스, 앱 추가/삭제, 검증) + `notes.md` 갱신. 전체 빌드 0/0 + 테스트 80/80 최종 확인.
   - **Files**: 문서: `README.md`, `notes.md`
@@ -179,7 +179,14 @@ UI(다이얼로그·VM) + Infrastructure(IconService ms-appx) + 자산. 도메�
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
-- **T1-T3 완료** (커밋 f76d050, 79873fb, 다음): T1=리소스 PNG 91개 번들(Assets/GroupIcons, build.appxrecipe 91개 확인). T2=IconService.DecodeImageFileAsync ms-appx 분기(GetFileFromApplicationUriAsync, IsImageFile 미수정, MemberApp 회귀 없음). T3=ResourceIconCatalog(URI 문자열 열거, 캐시, 빈목록 폴백)+DI Singleton. 빌드 0/0, 테스트 80/80. spec/quality OK.
+- **T1-T3 완료** (커밋 f76d050, 79873fb, 65e2f3f): T1=리소스 PNG 91개 번들(Assets/GroupIcons, build.appxrecipe 91개 확인). T2=IconService.DecodeImageFileAsync ms-appx 분기(GetFileFromApplicationUriAsync, IsImageFile 미수정, MemberApp 회귀 없음). T3=ResourceIconCatalog(URI 문자열 열거, 캐시, 빈목록 폴백)+DI Singleton. 빌드 0/0, 테스트 80/80. spec/quality OK.
+- **T4-T5 완료** (커밋 5770064, 다음): T4=GroupEditViewModel+GroupEditDialog 전면 재구성(아이콘 미리보기+단일 Flyout 사용자/리소스, 앱 추가 Flyout, 선택앱 목록+삭제, 이름 15자, 빈목록·중복 검증 ValidateAndSaveAsync; SelectableAppItem 제거, PopupAppItem 재사용; B1 namescope/M2 rename 수정). T5=문서(README/notes). 빌드 0/0, 테스트 80/80. spec/quality OK. **plan 전체 완료(T1~T5).**
+
+## Next Steps
+- **현재 상태(2026-06-02)**: ✅ 그룹 추가 다이얼로그 전면 개편 완료(T1~T5). 빌드 0/0, 테스트 80/80. 도메인/직렬화 무변경.
+- **GUI 수동 검증 필요**(패키지 실행, 자율 불가): ① 상단 아이콘+이름(15자) ② 아이콘 클릭→사용자/리소스→적용 ③ 리소스 그리드(91) ④ 앱 추가 Flyout→선택→목록 ⑤ 항목 삭제 ⑥ 빈목록/중복 이름→확인 차단 ⑦ 편집 복원 ⑧ 저장된 .ico가 리소스 이미지로 생성.
+- 권장 다음 액션: 사용자 GUI 검증 → 정상 시 PR 생성.
+- Suggested skills: 공식 /code-review, /security-review.
 
 ## Open Questions (모두 해결됨)
 - [x] 기본 아이콘 → **appgroup.png**(사용자).
