@@ -140,8 +140,21 @@ public sealed partial class WorkGroupsPage : Page
         var file = await StorageFile.GetFileFromPathAsync(path);
         using var stream = await file.OpenReadAsync();
         var decoder = await BitmapDecoder.CreateAsync(stream);
+
+        // 원본 해상도 그대로면 드래그 비주얼이 너무 크다 → 최대 48px로 축소(종횡비 보존, 업스케일 금지).
+        const uint maxSize = 48;
+        var scale = Math.Min(1.0, (double)maxSize / Math.Max(decoder.PixelWidth, decoder.PixelHeight));
+        var transform = new BitmapTransform
+        {
+            ScaledWidth = (uint)Math.Max(1, Math.Round(decoder.PixelWidth * scale)),
+            ScaledHeight = (uint)Math.Max(1, Math.Round(decoder.PixelHeight * scale)),
+            InterpolationMode = BitmapInterpolationMode.Fant
+        };
+
         // SetContentFromSoftwareBitmap은 BGRA8(Premultiplied)을 요구한다.
-        var bitmap = await decoder.GetSoftwareBitmapAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+        var bitmap = await decoder.GetSoftwareBitmapAsync(
+            BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied,
+            transform, ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
         e.DragUI.SetContentFromSoftwareBitmap(bitmap);
     }
 }
