@@ -23,24 +23,11 @@
         <Setter Property="Padding" Value="24" />
     </Style>
 
-    <Style x:Key="HeroCardStyle" TargetType="Border" BasedOn="{StaticResource CardStyle}">
-        <Setter Property="Padding" Value="40,40,40,32" />
-    </Style>
-
     <!-- Primary 액션 — AccentButtonStyle 기반 -->
     <Style x:Key="PrimaryActionStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
         <Setter Property="Padding" Value="16,8" />
         <Setter Property="MinWidth" Value="120" />
     </Style>
-
-    <!-- Secondary 액션 — 기본 Button 스타일 -->
-    <Style x:Key="SecondaryActionStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
-        <Setter Property="Padding" Value="16,8" />
-        <Setter Property="MinWidth" Value="120" />
-    </Style>
-
-    <!-- 카드 헤더(BodyStrong 14px SemiBold) -->
-    <Style x:Key="SectionHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}" />
 
     <!-- 설정 그룹 헤더(섹션 제목, 상단 24 / 하단 8 마진) -->
     <Style x:Key="SettingsGroupHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStrongTextBlockStyle}">
