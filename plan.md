@@ -43,7 +43,7 @@
 - 해당 없음(UI 드래그는 단위 테스트 대상 아님). 빌드/정적 검토 + 수동 GUI로 검증.
 
 ## 작업 분해 (Tasks)
-- [ ] **T1 — 드래그 비주얼을 그룹 아이콘으로 (트리거 전환 + 핸들러)** *(~1.5h)*
+- [x] **T1 — 드래그 비주얼을 그룹 아이콘으로 (트리거 전환 + 핸들러)** *(~1.5h)*
   - **Type**: C
   - **Acceptance**:
     - `WorkGroupsPage.xaml`: ListView의 `CanDragItems="True"`·`DragItemsStarting="OnGroupDragStarting"` 제거. 카드 root `Border`(DataTemplate, x:DataType=GroupListItem)에 `CanDrag="True"` + `DragStarting="OnGroupDragStarting"` 추가.
@@ -60,7 +60,7 @@
   - **Halt Forecast**: `DragStartingEventArgs`에 `DragUI`/`AllowedOperations`/`GetDeferral` 존재·`Cancel` 부재는 빌드로 검증. `Border.CanDrag`/`DragStarting` 지원도 빌드로 확인. 빌드 에러 시 시그니처/네임스페이스 조정.
   - **Depends on**: -
 
-- [ ] **T2 — 문서 갱신** *(~0.2h)*
+- [x] **T2 — 문서 갱신** *(~0.2h)*
   - **Type**: A
   - **Acceptance**: notes.md에 변경 내역 추가(드래그 비주얼=그룹 아이콘). README는 기능 설명 변화 없음(드래그-핀 동작 동일)이라 미갱신. 최종 빌드 0/0.
   - **Files**: `notes.md`
@@ -77,3 +77,9 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- T1-T2 완료 (커밋 831c679, 후속): T1=드래그 트리거를 ListView→카드 Border(CanDrag+DragStarting)로 전환, DragUI.SetContentFromBitmapImage(item.Icon)로 드래그 비주얼=그룹 아이콘, 데이터 공급자 동일 이식, e.Cancel 제거(DragStarting 미지원). T2=notes 갱신. 빌드 0/0, 테스트 80/80, spec OK. **plan 전체 완료.** 드래그/드롭/핀 실제 동작은 GUI 수동 검증 필요(R1/R3).
+
+## Next Steps
+- 현재 상태: ✅ 드래그 비주얼=그룹 아이콘 완료. 빌드 0/0, 테스트 80/80.
+- GUI 수동 검증(필수, 자율 불가): ① 항목 드래그 시 커서가 그룹 아이콘 ② 작업 표시줄 드롭→핀 생성(회귀 없음) ③ 미저장 그룹 드래그→안내 메시지.
+- 권장 다음 액션: GUI 검증 → PR 생성. Suggested skills: 공식 /code-review, /security-review.

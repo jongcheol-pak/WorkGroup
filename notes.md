@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 그룹 목록 드래그 비주얼=그룹 아이콘 — 작업 표시줄로 드래그 시 커서 이미지가 항목 카드 스냅샷이 아니라 그룹 아이콘으로 표시. ListView CanDragItems/DragItemsStarting → 카드 Border CanDrag="True"+DragStarting로 전환, DragStartingEventArgs.DragUI.SetContentFromBitmapImage(item.Icon) 사용. 기존 .lnk 데이터 공급자(임시복사+SetDataProvider deferral) 동일 이식. DragStarting엔 Cancel이 없어 미저장 그룹은 데이터 미설정(no-op)+안내. 핀 드롭 페이로드 불변. 빌드 0/0, 테스트 80/80. (드래그/드롭/핀 실제 동작은 GUI 수동 검증.)
 - 2026-06-02: 데이터 저장을 그룹별 폴더 구조로 변경 — `WorkGroup\Groups\{groupId}\`(아이콘=`Icons\{id}.ico/.png`, 바로가기=`{이름}.lnk`). 그룹 삭제 시 폴더째 제거, 고아 정리도 폴더 단위. 폴더 키=그룹 id(GUID), 마이그레이션 없음(기존 그룹은 재저장 시 새 구조 생성·기존 flat 파일/핀은 수동 정리). WorkGroupPaths(GroupsDirectory/GroupIconsDirectory, 옛 Icons/Shortcuts 제거)·ShortcutService(그룹 폴더 .lnk)·GroupAppService(폴더 단위 저장/삭제/고아정리)·GroupIconLoader·DI 변경. 인터페이스/직렬화 불변. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 그룹 아이콘 .ico+.png 동시 생성, 목록은 .png로 표시(선명도 근본 해결) — IconService가 {id}.ico(작업표시줄)와 함께 {id}.png(원본 해상도, EncodePngAsync no-scale)를 저장(CreateGroupIconAsync/CreateDefaultAsync). GroupIconLoader.GetPngPath 추가. GroupListItem은 PNG 우선 로드(없으면 .ico 폴백, 둘 다 IgnoreImageCache)→ .ico 프레임 디코드 없이 GPU 축소로 선명. GroupAppService 삭제/고아정리에 .png 포함. IconServiceTests에 PNG 생성 검증 추가. 기존 그룹은 재저장 시 .png 생성됨. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 그룹 목록 .ico 표시 방식 수정(선명도) — DecodePixelWidth=32가 .ico의 작은 프레임 선택/업스케일을 유발해 흐림. 크기 미지정 디코드(최대 프레임)→Image(32px) GPU 축소로 변경(편집 미리보기와 동일 방식). IconService는 .ico 프레임을 큰 것부터 기록(frame0=최대). 참고: 기존 그룹 .ico는 옛 파이프라인 산출물이라 그룹 수정→확인으로 재저장해야 개선된 .ico로 재생성됨(수동, 사용자 결정). 빌드 0/0, 테스트 80/80.
