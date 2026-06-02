@@ -69,7 +69,7 @@ public static class PackagedAppIcon
         }
     }
 
-    /// <summary>GDI HBITMAP(32bpp top-down DIBSection, premultiplied BGRA)을 SoftwareBitmap으로 복사한다.</summary>
+    /// <summary>GDI HBITMAP(32bpp DIBSection, premultiplied BGRA)을 top-down SoftwareBitmap으로 복사한다.</summary>
     private static unsafe SoftwareBitmap? ConvertHBitmap(SafeHandle hbmp)
     {
         Span<byte> raw = stackalloc byte[sizeof(DIBSECTION)];
@@ -82,10 +82,18 @@ public static class PackagedAppIcon
         if (width <= 0 || height <= 0 || ds.dsBm.bmBitsPixel != 32 || ds.dsBm.bmBits == null)
             return null;
 
-        // IShellItemImageFactory는 top-down 32bpp DIB를 반환하므로 행 순서를 그대로 복사한다.
-        int byteCount = ds.dsBm.bmWidthBytes * height;
-        var buffer = new byte[byteCount];
-        Marshal.Copy((nint)ds.dsBm.bmBits, buffer, 0, byteCount);
+        // 32bpp 스트라이드는 width*4(이미 4바이트 정렬). SoftwareBitmap은 top-down 타이트 패킹을 가정한다.
+        int stride = ds.dsBm.bmWidthBytes;
+        var buffer = new byte[stride * height];
+        var src = (nint)ds.dsBm.bmBits;
+
+        // biHeight 양수 = bottom-up DIB(셸은 보통 top-down이나 방어적으로 처리) → 행을 역순 복사해 top-down으로 정규화.
+        bool bottomUp = ds.dsBmih.biHeight > 0;
+        for (int row = 0; row < height; row++)
+        {
+            int srcRow = bottomUp ? (height - 1 - row) : row;
+            Marshal.Copy(src + (srcRow * stride), buffer, row * stride, stride);
+        }
 
         return SoftwareBitmap.CreateCopyFromBuffer(
             buffer.AsBuffer(), BitmapPixelFormat.Bgra8, width, height, BitmapAlphaMode.Premultiplied);
@@ -95,10 +103,19 @@ public static class PackagedAppIcon
     private static async Task<IRandomAccessStream> EncodePngAsync(SoftwareBitmap bitmap, CancellationToken cancellationToken)
     {
         var stream = new InMemoryRandomAccessStream();
-        var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream).AsTask(cancellationToken).ConfigureAwait(false);
-        encoder.SetSoftwareBitmap(bitmap);
-        await encoder.FlushAsync().AsTask(cancellationToken).ConfigureAwait(false);
-        stream.Seek(0);
-        return stream;
+        try
+        {
+            var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream).AsTask(cancellationToken).ConfigureAwait(false);
+            encoder.SetSoftwareBitmap(bitmap);
+            await encoder.FlushAsync().AsTask(cancellationToken).ConfigureAwait(false);
+            stream.Seek(0);
+            return stream;
+        }
+        catch
+        {
+            // 인코딩 실패 시 스트림을 즉시 해제하고 상위에서 null로 흡수하게 한다.
+            stream.Dispose();
+            throw;
+        }
     }
 }
