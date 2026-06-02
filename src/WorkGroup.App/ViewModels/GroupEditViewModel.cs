@@ -224,13 +224,13 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }, null)
     };
 
-    // 미리보기 색상(내장 색상 아이콘의 대략적 표현). 실제 .ico는 IconService가 생성한다.
-    private static Windows.UI.Color ColorForOption(string option) => option switch
+    // 미리보기 색상(내장 색상 아이콘의 대략적 표현). 색상 정의는 GroupIconLoader에 단일화한다.
+    private static Windows.UI.Color ColorForOption(string option) => GroupIconLoader.ColorForBuiltIn(option switch
     {
-        "빨강" => new Windows.UI.Color { A = 255, R = 0xE8, G = 0x11, B = 0x23 },
-        "초록" => new Windows.UI.Color { A = 255, R = 0x10, G = 0x7C, B = 0x10 },
-        "주황" => new Windows.UI.Color { A = 255, R = 0xF7, G = 0x63, B = 0x0C },
-        "보라" => new Windows.UI.Color { A = 255, R = 0x5C, G = 0x2D, B = 0x91 },
-        _ => new Windows.UI.Color { A = 255, R = 0x51, G = 0x2B, B = 0xD4 }
-    };
+        "빨강" => "red",
+        "초록" => "green",
+        "주황" => "orange",
+        "보라" => "purple",
+        _ => "default"
+    });
 }
