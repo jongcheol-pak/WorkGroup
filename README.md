@@ -46,8 +46,12 @@ dotnet test WorkGroup.slnx
 - **자동 시작 / 트레이**: 로그인 시 자동 시작(토글), 알림 영역 트레이 아이콘(열기/종료).
 
 ## 데이터 위치
-- 셸이 접근하는 `.lnk`/`.ico`와 `groups.json`은 MSIX 가상화를 피해 `%USERPROFILE%\WorkGroup\` 아래에 저장된다.
-- 그룹 아이콘은 작업 표시줄 핀용 `{id}.ico`와 목록 표시용 `{id}.png`(원본 해상도)를 함께 생성한다(앱 내 목록은 PNG로 선명하게 표시).
+- 모든 데이터는 MSIX 가상화를 피해 `%USERPROFILE%\WorkGroup\` 아래에 저장된다.
+- `groups.json`(전체 그룹 인덱스)은 루트에 둔다.
+- 그룹별 산출물은 **그룹 폴더** `Groups\{groupId}\`에 모은다(그룹 삭제 시 폴더째 제거):
+  - `Groups\{groupId}\{그룹이름}.lnk` — 작업 표시줄 핀용 바로가기
+  - `Groups\{groupId}\Icons\{groupId}.ico` — 작업 표시줄 핀 아이콘
+  - `Groups\{groupId}\Icons\{groupId}.png` — 앱 내 목록 표시용(원본 해상도, 선명)
 
 ## 아키텍처 메모
 - 그룹 클릭 시 별칭 exe가 새 인스턴스로 떠 팝업만 표시 후 종료(상주 불필요). 관리 화면/트레이는 별도 상주 인스턴스.

@@ -90,7 +90,7 @@
   - **Halt Forecast**: CleanupOrphans에서 폴더 내 .lnk와 그룹 매핑이 모호하면(예: 폴더명이 id가 아님) → 해당 폴더 건너뜀(삭제 안 함, 안전측). 구현 막힘 시 매핑 규칙(폴더명=id) 재확인.
   - **Depends on**: -
 
-- [ ] **T3 — GroupAppService 그룹별 폴더화 + 테스트** *(~2h)*
+- [x] **T3 — GroupAppService 그룹별 폴더화 + 테스트** *(~2h)*
   - **Type**: D
   - **Acceptance**:
     - ctor 4번째 인자 의미를 "Groups 루트"로(필드 `_groupsDirectory`). helper `GroupFolder(id)`, `IconsFolder(id)=GroupFolder(id)\Icons`.
@@ -107,7 +107,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: -
 
-- [ ] **T4 — GroupIconLoader 그룹별 경로** *(~0.3h)*
+- [x] **T4 — GroupIconLoader 그룹별 경로** *(~0.3h)*
   - **Type**: C
   - **Acceptance**: `GetIconPath(id) => Path.Combine(WorkGroupPaths.GroupIconsDirectory(id.Value), $"{id.Value}.ico")`, `GetPngPath(id)`는 `.png`. 시그니처 불변(GroupId) → 호출자(GroupListItem/GroupEditViewModel) 무수정. 클래스 주석(":12 %USERPROFILE%\WorkGroup\Icons" 등)을 새 경로로 갱신. 빌드 0/0.
   - **Files**: `src/WorkGroup.App/Services/GroupIconLoader.cs`
@@ -115,7 +115,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T1
 
-- [ ] **T5 — DI 경로 주입 + WorkGroupPaths 정리** *(~0.5h)*
+- [x] **T5 — DI 경로 주입 + WorkGroupPaths 정리** *(~0.5h)*
   - **Type**: C
   - **Acceptance**: ServiceConfiguration에서 `ShortcutService(WorkGroupPaths.GroupsDirectory, AliasExePath, ...)`, `GroupAppService(..., WorkGroupPaths.GroupsDirectory, ...)`로 주입. WorkGroupPaths의 `IconsDirectory`/`ShortcutsDirectory` 제거(잔존 참조 0 — grep 확인). 빌드 0/0, 전체 테스트 통과.
   - **Files**: `src/WorkGroup.App/ServiceConfiguration.cs`, `src/WorkGroup.Infrastructure/WorkGroupPaths.cs`
@@ -123,7 +123,7 @@
   - **Halt Forecast**: 없음.
   - **Depends on**: T1, T2, T3, T4
 
-- [ ] **T6 — 문서 갱신** *(~0.3h)*
+- [x] **T6 — 문서 갱신** *(~0.3h)*
   - **Type**: A
   - **Acceptance**: README 데이터 위치를 그룹별 폴더 구조로 갱신, notes.md 항목 추가. 최종 빌드 0/0 + 테스트 통과 확인.
   - **Files**: `README.md`, `notes.md`
@@ -145,4 +145,10 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
-- T1-T2 완료 (커밋 후속): T1=WorkGroupPaths에 GroupsDirectory/GroupIconsDirectory(id) 추가(추가 전용). T2=ShortcutService를 Groups\{id}\{이름}.lnk로(ctor=Groups 루트, 생성 시 잔여 .lnk 정리, CleanupOrphans는 폴더 내 잔여 정리)+테스트 갱신. 인터페이스 불변. 빌드 0/0, 테스트 80/80, spec OK. (V-6 품질은 Phase F 일괄.)
+- T1-T2 완료: T1=WorkGroupPaths에 GroupsDirectory/GroupIconsDirectory(id) 추가. T2=ShortcutService를 Groups\{id}\{이름}.lnk로+테스트 갱신. spec OK.
+- T3-T6 완료: T3=GroupAppService 폴더 단위 저장/삭제/고아정리+테스트(spec OK, MINOR1 follow-up). T4=GroupIconLoader 그룹 폴더 경로. T5=DI GroupsDirectory 주입+옛 flat 경로 제거(런타임 정합). T6=문서. 빌드 0/0, 테스트 80/80. **plan 전체 완료(T1~T6).** (V-6 품질은 Phase F.)
+
+## Next Steps
+- 현재 상태: ✅ 그룹별 폴더 저장 구조 완료(T1~T6). 빌드 0/0, 테스트 80/80. 인터페이스/직렬화 불변.
+- GUI 수동 검증: 그룹 추가 시 `WorkGroup\Groups\{id}\{Icons\*.ico/.png, 이름.lnk}` 생성, 삭제 시 폴더 제거, 드래그 핀 동작. 기존 그룹은 재저장 필요(마이그레이션 없음), 기존 핀 재등록 필요.
+- 권장 다음 액션: GUI 검증 → PR 생성. Suggested skills: 공식 /code-review, /security-review.
