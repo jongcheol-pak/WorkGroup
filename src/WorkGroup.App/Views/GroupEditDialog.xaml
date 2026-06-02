@@ -72,9 +72,13 @@
                         </Grid>
                     </Button>
                 </StackPanel>
-                <TextBox x:Name="NameTextBox" Header="그룹 이름" PlaceholderText="이름 입력(최대 15자)"
-                         MaxLength="15" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}"
-                         Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <!-- 입력창 헤더는 읽기전용 헤더와 동일 스타일로 통일(클릭 시 헤더 크기 변동 방지), 입력 텍스트만 키움 -->
+                <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}">
+                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <TextBox x:Name="NameTextBox" PlaceholderText="이름 입력(최대 15자)" FontSize="16"
+                             MaxLength="15"
+                             Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                </StackPanel>
             </Grid>
         </Grid>
 
