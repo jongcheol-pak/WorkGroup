@@ -93,6 +93,15 @@ public sealed class IconService : IIconService
 
     private async Task<SoftwareBitmap> ResolveMemberBitmapAsync(AppEntry member, CancellationToken cancellationToken)
     {
+        // 패키지(Store/UWP) 앱은 셸 공식 로고를 우선 사용한다(package.Logo 경로가 없어도 아이콘 확보 — plan.md T2).
+        if (member.Kind == AppKind.Packaged)
+        {
+            using var logo = await PackagedAppIcon
+                .OpenLogoStreamAsync(member.LaunchTarget, (uint)CanvasSize, cancellationToken).ConfigureAwait(false);
+            if (logo is not null)
+                return await DecodeStreamAsync(logo, cancellationToken).ConfigureAwait(false);
+        }
+
         var location = member.IconLocation;
         if (!string.IsNullOrWhiteSpace(location) && File.Exists(location))
         {
@@ -125,9 +134,7 @@ public sealed class IconService : IIconService
             ? await StorageFile.GetFileFromApplicationUriAsync(new Uri(path)).AsTask(cancellationToken).ConfigureAwait(false)
             : await StorageFile.GetFileFromPathAsync(path).AsTask(cancellationToken).ConfigureAwait(false);
         using var stream = await file.OpenReadAsync().AsTask(cancellationToken).ConfigureAwait(false);
-        var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken).ConfigureAwait(false);
-        var bitmap = await decoder.GetSoftwareBitmapAsync().AsTask(cancellationToken).ConfigureAwait(false);
-        return ToBgra8(bitmap);
+        return await DecodeStreamAsync(stream, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<SoftwareBitmap> DecodeThumbnailAsync(string path, CancellationToken cancellationToken)
@@ -135,7 +142,13 @@ public sealed class IconService : IIconService
         var file = await StorageFile.GetFileFromPathAsync(path).AsTask(cancellationToken).ConfigureAwait(false);
         using var thumb = await file.GetThumbnailAsync(ThumbnailMode.SingleItem, CanvasSize)
             .AsTask(cancellationToken).ConfigureAwait(false);
-        var decoder = await BitmapDecoder.CreateAsync(thumb).AsTask(cancellationToken).ConfigureAwait(false);
+        return await DecodeStreamAsync(thumb, cancellationToken).ConfigureAwait(false);
+    }
+
+    // 패키지 로고·이미지 파일·셸 썸네일 모두 동일한 디코드 경로를 거쳐 인코더 호환 포맷(BGRA8)으로 통일한다.
+    private static async Task<SoftwareBitmap> DecodeStreamAsync(IRandomAccessStream stream, CancellationToken cancellationToken)
+    {
+        var decoder = await BitmapDecoder.CreateAsync(stream).AsTask(cancellationToken).ConfigureAwait(false);
         var bitmap = await decoder.GetSoftwareBitmapAsync().AsTask(cancellationToken).ConfigureAwait(false);
         return ToBgra8(bitmap);
     }
