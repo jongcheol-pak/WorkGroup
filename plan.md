@@ -180,7 +180,7 @@ T1~T4의 `GetLogo`는 각 앱이 배포한 매니페스트 로고를 반환한�
 - 호출처 grep: `OpenLogoStreamAsync` = IconService.cs:98, AppIconLoader.cs:21 (2곳).
 
 ### Tasks
-- [ ] **T5 — 셸 아이콘 추출로 전환 (Infrastructure)** *(~2.5h)*
+- [x] **T5 — 셸 아이콘 추출로 전환 (Infrastructure)** *(~2.5h)*
   - **Type**: D
   - **Acceptance**:
     - `NativeMethods.txt`에 `SHCreateItemFromParsingName`, `IShellItemImageFactory`, `GetObject`, `DIBSECTION`, `DeleteObject` 추가 → 빌드로 CsWin32 생성 확인(R7).
@@ -196,7 +196,7 @@ T1~T4의 `GetLogo`는 각 앱이 배포한 매니페스트 로고를 반환한�
   - **Halt Forecast**: CsWin32 심볼 미생성(R7) → 심볼명 조정. premultiplied/스트라이드 가정 오류(R6) → 빌드는 통과하나 시각 오류 가능, GUI 수동 검증 항목으로 남김.
   - **Depends on**: -
 
-- [ ] **T6 — 호출처 메서드명 갱신 + 문서/검증** *(~0.5h)*
+- [x] **T6 — 호출처 메서드명 갱신 + 문서/검증** *(~0.5h)*
   - **Type**: C
   - **Acceptance**: `IconService.cs`·`AppIconLoader.cs`의 `OpenLogoStreamAsync` 호출을 `OpenIconStreamAsync`로 변경(분기 로직 불변).
     `OpenLogoStreamAsync` 잔존 참조 0(grep). README/notes를 "패키지 앱 = 셸 렌더 아이콘(IShellItemImageFactory)"으로 갱신. 빌드 0/0, 테스트 회귀 없음.
@@ -212,4 +212,5 @@ T1~T4의 `GetLogo`는 각 앱이 배포한 매니페스트 로고를 반환한�
 ## Progress Log
 <!-- implement-task가 갱신 -->
 - T1-T2 완료 (커밋 9e94076, 5501ed4): T1=PackagedAppIcon.OpenLogoStreamAsync 신규(AUMID→FindPackagesForUser→GetAppListEntries→DisplayInfo.GetLogo→IRandomAccessStream, OS 19041 가드, 실패 null). T2=IconService.ResolveMemberBitmapAsync에 Packaged 분기(GetLogo 우선)+DecodeStreamAsync 공통화(이미지/썸네일/로고 3경로 통일). 빌드 0/0, 테스트 80/80, spec OK.
-- T3-T4 완료 (커밋 a3f02c7, 다음): T3=AppIconLoader.LoadAsync에 Packaged 분기(GetLogo→BitmapImage.SetSourceAsync, 실패 시 기존 폴백). T4=문서(README 핵심기능 아이콘 추출 항목 + notes 최신 항목). 빌드 0/0, 테스트 80/80, spec OK. **plan 전체 완료(T1~T4).**
+- T3-T4 완료 (커밋 a3f02c7, 다음): T3=AppIconLoader.LoadAsync에 Packaged 분기(GetLogo→BitmapImage.SetSourceAsync, 실패 시 기존 폴백). T4=문서(README 핵심기능 아이콘 추출 항목 + notes 최신 항목). 빌드 0/0, 테스트 80/80, spec OK.
+- T5-T6 완료 (커밋 65543c8, c3f8e51, +보강): 사용자 피드백(아이콘 크기 불균일)→GetLogo는 앱별 매니페스트 로고 여백 편차. PackagedAppIcon을 shell:AppsFolder\AUMID + IShellItemImageFactory.GetImage(셸 렌더, 시작메뉴 동일)로 재작성. HBITMAP(DIBSection)→SoftwareBitmap(BGRA8, bottom-up 방어)→PNG 스트림. CsWin32 P/Invoke(SHCreateItemFromParsingName/IShellItemImageFactory/GetObject/DIBSECTION/DeleteObject), System.Drawing/새 NuGet 없음. 메서드명 OpenLogoStreamAsync→OpenIconStreamAsync(호출처 2곳 갱신). quality 리뷰 M2/m1 보강. 빌드 0/0, 테스트 80/80. **plan 전체 완료(T1~T6).** GUI 시각 검증만 잔여(R5/R6).
