@@ -148,6 +148,10 @@
 - T1-T2 완료: T1=WorkGroupPaths에 GroupsDirectory/GroupIconsDirectory(id) 추가. T2=ShortcutService를 Groups\{id}\{이름}.lnk로+테스트 갱신. spec OK.
 - T3-T6 완료: T3=GroupAppService 폴더 단위 저장/삭제/고아정리+테스트(spec OK, MINOR1 follow-up). T4=GroupIconLoader 그룹 폴더 경로. T5=DI GroupsDirectory 주입+옛 flat 경로 제거(런타임 정합). T6=문서. 빌드 0/0, 테스트 80/80. **plan 전체 완료(T1~T6).** (V-6 품질은 Phase F.)
 
+## Follow-ups (리뷰 도출)
+- (수용) 편집 저장이 (2)lnk/(3)json 단계에서 실패하면 롤백이 그룹 폴더를 통째로 삭제해 기존 그룹의 아이콘/.lnk가 소실될 수 있음(plan T3 Edge Cases에 명시 수용, 현행과 동일 리스크). 필요 시 향후 "신규 생성 여부 판별 후 롤백" 개선 가능.
+- (설계 유지) GroupAppService가 그룹 폴더 경로를 자체 계산(IconsFolder)하는 것은 Application→Infrastructure 비참조 레이어링상 의도된 것(WorkGroupPaths는 Infrastructure라 직접 호출 불가).
+
 ## Next Steps
 - 현재 상태: ✅ 그룹별 폴더 저장 구조 완료(T1~T6). 빌드 0/0, 테스트 80/80. 인터페이스/직렬화 불변.
 - GUI 수동 검증: 그룹 추가 시 `WorkGroup\Groups\{id}\{Icons\*.ico/.png, 이름.lnk}` 생성, 삭제 시 폴더 제거, 드래그 핀 동작. 기존 그룹은 재저장 필요(마이그레이션 없음), 기존 핀 재등록 필요.
