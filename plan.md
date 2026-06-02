@@ -1,398 +1,206 @@
-# Plan: WorkGroup (작업 그룹 런처)
+# Plan: WorkGroup — 전체 UI 개편 (NavigationView 셸 + Fluent)
+
+> **이전 계획(T1a~T12, 코어·인프라·런처)은 완료되어 git 이력에 보존됨.** 본 plan은 UI 레이어 전면 재구성(Plan 3)이며, 기존 Domain/Application/Infrastructure 서비스(IAppInventory/IGroupAppService/IShortcutService/IIconService/StartupService)는 **변경 없이 재사용**한다.
 
 ## Goal
-사용자가 PC에 설치된 앱들을 묶어 "작업 그룹"을 만들고, 그 그룹을 작업 표시줄에 핀해 클릭 한 번으로 그룹 안의 앱들을 아이콘 그리드 팝업에서 바로 실행할 수 있게 한다.
+단일 `MainPage`(3분할: 설치앱·그룹편집·그룹목록)를 **좌측 메뉴 + 우측 컨텐츠(NavigationView)** 레이아웃으로 재구성하고, WinUI 3 Gallery / Fluent 디자인 가이드(D17)를 적용한다. 메뉴는 **작업 그룹 / 트레이 메뉴 / 설정 / 정보** 4개이며, 그룹 추가·수정은 모달 다이얼로그(설치 앱 체크박스 선택 + 아이콘 설정)로 처리한다.
 
 ## Out of Scope
-- 작업 표시줄 자체를 대체/커스터마이즈(자체 도킹 바, deskband)하는 기능 — 진짜 Windows 작업 표시줄을 사용한다.
-- 그룹 클라우드 동기화, 다중 사용자 공유, 네트워크 기능.
-- 앱 설치/제거 관리, 그룹 외 앱 실행 통계.
-- Windows 10 / Windows 11 23H2 이하 호환 보장(대상은 사용자가 검증한 Windows 11 빌드 26300).
-- Microsoft Store 인증 통과(사이드로드 설치 전제). Store 배포가 필요하면 별도 plan.
+- Domain/Application/Infrastructure 로직 변경(서비스 인터페이스·구현 그대로 재사용). 인벤토리/아이콘/.lnk/영속화 로직 수정 없음.
+- "트레이 메뉴" 페이지의 실제 기능(작업 그룹 UI 완료 후 별도 plan). 본 plan에서는 **placeholder만**.
+- 팝업 런처(`GroupPopupWindow`) **동작·레이아웃** 변경 — 기존 그대로 유지(저장된 테마 적용만 추가, DU5).
+- 작업 표시줄 드래그 핀 **방식** 변경(기존 검증된 로직을 새 페이지로 이식만; 알고리즘 동일).
+- 새 의존성 추가(승인된 패키지 내에서만 구현).
+- 다국어/로컬라이즈, 접근성 전수 점검(표준 컨트롤로 자연 확보되는 범위만).
 
 ## Investigation Log
-- `ls "D:/Personal Project/Windows/WorkGroup"` → 빈 디렉터리. 신규 프로젝트, 기존 코드/AGENTS.md 없음.
-- WebSearch(설치 앱 열거) → Win32는 `Windows.System.Inventory.InstalledDesktopApp`, 패키지 앱은 `Windows.Management.Deployment.PackageManager.FindPackages`로 열거 가능. 전체 사용자 열거는 관리자 권한 필요, 현재 사용자 범위는 비관리자 가능.
-- WebSearch(작업 표시줄 핀) → 서드파티 앱 자동 핀/`taskbarpin` verb는 차단(1709~24H2). 단, **사용자가 자신의 환경(Win11 빌드 26300)에서 .lnk 드래그 핀이 정상 동작함을 직접 확인** → 본 plan은 "진짜 작업 표시줄 + .lnk 수동/드래그 핀"을 채택.
-- WebSearch(MSIX 단축키/활성화) → MSIX 풀트러스트 앱은 IShellLink COM으로 실제 경로에 .lnk 생성 가능. 업데이트에도 깨지지 않도록 단축키 타깃을 `AppExecutionAlias`로 지정 권장. 작업 표시줄 핀은 올바른 AppUserModelID(AUMID) 필요.
-- WebSearch(MSIX 권한) → 패키지 앱이 `PackageManager`로 열거하려면 `packageQuery` 제한 capability 필요. WinUI3 데스크톱(Medium IL) 풀트러스트 동작·OOP COM은 `runFullTrust` 제한 capability 필요.
+- `MainPage.xaml(.cs)` / `MainViewModel.cs` Read → 현재 3분할 단일 화면. 그룹 편집 인라인, 아이콘은 ComboBox, 자동시작 토글은 헤더, 드래그 핀은 우측 그룹 목록.
+- grep `MainViewModel|MainPage` (src, obj 제외) → 참조처 전수: `App.xaml.cs:96`(Navigate), `ServiceConfiguration.cs:57`(AddTransient), 자기 파일들. **외부 참조 없음** → 제거 시 영향 국소.
+- grep `StartupService|GetShortcutPath|App.MainWindow` → `StartupService`는 `MainViewModel`만 사용(→ SettingsViewModel로 이동), `GetShortcutPath`/`App.MainWindow`는 `MainPage.xaml.cs`만 사용(→ WorkGroupsPage/GroupEditDialog로 이동).
+- 전체 `*.csproj` PackageReference 수집 → 배포 런타임 의존성: CommunityToolkit.Mvvm, Microsoft.Extensions.DependencyInjection/Logging(+Abstractions), Microsoft.WindowsAppSDK, Microsoft.Web.WebView2, Microsoft.Windows.SDK.BuildTools, Microsoft.Windows.CsWin32. 테스트 전용(xunit 등)은 배포 제외 → 라이선스 목록에서 제외.
+- `WorkGroupPaths`(Infrastructure, App에서 참조 가능) → `IconsDirectory` = `%USERPROFILE%\WorkGroup\Icons`. 그룹 .ico는 `{IconsDirectory}\{groupId}.ico`(IIconService 출력 규칙).
+- `AppIconLoader`(App/Services) → AppEntry 아이콘을 ImageSource로 비동기 로드(셸 썸네일/이미지). 멤버 앱 미니아이콘 표시에 재사용 가능.
+- `App.xaml`/`App.xaml.cs` → 루트 Frame이 `MainPage`로 navigate. 창에 SystemBackdrop 미설정(현재 Mica 미적용).
+- WinUI 런타임 테마: `Application.RequestedTheme`는 시작 시에만 설정 가능 → 런타임 전환은 루트 `FrameworkElement.RequestedTheme`로 처리해야 함(확인 필요는 수동 검증).
 
 ## Risks & Unknowns
 | 위험 | 영향 | 완화책 |
 |---|---|---|
-| MSIX 샌드박스에서 "핀→클릭→인자 전달→팝업 위치" 끝단 연결이 기대대로 안 될 수 있음 | 핵심 기능 불능 | **T2 게이트로 최우선 검증(D15).** 실패 시 Halt 후 사용자와 대안 재논의 + plan 재작성 |
-| 드래그 소스(우리 ListView)에서 작업 표시줄로 .lnk를 끌 때 셸이 핀으로 받아들이지 않을 수 있음 | "드래그 등록" UX 불능 | T2 C4에서 SetStorageItems(CF_HDROP) 드롭 핀 검증. 실패 시 폴백 = "그룹 폴더 열기 + 우클릭 핀 안내"(T10) |
-| 클릭한 아이콘의 정확한 화면 좌표 획득 난이도 | 팝업이 엉뚱한 위치 | D4 좌표 규칙(표시 전 GetCursorPos 캡처 + rcWork 기준 변 배치 + 수용 기준 3개). 2차(개선): UIAutomation으로 자기 AUMID 버튼 Rect 조회 |
-| `PackageManager`/`InstalledDesktopApp` 전체 사용자 열거 시 관리자 요구 | 권한 상승 팝업/실패 | 현재 사용자 범위로 한정(D6) |
-| 멤버 앱 아이콘을 .lnk용 .ico로 변환하는 품질/투명도 손실 | 아이콘 흐림 | 다중 해상도(16/32/48/256) .ico 생성(D16), 256 PNG 압축 프레임 포함 |
-| .NET 10 + 최신 Windows App SDK 조합의 템플릿/패키징 변동 | 빌드 셋업 시행착오 | T1a에서 최소 패키지 앱 빌드·실행 먼저 확정 후 진행 |
+| ContentDialog가 XamlRoot 미지정 시 표시 실패(WinUI) | 그룹 추가/수정 불능 | DU2: 다이얼로그 `XamlRoot = 호출 페이지.XamlRoot` 명시. T5 수동 확인. |
+| .ico를 `Image.Source`(BitmapImage)로 로드 시 프레임 선택/표시 품질 | 그룹 아이콘 흐림/미표시 | DU7: 실패 시 IconSource 기반 폴백(내장색=단색 사각형, 멤버앱=첫 앱 아이콘). T6 수동 확인. |
+| 런타임 테마 전환이 일부 표면(Mica/팝업 창)에 즉시 반영 안 될 수 있음 | 테마 불일치 | DU5/DU6: 루트 RequestedTheme + Mica는 다음 창부터. 팝업 창은 별 프로세스라 영향 적음. T2 수동 확인. |
+| 설치 앱 인벤토리 로딩이 느려 다이얼로그가 멈춘 듯 보임 | UX 저하 | DU8: 다이얼로그 오픈 시 lazy 로드 + ProgressRing. |
+| Microsoft 런타임 패키지를 "MIT"로 오표기 | 라이선스 부정확 | DU4: WindowsAppSDK/WebView2/SDK.BuildTools는 **독점(Microsoft) 라이선스**로 정확히 표기. DU4 확정값을 그대로 사용(추가 조사 없이 표기만 검증). |
 
 ## Impact Analysis
-신규 프로젝트로 **기존 코드 없음** → 변경 대상 심볼/호출자/직렬화/테스트가 존재하지 않는다. 본 plan은 전부 신규 생성이며, 영향 분석은 "신규 모듈 간 의존 방향"으로 대체한다.
+UI 레이어 한정 재구성. 변경/제거 대상 심볼의 사용처를 전수 확인(Investigation Log grep).
 
-### 4-A. 신규 모듈 의존 방향 (DDD 레이어)
-| 모듈 | 의존 대상 | 비고 |
+### 4-A. 제거·이동 대상과 사용처
+| 심볼 | 현재 사용처(전수) | 처리 |
 |---|---|---|
-| `WorkGroup.Domain` | (없음) | 순수 모델/불변식. 외부 의존 0 |
-| `WorkGroup.Application` | Domain | Infrastructure 인터페이스 정의(IAppInventory, IGroupRepository, IShortcutService, IIconService) |
-| `WorkGroup.Infrastructure` | Application(인터페이스), Domain | WinRT/Win32 interop 구현 |
-| `WorkGroup.App` (WinUI3, 패키지) | Application, Infrastructure, Domain | DI 조립, View/ViewModel, 활성화/런처 |
-| `WorkGroup.*.Tests` | 각 대상 모듈 | xUnit |
+| `MainViewModel` | `MainPage.xaml.cs:24`, `ServiceConfiguration.cs:57` | **제거**. 기능 분리: 그룹 목록·추가·수정·삭제 → `WorkGroupsViewModel`/`GroupEditViewModel`; 자동시작 → `SettingsViewModel`. |
+| `MainPage` | `App.xaml.cs:96`(Navigate), `MainPage.xaml` | **제거**. 루트 Frame은 `MainShell`로 navigate. |
+| `StartupService` | `MainViewModel`(제거됨), `ServiceConfiguration.cs:54`(등록) | **유지**. 사용처를 `SettingsViewModel`로 이동. 등록 그대로. |
+| `IShortcutService.GetShortcutPath` | `MainPage.xaml.cs:64`(드래그) | 사용처를 `WorkGroupsPage.xaml.cs`로 이동(시그니처 변경 없음). |
+| `App.MainWindow` | `MainPage.xaml.cs:113`(FileOpenPicker HWND) | 사용처를 `GroupEditDialog.xaml.cs`로 이동. |
 
 ### 4-B. 계약·직렬화 변경
-- 신규 직렬화 형식: `groups.json`(스키마 버전 필드 `schemaVersion` 포함, D7). 기존 데이터 없음 → 마이그레이션 불필요(향후 대비 버전 필드만 둔다).
-- 신규 외부 계약: .lnk 타깃 = `AppExecutionAlias` + 인자 `--group {GroupId}` (D2). 변경 시 기존 핀 .lnk와 호환 깨짐 → 인자 포맷을 D2에 고정.
+- **없음.** 그룹 직렬화(groups.json), .lnk 인자(`--group {id}`), IIconService 출력 경로 규칙 모두 불변. 새 테마 설정은 `ApplicationData.LocalSettings`의 신규 키 `AppTheme`(문자열) — 기존 데이터 영향 없음.
 
-### 4-C. 테스트 파일
-- 신규: `WorkGroup.Domain.Tests`(모델 불변식), `WorkGroup.Application.Tests`(GroupAppService, 리포지토리 모킹).
-- Infrastructure/UI는 OS·셸 의존이 커 단위 테스트 대신 **수동 검증 절차**(Verification Strategy)로 커버.
+### 4-C. 영향 받는 테스트
+- 제거 대상 `MainViewModel`/`MainPage`에 대한 **단위 테스트 없음**(UI는 수동 검증 — 기존 Verification Strategy). 신규 UI도 수동 검증.
+- Domain/Application 테스트(80건)는 UI 변경과 무관 → 회귀 없음(빌드/테스트로 확인).
 
 ### Verified by
-- 디렉터리 비어 있음 확인(Investigation Log) → 충돌 대상 심볼 0.
-- 신규 라이브러리 가용성은 T1 빌드에서 실측 확정.
+- grep 전수(obj 제외)로 `MainViewModel`/`MainPage`/이동 심볼의 외부 참조가 위 표로 한정됨을 확인.
 
 ## Decisions
 
-### D1. 작업 표시줄 등록 방식
-- **Options**: A) 진짜 작업 표시줄 + 그룹별 .lnk 핀 / B) 자체 도킹 바(AppBar) / C) 플로팅 런처 바
-- **Chosen**: A
-- **Rationale**: 사용자가 .lnk 드래그 핀이 자신의 환경에서 정상 동작함을 직접 확인. 요구사항의 "진짜 작업 표시줄" 의도에 부합.
-- **Source**: 사용자 확인.
+### DU1. 셸 레이아웃 — NavigationView (좌측 메뉴)
+- **Chosen**: `NavigationView`(PaneDisplayMode 좌측). **MenuItems(상단)** = 작업 그룹, 트레이 메뉴. **FooterMenuItems(하단)** = 설정, 정보. 내부 `Frame`로 컨텐츠 전환. 시작 선택 = 작업 그룹.
+- **Rationale**: 요구사항(좌측 메뉴 + 우측 컨텐츠) + D17(표준 컨트롤). "정보는 하단" 요구 → footer. 설정도 Fluent 관례상 footer.
+- **Source**: 사용자 요구 + WinUI Gallery NavigationView 패턴.
 
-### D2. .lnk 타깃·인자·활성화 방식 (외부 계약)
-- **Options**: A) AppExecutionAlias + `--group {id}` 인자 / B) 커스텀 프로토콜 `workgroup://group/{id}` / C) 패키지 exe 직접 경로
-- **Chosen**: **.lnk 타깃은 항상 A 고정** (`AppExecutionAlias` + `--group {id}`). B(프로토콜)는 .lnk 타깃이 **아니라**, 활성화 핸들러가 인자를 받는 **보조 수신 경로**로만 등록한다. 런타임 분기 없음 — .lnk는 단일 타깃(A)만 갖는다.
-- **Rationale**: 업데이트로 설치 경로가 바뀌어도 alias는 불변 → 핀된 .lnk가 깨지지 않음. C는 패키지 경로 변동에 취약. B를 타깃으로 쓰면 핀 아이콘/AUMID 연동이 불확실하므로 타깃에서 배제하고, 외부(다른 앱/URL)에서의 그룹 열기 용도로만 프로토콜을 남긴다.
-- **분기 제거**: "A 실패 시 B로 폴백" 같은 런타임 타깃 전환은 **하지 않는다**. T2 spike에서 A(alias)가 성립하지 않으면 그것은 Halt 사유이며(D2-B로 폴백 아님), plan 재작성으로 분기한다(B4 게이트 참조).
-- **Source**: WebSearch(MSIX 단축키 AppExecutionAlias 권장).
+### DU2. 그룹 추가/수정 = ContentDialog 재사용
+- **Chosen**: 단일 `GroupEditDialog`(ContentDialog)를 **신규/편집 모드**로 재사용. 편집은 기존 값 프리필. `XamlRoot`는 호출 페이지의 것으로 지정.
+- **Rationale**: Fluent 표준 모달, 요구사항의 "팝업". 추가·수정 UI 동일 → 재사용으로 중복 제거.
+- **Source**: 사용자 확인(라이선스/아이콘 질문 라운드에서 다이얼로그 전제 합의), WinUI 표준.
 
-### D3. 그룹별 작업 표시줄 버튼 분리 — **갱신됨(T2 검증)**
-- **Options**: A) .lnk마다 고유 AppUserModelID(AUMID) 부여 / B) 단일 AUMID 공유 / C) AUMID 미사용
-- **Chosen**: **C — 커스텀 AUMID 미사용.** 그룹마다 **별도 .lnk 파일(파일명·아이콘·인자 상이)** 이면 작업 표시줄에 각각 핀되어 구분된다(T2 사용자 검증 + 참조 프로젝트 AppGroup도 IPropertyStore AUMID 미사용).
-- **Rationale**: 당초 A(IPropertyStore AUMID)를 가정했으나, 실제로는 별도 .lnk만으로 핀·클릭·구분이 모두 동작. 불필요한 COM 복잡도 제거.
-- **Source**: T2 사용자 검증, AppGroup 참조.
+### DU3. 아이콘 설정 옵션 — 기존 세트 유지
+- **Chosen**: 현재 옵션(기본/빨강/초록/주황/보라/첫 멤버 앱/이미지 선택...)을 **그대로 유지**하고, 다이얼로그 상단에 **미리보기 + 선택 UI**로 배치. 도메인 `IconSource`/`IIconService` 변경 없음.
+- **Source**: 사용자 확정("기존 옵션 유지").
 
-### D4. 팝업 위치 계산
-- **Options**: A) 활성화 시 커서 좌표 기준 / B) UIAutomation으로 자기 작업 표시줄 버튼 Rect 조회 / C) 화면 중앙 고정
-- **Chosen**: A (1차), B는 후속 개선(본 plan 범위 밖)
-- **좌표 캡처 시점·소스(고정)**:
-  1. 활성화 핸들러 진입 **최초 1줄**에서, 어떤 창도 표시하기 전에 `GetCursorPos()`로 커서 좌표 `(cx, cy)`를 캡처한다(이후 커서 이동·팝업 표시의 영향 배제).
-  2. `(cx, cy)`가 속한 모니터의 작업영역(`MonitorFromPoint` → `GetMonitorInfo`의 `rcWork`)을 구한다.
-  3. 작업 표시줄 변(하/좌/우/상)은 모니터 전체 영역 `rcMonitor`와 `rcWork`의 차이로 판정한다.
-  4. 팝업 배치:
-     - 하단 작업 표시줄(기본): 팝업의 **수평 중심 = cx**, 팝업 **하단 = rcWork.bottom**(작업영역 위, 즉 작업 표시줄 바로 위). 화면 밖으로 나가면 `rcWork.left`/`rcWork.right` 안으로 클램프.
-     - 좌/우/상도 같은 원리로 해당 변에 붙이고 cx 또는 cy를 기준으로 정렬.
-- **수용 기준(측정 가능)**: 팝업이 (a) 항상 작업영역 안에 완전히 포함되고, (b) 작업 표시줄 변에 접하며(간격 ≤ 8px), (c) 클릭 좌표(cx 또는 cy)가 팝업의 해당 축 범위 안에 들어온다. T2/T11에서 이 3개를 수동 확인.
-- **Rationale**: 클릭 직후 커서는 아이콘 위에 있으므로, 표시 전에 캡처한 커서 좌표를 기준으로 작업 표시줄 변에 붙이면 "클릭한 아이콘 위"를 측정 가능한 기준으로 만족. UIA(B)는 빌드별 트리 변동 위험이 있어 1차에서 제외.
-- **Source**: Win32 GetCursorPos/MonitorFromPoint/GetMonitorInfo 표준 동작(검증은 T2/T11 수동 확인).
+### DU4. 라이선스 표시 — 이름+종류+링크(정적 큐레이션)
+- **Chosen**: 배포 런타임 의존성만 **이름 + 라이선스 종류 + 프로젝트 URL** 목록으로. 전체 본문은 링크로 연결(앱 내 본문 미동봉). 데이터는 코드 내 정적 큐레이션(`LicenseCatalog`).
+- **정확성 규칙**: CommunityToolkit.Mvvm/Microsoft.Extensions.*/Microsoft.Windows.CsWin32 = **MIT**. Microsoft.WindowsAppSDK/Microsoft.Web.WebView2/Microsoft.Windows.SDK.BuildTools = **독점(Microsoft Software License)** — MIT로 표기 금지. 테스트 전용 패키지(xunit 등) 제외.
+- **Source**: 사용자 확정("이름+종류+링크"). 라이선스 종류는 각 패키지 실제 라이선스로 확정.
 
-### D5. 설치 앱 열거 범위(소스)
-- **Options**: A) Win32 + Store/UWP 모두 + 수동 exe 추가 / B) Win32만 / C) 자동만(수동 추가 없음)
-- **Chosen**: A
-- **Rationale**: 사용자 선택("Win32 + Store/UWP 모두"). 수동 exe 추가는 누락 앱 보완용으로 포함.
-- **Source**: 사용자 확인.
+### DU5. 테마 전환 — 시스템/다크/라이트
+- **Chosen**: 설정 페이지에서 3택. 적용 = 루트 `FrameworkElement.RequestedTheme`(시스템=`ElementTheme.Default`, 다크=`Dark`, 라이트=`Light`). 지속 = `ApplicationData.Current.LocalSettings["AppTheme"]`. 창 생성 시 저장값을 읽어 적용.
+- **팝업 창 일관성(M1)**: `GroupPopupWindow`도 **별 프로세스 기동 시 저장된 테마를 읽어** 루트 `Border`에 `RequestedTheme` 적용한다(다크 설정인데 팝업만 라이트로 뜨는 불일치 방지). 그 외 팝업 동작/레이아웃은 불변(Out of Scope).
+- **Rationale**: `Application.RequestedTheme`는 시작 시 1회만 가능 → 런타임 전환은 루트 요소 RequestedTheme로. LocalSettings는 단일 enum 영속에 적합(MSIX).
+- **Source**: 사용자 요구. WinUI 테마 API.
 
-### D6. 열거 사용자 범위
-- **Options**: A) 현재 사용자 / B) 전체 사용자(관리자)
-- **Chosen**: A
-- **Rationale**: 전체 사용자 열거는 관리자 권한 요구 → UAC 상승·MSIX 제약. 현재 사용자 범위로 비관리자 동작.
-- **Source**: WebSearch(PackageManager 전체 사용자 열거 시 관리자 필요).
+### DU6. 창 백드롭 — Mica
+- **Chosen**: 메인 창에 `MicaBackdrop` 적용(`_window.SystemBackdrop = new MicaBackdrop()`). 라이트/다크 자동 대응.
+- **Source**: D17(Fluent 표면).
 
-### D7. 영속화 위치·형식
-- **Options**: A) `ApplicationData.Current.LocalFolder`에 JSON / B) 레지스트리 / C) SQLite
-- **Chosen**: A (`groups.json`, `System.Text.Json`, `schemaVersion` 필드 포함)
-- **Rationale**: 데이터가 작고 구조 단순. MSIX LocalFolder는 샌드박스 안전 경로. .lnk·.ico 실제 파일은 별도 실경로(D8).
-- **Source**: 프로젝트 규모/MSIX 권장.
+### DU7. 그룹 목록 항목 표시
+- **Chosen**: 항목 = [그룹 아이콘] + [2라인: 1=그룹 이름, 2=멤버 앱 아이콘 가로 나열] + [수정 아이콘버튼][삭제 아이콘버튼(아이콘 전용)]. 그룹 아이콘 = `{IconsDirectory}\{groupId}.ico` 로드(`GroupIconLoader`), 실패 시 IconSource 기반 폴백. 멤버 아이콘 = `AppIconLoader` 재사용, **상한 8개 + 초과 시 "+N"**.
+- **Source**: 요구사항(그룹 아이콘 + 2라인). 상한은 레이아웃 보호용 기본값.
 
-### D8. .lnk·.ico 저장 경로(실파일 필요) — **갱신됨(T2 검증 반영)**
-- **Options**: A) `%LOCALAPPDATA%\WorkGroup`(가상화됨) / B) `ApplicationData.Current.LocalFolder` / C) `%USERPROFILE%\WorkGroup`(비가상화)
-- **Chosen**: **C — `%USERPROFILE%\WorkGroup\{Shortcuts|Icons}`** (사용자 확정 "A 유지" = 현행 비가상화 경로 유지)
-- **Rationale**: MSIX는 `%LOCALAPPDATA%`/`%APPDATA%` 쓰기를 패키지 컨테이너로 **가상화 리다이렉트**한다(T2에서 "파일 생성 성공 표시되나 literal 경로엔 없음" 버그로 실증). 셸/작업 표시줄이 접근하는 .lnk/.ico는 가상화되지 않는 `%USERPROFILE%` 하위에 둬야 일관되게 보이고 핀된다. (`groups.json` 등 비셸 설정은 D7대로 LocalFolder 유지 가능.)
-- **Source**: T2 실증 + 참조 프로젝트 AppGroup(AppPaths) 동일 방식 확인 + 사용자 확정.
+### DU8. 설치 앱 로딩 시점
+- **Chosen**: 다이얼로그 오픈 시 `IAppInventory.GetInstalledAppsAsync()` **lazy 로드** + ProgressRing. 각 항목 아이콘은 비동기(가상화 리스트).
+- **Source**: 인벤토리 로딩 지연 대비(Risks).
 
-### D9. 그룹 아이콘 소스(요구사항 5)
-- **Options**: A) 내장 세트 + 멤버 앱 아이콘 + 사용자 이미지/.ico 모두 / B) 사용자 이미지만 / C) 내장만
-- **Chosen**: A
-- **Rationale**: 사용자 선택("모두 지원").
-- **Source**: 사용자 확인.
-
-### D10. 팝업 레이아웃
-- **Options**: A) 아이콘 그리드 / B) 아이콘 + 이름 리스트
-- **Chosen**: A
-- **Rationale**: 사용자 선택("아이콘 그리드"). 미첨부된 "1번 이미지" 대체 확정.
-- **Source**: 사용자 확인(preview 선택).
-
-### D11. 단일 인스턴스·활성화 처리 — **갱신됨(현 구현)**
-- **Options**: A) AppInstance 단일 인스턴스 + Redirect / B) 매 클릭 새 프로세스(팝업 후 종료)
-- **Chosen**: **B.** 그룹 클릭 → 별칭 exe가 새 인스턴스로 떠 `--group {id}` 수신 → 팝업 표시 → 팝업 닫히면 프로세스 종료(상주 안 함). 관리 화면/트레이는 별도 상주 인스턴스.
-- **Rationale**: 팝업은 일회성이라 상주가 불필요. 단일 인스턴스/Redirect는 복잡도만 추가. 클릭마다 가벼운 인스턴스로 충분(사용자 검증 OK).
-- **Source**: T2/T11 사용자 검증.
-
-### D12. 기술 스택·라이브러리
-- **Options**: 신규 의존성 선정
-- **Chosen** (사용자 승인 완료):
-  - WinUI3 / Windows App SDK(최신 안정), .NET 10, **MSIX 패키지**
-  - MVVM: `CommunityToolkit.Mvvm`
-  - DI: `Microsoft.Extensions.DependencyInjection` + `Microsoft.Extensions.Logging` (자체 ServiceProvider 구성 — `IHost` 미사용이라 `Microsoft.Extensions.Hosting`은 **미채택**)
-  - Win32 interop: `Microsoft.Windows.CsWin32`(좌표 API) + 자체 P/Invoke(IShellLink, Shell_NotifyIcon 트레이)
-  - **갱신(현 구현)**: 팝업 위치는 `AppWindow.Move`/자체 `TaskbarPopupPositioner`, 트레이는 Win32 `Shell_NotifyIcon`으로 직접 구현 → **`WinUIEx`는 미사용으로 제거.** (당초 승인됐으나 실제 불필요.)
-  - 직렬화: `System.Text.Json`
-  - 테스트: `xUnit`
-- **Rationale**: 전역 CLAUDE.md / dotnet 스킬 컨벤션(CommunityToolkit.Mvvm, 한글 주석, 1500라인 제한, DDD)과 일치. CsWin32는 수동 P/Invoke 대비 안전·검증 용이. WinUIEx는 WinUI3 창 관리의 사실상 표준 커뮤니티 확장.
-- **Source**: 전역 CLAUDE.md, dotnet-enterprise-dev 스킬, **사용자 승인(WinUIEx 포함 모두 추가)**.
-
-### D13. 명명·레이어 위치
-- **Options**: 네임스페이스/프로젝트 구조
-- **Chosen**: `WorkGroup.Domain` / `WorkGroup.Application` / `WorkGroup.Infrastructure` / `WorkGroup.App`(WinUI3) / `WorkGroup.*.Tests`
-- **Rationale**: DDD 레이어드(전역 CLAUDE.md 2단계 "DDD 준수"). 비즈니스 로직은 Domain/Application 중심, OS interop은 Infrastructure 격리.
-- **Source**: 전역 CLAUDE.md.
-
-### D14. 에러 처리 정책
-- **Options**: A) 도메인/애플리케이션은 Result 패턴, 인프라 경계는 예외 캐치→Result 변환 / B) 전역 예외
-- **Chosen**: A
-- **Rationale**: UI까지 예외 전파 대신 사용자 메시지(InfoBar/Toast)로 변환. 셸/COM 실패가 잦은 인프라 경계에서 흡수.
-- **Source**: dotnet 스킬 컨벤션.
-
-### D15. T2 spike 게이트 (실패 시 분기) — B4 대응
-- **Options**: A) spike를 통과 게이트로 두고 성공 시에만 T7+ 진입 / B) spike 결과와 무관하게 진행
-- **Chosen**: A
-- **규칙**:
-  - T2는 **사용자 확인 게이트**다. T2의 검증 항목(아래 T2 체크리스트)이 **모두 통과**해야 T7·T10·T11에 진입한다.
-  - T2 일부라도 실패 시 → **즉시 Halt.** implement-task는 추측으로 T7+를 진행하지 않는다. T3~T6(도메인·인벤토리·아이콘·영속화)는 T2와 독립이므로 진행 가능.
-  - Halt 후 처리: 실패 항목을 Progress Log에 기록 → 사용자와 대안(프로토콜 전용 활성화 / 자체 AppBar / 폴더 열기+수동 핀 안내) 재논의 → **plan 재작성**으로 T7/T10/T11 재정의. 본 plan의 T7/T10/T11 가정(.lnk+AUMID+alias 활성화)은 T2 통과를 전제로만 유효하다.
-- **Rationale**: T2가 핵심 가설 전체를 짊어지므로, 실패가 후속 task로 전파되지 않도록 게이트로 격리.
-- **Source**: plan-reviewer B4.
-
-### D16. .ico 인코딩 수단 — M4 대응
-- **Options**: A) 자체 .ico 라이터(ICONDIR + 다중 해상도 PNG 프레임 직접 작성) / B) System.Drawing.Common / C) WIC(Windows.Graphics.Imaging BitmapEncoder)
-- **Chosen**: A (PNG 프레임 인코딩은 WinAppSDK의 `Windows.Graphics.Imaging.BitmapEncoder`(PNG)로, .ico 컨테이너 헤더는 직접 작성)
-- **Rationale**: B(System.Drawing.Common)는 WinUI3/MSIX 환경에서 권장되지 않고 .ico 다중 해상도 지원이 제한적. .ico 포맷은 ICONDIR/ICONDIRENTRY + 프레임 바이트로 단순·문서화가 잘 되어 있어 자체 라이터가 견고하고 외부 의존 추가 불필요. 256px 프레임은 PNG 압축 프레임으로 저장(.ico 표준).
-- **분기 제거**: "불가 시 Open Question"을 제거. 인코딩 수단을 A로 확정하여 T5 자율 실행 중 멈춤 없음.
-- **Source**: plan-reviewer M4, .ico 포맷 표준.
-
-### D17. UI 디자인 가이드 — WinUI 3 Gallery / Fluent
-- **Options**: A) WinUI 3 Gallery 디자인 가이드 적용(Fluent) / B) 임의 커스텀 스타일
-- **Chosen**: A
-- **적용 기준**:
-  - 레이아웃·간격·타이포그래피·색상은 WinUI Gallery가 시연하는 Fluent 패턴을 따른다(표준 컨트롤 우선: `NavigationView`/`ListView`/`GridView`/`InfoBar`/`ContentDialog`).
-  - 창 배경은 Mica/Acrylic 백드롭(WinUIEx 또는 SystemBackdrop) 적용. 라이트/다크 테마 자동 대응.
-  - 팝업(T11)은 Acrylic 백드롭 + 둥근 모서리 등 Fluent 표면 스타일.
-  - 표준 컨트롤로 충분하지 않은 경우에만 커스텀 스타일을 최소 도입.
-- **Rationale**: 사용자 요청. Windows 11 기본 앱과 일관된 룩앤필 확보, 접근성·테마 대응을 표준 컨트롤로 자연 확보.
-- **Source**: 사용자 확인.
+### DU9. MainPage/MainViewModel 제거(구조 변경 — 승인 대상)
+- **Chosen**: 기능을 페이지/뷰모델로 분리 후 제거. 본 plan 승인이 제거 승인을 포함한다.
+- **Source**: 4-A 영향 분석(외부 참조 없음).
 
 ## Tasks
 
-> 총 13개(T1a/T1b 분할 포함)로 큼 → 승인 게이트에서 **Plan 분할(코어/인프라 T1a–T8 + UI/런처 T9–T12)** 여부를 함께 결정한다(Open Questions Q1).
+> 공통 완료 기준(CLAUDE.md): 추가/수정 코드 **한글 주석**, 파일 **1500라인 내외**, **UTF-8(BOM 없음)**, 빌드 0 경고/0 에러. UI는 D17(Fluent·표준 컨트롤·라이트/다크) 적용. 모든 페이지/다이얼로그는 `x:Bind` 기반 MVVM.
 
-> **모든 task 공통 완료 기준(CLAUDE.md 반영, 매 task acceptance에 암묵 포함)**:
-> - 추가/수정 코드에 **한글 주석** 작성(m3). 빌드로 안 잡히므로 각 task 완료 시 self-review로 확인.
-> - **파일 1500라인 내외 유지**(m2). 초과 우려 파일은 기능 단위로 분리: 특히 `InstalledAppInventory`(T4, 소스별 분리 가능), `IconService`(T5, 추출/인코딩 분리), ViewModel(T9, 이미 분리 설계), interop(NativeMethods는 CsWin32 생성이라 제외).
-> - 파일 **UTF-8** 저장. 변경 시 해당 문서(`README.md`/`notes.md`) 갱신.
-
-### Tasks — Plan 1 (코어·인프라): **현재 실행 대상**
-
-- [x] **T1a. WinUI3 MSIX 패키지 앱 최소 빌드·실행 확정** (빌드 검증 완료 / GUI 창 표시는 수동 확인 사용자 대기)
+- [ ] **T1. 앱 셸(NavigationView) + 4개 stub 페이지** *(~2h)*
   - **Type**: C
-  - **Acceptance**: 단일 WinUI3 패키지 앱이 `dotnet build` 성공 + 배포 후 실행되어 빈 메인 창 표시(수동). MSIX 패키징·디버그 실행 절차가 확정되어 Verification Strategy에 기록됨.
+  - **Acceptance**: `MainShell`이 NavigationView(상단 작업그룹/트레이메뉴, 하단 설정/정보, `IsSettingsVisible=false`)로 표시되고 내부 `Frame`로 4개 **빈 stub 페이지**가 전환된다(수동). 시작 선택 = 작업 그룹. 빌드 0/0. (App 연결·테마·Mica는 T2.)
+  - **stub 규칙(B2)**: 4개 stub 페이지의 코드비하인드는 **VM을 resolve하지 않는다**(빈 `InitializeComponent`만). VM resolve 추가는 각 채움 task(T3·T4·T5·T7)에서 동반 수행 → T1 단독으로 navigate 시 DI 미등록 예외가 나지 않음.
   - **Files**:
-    - 주: `WorkGroup.sln`, `src/WorkGroup.App/WorkGroup.App.csproj`, `src/WorkGroup.App/Package.appxmanifest`, `src/WorkGroup.App/App.xaml(.cs)`, `src/WorkGroup.App/MainWindow.xaml(.cs)`
-  - **Edge Cases**: .NET10 SDK/WindowsAppSDK 버전 부재 → 빌드 실패 메시지로 즉시 드러남.
-  - **Halt Forecast**: "WindowsAppSDK 버전 어떤 것?" → D12에서 최신 안정 채택, 본 task에서 실측 확정. "패키지 앱 디버그 실행 방법?" → 본 task에서 확정·문서화.
+    - 주: `src/WorkGroup.App/Views/MainShell.xaml(.cs)`
+    - stub(빈 Page, VM resolve 없음): `src/WorkGroup.App/Views/WorkGroupsPage.xaml(.cs)`, `TrayMenuPage.xaml(.cs)`, `SettingsPage.xaml(.cs)`, `AboutPage.xaml(.cs)`
+  - **Edge Cases**: NavigationView 선택 변경 시 동일 페이지 재navigate 방지(현재 Tag 비교). footer 항목(설정/정보) 선택도 동일 핸들러로 처리.
+  - **Halt Forecast**: "메뉴→페이지 매핑?" → MenuItem `Tag`에 페이지 타입 키, SelectionChanged에서 분기. "settings item?" → `IsSettingsVisible=false`로 끄고 footer에 직접 추가.
   - **Depends on**: -
 
-- [x] **T1b. 레이어 프로젝트·테스트·문서 스캐폴딩**
-  - **Type**: C
-  - **Acceptance**: Domain/Application/Infrastructure 프로젝트 + 2개 테스트 프로젝트가 솔루션에 추가되고 `dotnet build`/`dotnet test`(빈 테스트) 성공. `README.md`/`notes.md`/`AGENTS.md` 생성(m1 기준 충족).
-  - **Files**:
-    - 주: `src/WorkGroup.Domain/*.csproj`, `src/WorkGroup.Application/*.csproj`, `src/WorkGroup.Infrastructure/*.csproj`, `tests/WorkGroup.Domain.Tests/*`, `tests/WorkGroup.Application.Tests/*`
-    - 문서: `README.md`, `notes.md`, `AGENTS.md`
-  - **AGENTS.md 내용(m1)**: 빌드/테스트 명령(`dotnet build`, `dotnet test`), 레이어 구조(D13), Plan Location(`plan.md` 루트), 코딩 규칙(한글 주석·파일 1500라인 제한·DDD·UTF-8) — 전역 CLAUDE.md 핵심을 프로젝트 컨텍스트로 미러링.
-  - **Edge Cases**: 프로젝트 참조 순환 → 레이어 방향(D13) 준수로 방지.
-  - **Halt Forecast**: 없음(표준 스캐폴딩).
-  - **Depends on**: T1a
-
-- [x] **T2. (SPIKE/게이트) 핀→클릭→인자 전달→팝업 위치 + 드래그 핀 끝단 검증** — **게이트 통과(C1~C4 사용자 확인 완료)**
-  - **진행 상황(코드 완성, 수동 검증 대기)**: C1~C4 코드 모두 빌드 완료.
-    - C1: `ShortcutWriter`(IShellLink COM) + 메인 화면 "테스트 바로가기 생성" 버튼 → 별칭 타깃 .lnk 생성. **단위 테스트로 .lnk 생성 런타임 검증됨.**
-    - C2/C3: 매니페스트 AppExecutionAlias `WorkGroupSpike.exe` + 프로토콜 `workgroup`, 활성화 파싱 → `SpikePopupWindow`를 작업 표시줄 변에 배치. 순수 로직 단위 테스트(GroupArgs 12 + Positioner 10).
-    - C4: 메인 화면 드래그 영역(`SetStorageItems(.lnk)`).
-  - **남음 = 사용자 수동 검증만**(C1~C4, MSIX 배포 후 작업 표시줄에서). 단일 인스턴스/Redirect(D11)와 고유 AUMID(D3)는 T11/T7에서 정식화(spike는 단일 테스트 .lnk라 미적용).
-  - **배포 수정**: 앱을 MSIX 패키지 모드로 전환(`WindowsPackageType=None` 제거) → VS F5 DEP1700 해결.
-  - **⚠ 중요 발견(D8 갱신 — T7/T8 영향)**: MSIX는 `%LOCALAPPDATA%`/`%APPDATA%` 쓰기를 패키지 컨테이너로 **가상화**한다. 셸이 접근하는 **.lnk/.ico는 `%USERPROFILE%\WorkGroup\...`(비가상화)** 에 저장해야 한다. (참조 프로젝트 `D:\Personal Project\Windows\AppGroup`의 AppPaths가 동일 방식: "Shell 접근 파일은 비가상화 경로". `%USERPROFILE%`는 MSIX 가상화 대상 아님.) → **D8을 `%USERPROFILE%\WorkGroup\{Shortcuts|Icons}`로 갱신.** spike .lnk를 해당 경로로 변경.
-  - **⚠ 드래그-핀 방식 확정(참조 프로젝트 AppGroup에서 검증)**: WinUI3에서 작업 표시줄 드래그-핀은 **Win32 DoDragDrop 불가**(island 입력으로 추적 안 됨), **`SetStorageItems` 즉시도 핀 안 됨**. 정답 = **`ListView.DragItemsStarting` + `e.Data.SetDataProvider(StandardDataFormats.StorageItems, 지연 콜백)` + .lnk 임시 복사**. spike와 T10에 이 방식 적용. .lnk는 alias 타깃 + 인자, **커스텀 AUMID 불필요**(AppGroup도 미사용).
+- [ ] **T2. ThemeService + App 통합(MainShell 연결·Mica·테마 적용)** *(~2.5h)*
   - **Type**: D
-  - **Acceptance(통과/실패 체크리스트, 모두 통과해야 게이트 통과 — D15)**:
-    - [ ] (C1) 수동 생성한 .lnk(고유 AUMID + AppExecutionAlias + `--group test`)가 작업 표시줄에 핀됨
-    - [ ] (C2) 핀 아이콘 클릭 시 앱이 `--group test` 인자를 수신(AppInstance 단일 인스턴스/Redirect 경유)
-    - [ ] (C3) D4 좌표 규칙대로 캡처한 커서 좌표 기준으로 작업 표시줄 변에 접한 테스트 팝업 표시(D4 수용 기준 3개 충족)
-    - [ ] (C4) **우리 앱 ListView를 드래그 소스로** `DataPackage.SetStorageItems`(.lnk StorageFile)로 작업 표시줄에 드롭 → 핀 수용됨 (M5: 이 수단의 성립 자체를 본 spike에서 검증)
-    - 결과(각 항목 통과/실패 + 실패 원인)는 **Progress Log에 기록**(M1).
+  - **Acceptance**: `App.xaml.cs`가 루트 Frame을 `MainShell`로 navigate하고, 메인 창에 **Mica 백드롭** + 시작 시 저장된 **테마**가 적용된다. `GroupPopupWindow`도 저장된 테마를 적용한다(M1). `ThemeService`가 LocalSettings의 `AppTheme`를 읽고/쓰며 대상 루트 요소의 `RequestedTheme`를 설정한다. 빌드 0/0.
+  - **적용 위치 명시(B1)**:
+    - Mica: `ShowMainWindow`의 **`_window = new Window()` 최초 생성 직후(현 L83 부근) 1회** `_window.SystemBackdrop = new MicaBackdrop()` 설정(재사용 호출마다 재설정 금지).
+    - 테마: `ThemeService.Apply(FrameworkElement root)`가 `root.RequestedTheme` 설정. 메인 창은 **`rootFrame`**(현 L91-96에서 생성·content 설정되는 그 Frame)에 적용. 팝업은 `GroupPopupWindow` 생성자에서 루트 `Border`에 적용.
+    - 팝업 분기(`OnLaunched` L46)·트레이 숨김(`OnMainWindowClosing`)·활성화 로직은 **변경하지 않는다**(테마/Mica 추가만).
   - **Files**:
-    - 주: `src/WorkGroup.App/Package.appxmanifest`(AppExecutionAlias, 프로토콜, runFullTrust/packageQuery), `src/WorkGroup.App/Activation/LaunchActivationHandler.cs`, `src/WorkGroup.Infrastructure/Interop/*`(GetCursorPos/MonitorFromPoint/GetMonitorInfo)
-    - 동반: `src/WorkGroup.App/App.xaml.cs`(AppInstance 단일 인스턴스/Redirect)
-  - **Edge Cases**: 인자 없음/형식 오류 → 메인 창 표시로 폴백. 멀티 모니터/작업 표시줄 위치(하/좌/우/상) → D4 작업영역 기준 좌표 보정.
-  - **Halt Forecast**: C1~C4 중 하나라도 실패 → **D15 게이트 발동: 즉시 Halt, T7/T10/T11 진입 금지, 사용자와 대안 재논의 후 plan 재작성.** (런타임 프로토콜 폴백은 D2에서 배제됨)
-  - **spike 코드 처리**: 통과 시 LaunchActivationHandler/Interop 코드는 본 코드로 승격(T11에서 확장), 폐기 아님.
-  - **Depends on**: T1a
+    - 주: `src/WorkGroup.App/Services/ThemeService.cs`
+    - 수정: `src/WorkGroup.App/App.xaml.cs`(Navigate→MainShell, Mica 1회, rootFrame 테마), `src/WorkGroup.App/Views/GroupPopupWindow.xaml.cs`(생성자 테마 적용), `src/WorkGroup.App/ServiceConfiguration.cs`(ThemeService 등록)
+  - **Edge Cases**: LocalSettings에 `AppTheme` 키 없음→`System`(`ElementTheme.Default`). 알 수 없는 값→`System`. 비패키지 실행으로 LocalSettings 접근 실패→`System` 폴백(예외 흡수).
+  - **Halt Forecast**: "테마 적용 대상?" → 위 B1 명시(rootFrame / 팝업 Border). "Mica API?" → `Microsoft.UI.Xaml.Media.MicaBackdrop`. "LocalSettings 키 타입?" → 문자열 `"System"|"Dark"|"Light"`.
+  - **Depends on**: T1
 
-- [x] **T3. Domain 모델**
+- [ ] **T3. 설정 페이지(자동 시작 + 테마)** *(~2.5h)*
   - **Type**: C
-  - **Acceptance**: `AppGroup`(이름/멤버/아이콘소스/Id), `AppEntry`(표시명/실행타깃/원본아이콘), 값객체(`GroupId`, `IconSource`) 생성·멤버 추가/제거/중복방지 불변식을 단위 테스트로 검증(녹색).
+  - **Acceptance**: 설정 페이지에서 (1) "로그인 시 자동 시작" 토글이 `StartupService` 현재 상태를 반영/변경하고(정책 거부 시 되돌림), (2) 테마 3택(시스템/다크/라이트)이 `ThemeService`로 즉시 적용+영속된다(수동: 재시작 후 유지). 페이지가 `SettingsViewModel`을 resolve(B2). 빌드 0/0.
+  - **로드 시점 명시(M3)**: 초기 상태(자동시작 on/off, 현재 테마 선택)는 **페이지 `Loaded` 이벤트에서 `suppress` 플래그를 켜고 로드**한 뒤 끈다 → 진입 즉시 토글/테마 변경 핸들러가 오발동하지 않는다(기존 `MainViewModel._suppressAutoStart` 패턴 이식).
   - **Files**:
-    - 주: `src/WorkGroup.Domain/Groups/AppGroup.cs`, `AppEntry.cs`, `GroupId.cs`, `IconSource.cs`
-    - 테스트: `tests/WorkGroup.Domain.Tests/AppGroupTests.cs`
-  - **Edge Cases**: 빈 그룹명→거부. 동일 앱 중복 추가→무시/거부. 멤버 0개 그룹 허용 여부→허용(빈 그룹 생성 후 채우기).
-  - **Halt Forecast**: "GroupId 생성 규칙?" → GUID 문자열(결정 본 task에 고정). "멤버 최대 개수?" → 제한 없음(UI에서 스크롤).
-  - **Depends on**: T1b
+    - 주: `src/WorkGroup.App/Views/SettingsPage.xaml(.cs)`, `src/WorkGroup.App/ViewModels/SettingsViewModel.cs`
+    - 수정: `src/WorkGroup.App/ServiceConfiguration.cs`(SettingsViewModel 등록)
+  - **Edge Cases**: 자동시작 정책 거부→실제 상태로 되돌리고 안내(기존 `MainViewModel.OnAutoStartEnabledChanged` 이식). 테마/자동시작 초기 로드 중 set→suppress로 무시.
+  - **Halt Forecast**: "자동시작 로직?" → 기존 `MainViewModel` 이식. "테마 선택 UI?" → `RadioButtons`(표준). "초기화 시점?" → M3(Loaded + suppress).
+  - **Depends on**: T2
 
-- [x] **T4. 설치 앱 인벤토리(Win32 + Store/UWP + 수동 추가)**
-  - **Type**: D
-  - **Acceptance**: `IAppInventory.GetInstalledAppsAsync()`가 현재 사용자 기준 **Win32(시작 메뉴 .lnk 열거)** + 패키지(`PackageManager.FindPackagesForUser`) 앱을 합쳐 표시명·실행타깃·아이콘 경로로 N개 반환(수동: 주요 앱이 목록에 보임). `CreateManualEntry(filePath)`로 사용자 지정 .exe/.lnk 추가 경로 제공.
-  - **구현 방식 결정(리뷰 반영)**:
-    - **Win32 = 시작 메뉴 .lnk 열거**(당초 `InstalledDesktopApp` 대신). 사유: `Windows.System.Inventory.InstalledDesktopApp`은 표시명/Id/게시자만 제공하고 **실행 가능한 타깃(exe 경로)을 주지 않아** 런처 용도에 부적합. .lnk는 실행 대상(셸 실행) + 아이콘(셸 썸네일)을 동시에 제공하며 IShellLink 없이 열거 가능.
-    - **dedup = 표시명(대소문자 무시) 기준, 패키지 우선**(당초 "AUMID/경로 기준" 대신). 사유: Win32(.lnk 경로)와 패키지(AUMID)는 타깃 타입이 달라 경로/AUMID 비교로는 교차 소스 중복을 잡을 수 없음 → 표시명이 실질적 dedup 키.
-  - **Files**:
-    - 주: `src/WorkGroup.Application/Inventory/IAppInventory.cs`, `src/WorkGroup.Infrastructure/Inventory/InstalledAppInventory.cs`
-    - 동반: `src/WorkGroup.App/Package.appxmanifest`(packageQuery, runFullTrust)
-    - 테스트: `tests/WorkGroup.Application.Tests/InstalledAppInventoryTests.cs`(순수 MergeApps/CreateManualEntry 단위 + 실머신 Integration 트레이트)
-  - **Edge Cases**: 권한 없음→해당 소스 건너뛰고 나머지 반환(부분 실패 허용, 로깅). 실행 타깃 누락→AppEntry 생성 거부로 제외. 중복→표시명 dedup. `GetAppListEntries`는 19041+ 가드.
-  - **Halt Forecast**: "전체 사용자 열거 관리자 필요?" → D6(현재 사용자). "패키지 앱 실행 타깃?" → AUMID(T11에서 IApplicationActivationManager).
-  - **follow-up(품질 리뷰)**: Infrastructure 구현 테스트가 `WorkGroup.Application.Tests`에 위치(T6 이후 windows 타깃 공용 테스트 프로젝트로 사용 중). 추후 `WorkGroup.Infrastructure.Tests` 분리 검토.
-  - **Depends on**: T3
-
-- [x] **T5. 아이콘 추출·.ico 생성 서비스**
+- [ ] **T4. 정보 페이지(버전 + 라이선스 목록)** *(~2h)*
   - **Type**: C
-  - **Acceptance**: `IIconService`가 (a) 앱 실행파일/패키지 로고에서 아이콘 추출, (b) 내장 세트 제공, (c) 사용자 이미지/.ico → 다중 해상도 .ico 변환을 수행하고 `{주입된 아이콘 디렉터리}\{groupId}.ico` 생성(출력 경로는 호출자 주입 — 운영 시 D8의 `%USERPROFILE%\WorkGroup\Icons`)(수동: 파일 생성·아이콘 정상 표시).
+  - **Acceptance**: 정보 페이지에 앱 이름 + 버전(`Package.Current.Id.Version` → `Major.Minor.Build.Revision`)이 표시되고, 오픈소스 라이선스 목록(이름+종류+링크, DU4)이 리스트로 표시되며 링크 클릭 시 브라우저로 열린다(수동). 페이지가 `AboutViewModel`을 resolve(B2). 빌드 0/0.
   - **Files**:
-    - 주: `src/WorkGroup.Application/Icons/IIconService.cs`, `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `src/WorkGroup.Infrastructure/Icons/IcoWriter.cs`(자체 .ico 라이터 — D16)
-    - 테스트: `tests/WorkGroup.Application.Tests/IcoWriterTests.cs`, `IconServiceTests.cs`
-    - 내장 아이콘: 바이너리 자산(`Assets/BuiltInIcons/*`) 대신 **IconService에서 id별 단색 256px 비트맵을 프로그래밍 생성**(외부 의존 0·테스트 가능). follow-up: T9에서 내장 세트 시각 품질 재논의 가능.
-  - **Edge Cases**: 손상/미지원 이미지→기본 아이콘 폴백. 초대형 이미지→256px로 다운스케일. 투명도 보존.
-  - **Halt Forecast**: "이미지→.ico 인코딩 수단?" → **D16에서 확정**(자체 .ico 라이터 + BitmapEncoder PNG 프레임). 미결 없음.
-  - **Depends on**: T3
+    - 주: `src/WorkGroup.App/Views/AboutPage.xaml(.cs)`, `src/WorkGroup.App/ViewModels/AboutViewModel.cs`, `src/WorkGroup.App/Services/LicenseCatalog.cs`(정적 라이선스 데이터)
+    - 수정: `src/WorkGroup.App/ServiceConfiguration.cs`(AboutViewModel 등록)
+  - **Edge Cases**: 비패키지 실행 등 `Package.Current` 접근 실패→어셈블리 버전 폴백 + 예외 흡수. 링크 열기 실패→무시(로깅).
+  - **Halt Forecast**: "버전 출처?" → `Package.Current.Id.Version`. "라이선스 데이터?" → DU4 확정값(테스트 전용 제외, Microsoft 독점 정확 표기). "링크 열기?" → `HyperlinkButton NavigateUri`.
+  - **Depends on**: T1
 
-- [x] **T6. 영속화(JSON 리포지토리)**
+- [ ] **T5. 트레이 메뉴 페이지(placeholder)** *(~0.5h)*
+  - **Type**: B
+  - **Acceptance**: 트레이 메뉴 페이지에 "추후 추가 예정" 안내(InfoBar 또는 중앙 텍스트)가 표시된다(수동). 빌드 0/0.
+  - **Files**: 주: `src/WorkGroup.App/Views/TrayMenuPage.xaml(.cs)`(T1 stub 채움; VM 없음)
+  - **Edge Cases**: 없음(정적 안내).
+  - **Halt Forecast**: 없음.
+  - **Depends on**: T1
+
+- [ ] **T6. 그룹 추가/수정 다이얼로그(설치앱 체크리스트 + 아이콘 설정)** *(~4h)*
+  - **Type**: D
+  - **Acceptance**: `GroupEditDialog`(ContentDialog)가 **상단**에 그룹 이름 + 아이콘 설정(DU3 기존 옵션 + 미리보기 + 이미지 선택 FileOpenPicker), **하단**에 설치 앱 목록(아이콘 + 이름 + 체크박스, 검색)을 표시한다. 신규/편집 모드(편집=프리필) 지원. 확인 시 선택 앱·이름·아이콘으로 `AppGroup`을 만들어 `IGroupAppService.SaveAsync` 호출, 성공 시 닫힘(수동). 빌드 0/0.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/GroupEditDialog.xaml(.cs)`, `src/WorkGroup.App/ViewModels/GroupEditViewModel.cs`, `src/WorkGroup.App/ViewModels/SelectableAppItem.cs`
+    - 수정: `src/WorkGroup.App/ServiceConfiguration.cs`(GroupEditViewModel 등록 — 또는 페이지에서 생성)
+  - **Edge Cases**: 그룹명 미입력→확인 비활성/저장 거부. 인벤토리 로딩 중→ProgressRing(DU8). 빈 검색 결과→빈 상태 안내. 이미지 선택 취소→기존 아이콘 유지. 저장 실패(Result.Fail)→다이얼로그 유지 + 메시지. 편집 시 기존 멤버 체크 상태 복원.
+  - **Halt Forecast**: "XamlRoot?" → DU2(호출 페이지). "이미지 선택 HWND?" → 기존 `App.MainWindow` 이식. "아이콘 옵션?" → DU3(기존 이식). "앱 아이콘 로드?" → `AppIconLoader` 재사용(SelectableAppItem). "저장 흐름?" → 기존 `MainViewModel.SaveGroup`/`BuildIconSource`/`CreateNew` 로직 이식.
+  - **Depends on**: T1
+
+- [ ] **T7. 작업 그룹 페이지(그룹 목록 2라인 + 아이콘 버튼 + 추가 버튼 + 드래그 핀)** *(~4h)*
+  - **Type**: D
+  - **Acceptance**: 작업 그룹 페이지 **상단**에 "그룹 추가" 버튼(아이콘+라벨), 아래에 그룹 목록. 각 항목 = 그룹 아이콘 + 2라인(이름 / 멤버 앱 아이콘들, DU7) + **수정·삭제 아이콘 버튼(아이콘 전용)**. "그룹 추가"/수정 클릭 시 `GroupEditDialog`(신규/편집) 오픈, 삭제 시 `IGroupAppService.DeleteAsync`. 항목을 작업 표시줄로 **드래그하면 .lnk 핀**(기존 검증 로직 이식). 저장/삭제 후 목록 갱신(수동). 페이지가 `WorkGroupsViewModel`을 resolve(B2). 빌드 0/0.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/WorkGroupsPage.xaml(.cs)`(T1 stub 채움), `src/WorkGroup.App/ViewModels/WorkGroupsViewModel.cs`, `src/WorkGroup.App/ViewModels/GroupListItem.cs`, `src/WorkGroup.App/Services/GroupIconLoader.cs`
+    - 수정: `src/WorkGroup.App/ServiceConfiguration.cs`(WorkGroupsViewModel 등록)
+  - **.ico 로드 구체화(M2)**: `GroupIconLoader`는 `{WorkGroupPaths.IconsDirectory}\{groupId}.ico`가 존재하면 `new BitmapImage(new Uri(path))`로 로드하고, **`BitmapImage.ImageFailed` 이벤트** 또는 파일 부재 시 IconSource 기반 폴백(내장색=단색 사각형 Brush, 멤버앱=첫 멤버 `AppIconLoader`)으로 대체한다. `DecodePixelWidth=32`로 표시 크기에 맞춰 디코드.
+  - **Edge Cases**: .lnk 미생성 그룹 드래그→차단 + 안내(기존 로직). 그룹 0개→빈 상태 안내. 그룹 아이콘 .ico 없음/로드 실패→폴백(M2). 멤버 8개 초과→"+N". 드래그 취소→무동작. 삭제 후 편집 중이던 그룹이면 상태 정리.
+  - **Halt Forecast**: "드래그 방식?" → 기존 `MainPage.OnGroupDragStarting`(임시복사+지연 SetDataProvider) 이식. "그룹 아이콘 로드?" → M2. "수정/삭제 아이콘?" → `SymbolIcon`(Edit/Delete).
+  - **Depends on**: T6
+
+- [ ] **T8. 정리(MainPage/MainViewModel 제거) + 문서 갱신** *(~1.5h)*
   - **Type**: C
-  - **Acceptance**: `IGroupRepository` Save/Load/Delete가 `LocalFolder\groups.json`에 그룹 컬렉션을 직렬화/역직렬화하고, 앱 재시작 후 복원됨(단위 테스트는 임시 폴더 주입으로 검증).
+  - **Acceptance**: `MainPage.xaml(.cs)`/`MainViewModel.cs` 제거, `ServiceConfiguration`에서 `MainViewModel` 등록(현 L57) 제거. **`grep -rn "MainPage\|MainViewModel" src/ ':!*/obj/*'` → 0 hit(M4)** 으로 잔여 참조 없음을 확정. 전체 빌드 0/0 + 기존 테스트 80건 통과. `README.md`(새 UI·메뉴 구조·테마·설정) 및 `notes.md` 갱신.
   - **Files**:
-    - 주: `src/WorkGroup.Application/Persistence/IGroupRepository.cs`, `src/WorkGroup.Infrastructure/Persistence/JsonGroupRepository.cs`
-    - 테스트: `tests/WorkGroup.Application.Tests/JsonGroupRepositoryTests.cs`
-  - **Edge Cases**: 파일 없음→빈 컬렉션. JSON 손상→백업 후 빈 컬렉션으로 복구(로깅). 동시 쓰기→파일 락/원자적 쓰기(temp→rename). 디스크 풀→예외→Result 실패.
-  - **Halt Forecast**: "스키마 버전 필드?" → D7(schemaVersion 포함). "경로 주입?" → 생성자 주입으로 테스트 가능화.
-  - **Depends on**: T3
-
-- [x] **T7. 바로가기(.lnk) 생성 서비스**
-  - **Type**: D
-  - **Acceptance(T2 검증 반영해 갱신)**: `IShortcutService.CreateOrUpdate(group, iconPath)`가 IShellLink COM(자체 `ShortcutWriter`)로 `%USERPROFILE%\WorkGroup\Shortcuts\{표시용 그룹명}.lnk` 생성: 타깃=AppExecutionAlias, 인자=`--group {groupId}`(GroupArgs), 아이콘=그룹 .ico. 파일명은 **표시용 그룹명(금지문자 치환)** — 작업 표시줄 라벨 표시용이며, 그룹 식별은 인자의 groupId로 한다. Delete 멱등. `CleanupOrphans(validGroups)`로 고아 .lnk 정리.
-  - **결정 변경(T2 검증)**: ① **커스텀 AUMID 미사용** — T2/AppGroup 검증 결과 .lnk 핀·클릭에 IPropertyStore AUMID가 불필요(D3 사실상 불요). ② 파일명을 `{groupId}` 대신 **표시용 그룹명**으로(taskbar 라벨 가독성). ③ `.lnk` 생성은 CsWin32가 아닌 **자체 IShellLink COM(`ShortcutWriter`)** — `NativeMethods.txt`는 좌표 API(GetCursorPos 등) 전용이라 T7 동반 파일에서 제외.
-  - **Files**:
-    - 주: `src/WorkGroup.Application/Shortcuts/IShortcutService.cs`, `src/WorkGroup.Infrastructure/Shortcuts/ShortcutService.cs`, `src/WorkGroup.Infrastructure/Shortcuts/ShortcutWriter.cs`(IShortcutWriter 추출 — 주입/테스트 가능)
-    - 테스트: `tests/WorkGroup.Application.Tests/ShortcutServiceTests.cs`
-  - **Edge Cases**: .lnk 이미 존재→갱신(덮어쓰기). 라이터 예외→Result 실패(주입형 IShortcutWriter로 검증). 금지문자→치환. 고아→CleanupOrphans.
-  - **Depends on**: T2(C1/C2 통과 — alias 활성화), T5
-
-- [x] **T8. Application 서비스(그룹 관리 use case 오케스트레이션)**
-  - **Type**: C
-  - **Acceptance**: `GroupAppService`의 SaveAsync(생성/갱신)·DeleteAsync가 아이콘 생성(T5)→.lnk 생성/갱신(T7)→영속화(T6)를 순서대로 수행하고, 실패 시 아래 단일 일관성 정책대로 동작(단위 테스트는 인프라 인터페이스 페이크로 각 실패 지점 검증). `CleanupOrphansAsync`로 고아 .lnk/.ico 정리.
-  - **일관성 정책(M3, 단일안)**: 영속화 순서를 **(1)아이콘 → (2).lnk → (3)groups.json 저장**으로 고정하고, **groups.json 저장이 성공해야만 그룹이 "존재"로 간주**한다.
-    - (1) 또는 (2) 실패 → json 저장 안 함 → 그룹은 미존재. 이미 만든 .ico/.lnk는 정리 시도. 정리마저 실패하면 그 파일은 **orphan**으로 남되 무해(groupId가 json에 없음). 고아 파일은 `CleanupOrphansAsync`(.lnk=ShortcutService 위임 / .ico={id}.ico 규칙)로 제거 — **구현 완료(앱 시작 시 호출은 Plan 2 조립 단계에서 연결)**.
-    - (3) json 저장 실패 → (1)(2) 산출물 정리 시도 → 그룹 미존재.
-    - 재시도는 하지 않는다(사용자가 다시 저장 시 멱등 수렴).
-  - **Files**:
-    - 주: `src/WorkGroup.Application/Groups/GroupAppService.cs`, `IGroupAppService.cs`
-    - 테스트: `tests/WorkGroup.Application.Tests/GroupAppServiceTests.cs`
-  - **Edge Cases**: 삭제 시 .lnk/.ico/json 모두 정리(그룹 미발견 시 .lnk는 표시명 추론 불가 → CleanupOrphansAsync가 보완). 멱등성(중복 Save→upsert 수렴). 고아 .lnk/.ico 청소.
-  - **Halt Forecast**: "롤백/orphan 정책?" → 위 단일 일관성 정책 + CleanupOrphansAsync로 고정.
-  - **Depends on**: T6, T7
-
----
-
-## Tasks — Plan 2 (UI·런처): **Plan 1(T1a–T8) 완료 후 별도 실행**
-
-> Q1 답변에 따라 분할. **implement-task는 우선 Plan 1만 실행**한다. Plan 1 완료(특히 T2 게이트 통과) 후, 이 Plan 2 task들을 활성 대상으로 승격해 별도 실행한다. T2가 게이트 실패 시 T10/T11은 plan 재작성 대상이다(D15).
-> Plan 2 UI는 **D17(WinUI 3 Gallery / Fluent 디자인 가이드)** 를 전 task 공통으로 적용한다.
-
-- [x] **T9. 메인 화면 UI(앱 목록 + 그룹 빌더 + 아이콘 설정)** (빌드 완료 / 시각 검증 사용자 대기)
-  - **Type**: D
-  - **Acceptance**: 메인 창에서 (1) 설치 앱 목록 표시·검색, (2) 앱 선택→그룹 구성/이름 지정, (3) 그룹 아이콘 3소스(내장/멤버앱/사용자이미지) 선택, (4) 저장 시 GroupAppService 호출 흐름 동작(수동). x:Bind 기반 MVVM. **D17 Fluent 적용**(NavigationView 기반 셸, Mica 백드롭, 표준 컨트롤, 라이트/다크 테마).
-  - **Files**:
-    - 주: `src/WorkGroup.App/Views/MainPage.xaml(.cs)`, `src/WorkGroup.App/ViewModels/MainViewModel.cs`, `GroupEditViewModel.cs`, `IconPickerViewModel.cs`
-    - 동반: `src/WorkGroup.App/Views/IconPickerDialog.xaml(.cs)`, DI 등록(`App.xaml.cs`/`ServiceConfiguration.cs`)
-  - **Edge Cases**: 앱 목록 로딩 중→진행 표시. 빈 검색 결과→빈 상태 안내. 그룹명 미입력→저장 비활성. 대량 앱 목록→가상화(ItemsRepeater/ListView 가상화).
-  - **Halt Forecast**: "아이콘 미리보기 비동기 로딩?" → 가상화 + 비동기 썸네일. "검증 실패 UI?" → D14(InfoBar). "디자인 기준?" → D17. 파일 1500라인 초과 시 ViewModel 분리(이미 분리 설계).
-  - **Depends on**: T4, T8
-
-- [x] **T10. 그룹 리스트 + 작업 표시줄 드래그 등록** (빌드 완료 / 시각·드래그 검증 사용자 대기 — T9와 같은 화면에 구현)
-  - **Type**: D
-  - **Acceptance**: 저장된 그룹이 목록으로 표시되고, 목록 항목을 OS로 드래그 시 해당 그룹의 .lnk를 CF_HDROP 셸 파일로 제공 → 작업 표시줄에 핀됨(수동, 대상 환경). 드래그 핀 불가 환경 폴백: "그룹 폴더 열기 + 안내" 버튼.
-  - **Files**:
-    - 주: `src/WorkGroup.App/Views/GroupListPage.xaml(.cs)`, `src/WorkGroup.App/ViewModels/GroupListViewModel.cs`, `src/WorkGroup.App/Interop/ShellDragSource.cs`
-    - 동반: `src/WorkGroup.Infrastructure/Interop/NativeMethods.txt`
-  - **Edge Cases**: 드래그 취소→무동작. .lnk 미생성 그룹→드래그 차단. 핀 실패(환경)→폴백 안내.
-  - **Halt Forecast**: "WinUI 드래그로 OS 파일 드롭 제공 방법?" → T2(C4)에서 검증된 `DataPackage.SetStorageItems`(.lnk StorageFile) 경로. T2 게이트 통과 전제(D15).
-  - **Depends on**: T2(C4 통과), T8
-
-- [x] **T11. 팝업 런처(클릭 시 그룹 그리드 팝업 + 앱 실행)** (빌드 완료 / 클릭·실행 검증 사용자 대기 — spike 팝업을 정식 GridView로 교체)
-  - **Type**: D
-  - **Acceptance**: 핀된 그룹 아이콘 클릭 → 단일 인스턴스 앱이 `--group {id}` 수신 → D4 좌표 규칙대로 작업 표시줄 변 위에 아이콘 그리드 팝업(항상 위, 포커스 잃으면 자동 닫힘) 표시 → 항목 클릭 시 해당 앱 실행(Win32 경로 실행 / 패키지 AUMID 활성화)(수동 확인). **D17 Fluent 적용**(Acrylic 백드롭, 둥근 모서리). 창 위치·always-on-top·표시는 **WinUIEx** 헬퍼 활용.
-  - **Files**:
-    - 주: `src/WorkGroup.App/Views/GroupPopupWindow.xaml(.cs)`, `src/WorkGroup.App/ViewModels/GroupPopupViewModel.cs`, `src/WorkGroup.App/Activation/LaunchActivationHandler.cs`(T2 확장)
-    - 동반: `src/WorkGroup.Infrastructure/Launch/IAppLauncher.cs` + `AppLauncher.cs`(IApplicationActivationManager / Process.Start)
-  - **Edge Cases**: 그룹 삭제됨/멤버 0개→안내 팝업. 멀티 모니터/작업 표시줄 위치→D4 작업영역 보정. 앱 실행 실패(경로 없음)→토스트. 팝업 떠 있을 때 다른 그룹 클릭→기존 팝업 닫고 새로 표시.
-  - **Halt Forecast**: "패키지 앱 실행 방법?" → IApplicationActivationManager.ActivateApplication(AUMID). "포커스 손실 닫힘?" → Window Deactivated 처리(WinUIEx). "정확 좌표?" → D4. "디자인?" → D17.
-  - **Depends on**: T2(C1~C3 통과), T8
-
-- [x] **T12. 자동 시작 + 마무리(설정/트레이/문서)** (빌드 완료 / 동작 검증 사용자 대기 — Win32 트레이 + StartupTask, 별칭 finalize, 문서 갱신)
-  - **Type**: C
-  - **Acceptance**: 로그인 시 백그라운드 상주(StartupTask extension, 사용자 토글 가능), 트레이 아이콘에서 메인 창 열기/종료. `README.md`(개요·기능·실행·아키텍처) 및 `notes.md` 최종 갱신.
-  - **Files**:
-    - 주: `src/WorkGroup.App/Package.appxmanifest`(windows.startupTask), `src/WorkGroup.App/Services/StartupService.cs`, `src/WorkGroup.App/Tray/TrayIconService.cs`(WinUIEx 트레이)
+    - 제거: `src/WorkGroup.App/Views/MainPage.xaml(.cs)`, `src/WorkGroup.App/ViewModels/MainViewModel.cs`
+    - 수정: `src/WorkGroup.App/ServiceConfiguration.cs`
     - 문서: `README.md`, `notes.md`
-  - **Edge Cases**: 사용자가 자동 시작 비활성→다음 로그인부터 미기동. 트레이 미지원 환경→무시.
-  - **Halt Forecast**: "StartupTask 동의 흐름?" → RequestEnableAsync 결과 처리. "트레이 구현?" → WinUIEx. 문서 누락 시 4단계 위반 → 본 task에서 확정.
-  - **Depends on**: T9, T10, T11
-
-## Known Workarounds
-- 작업 표시줄 드래그 핀이 동작하지 않는 Windows 빌드: 우리 앱은 핀을 강제할 수 없으므로 "그룹 폴더 열기 + 우클릭 핀 안내"를 폴백으로 제공(T10). 근본적으로는 Microsoft 핀 API(Limited Access Feature) 채택이 필요하나 본 plan 범위 밖.
+  - **Edge Cases**: 제거 후 빌드 깨짐→위 grep로 잔여 참조 확인 후 정리.
+  - **Halt Forecast**: 없음(영향 4-A로 한정 + grep 0 hit로 확정).
+  - **Depends on**: T3, T4, T5, T7
 
 ## Verification Strategy
-- 빌드: **`dotnet build WorkGroup.slnx`** (플랫폼 미지정 — 솔루션 단위 빌드 확정. `-p:Platform=x64` 강제 시 slnx 솔루션 구성 매핑 오류 발생하므로 미지정 사용. 앱 단독 RID 빌드가 필요하면 `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64`). **검증됨: T1a에서 0 warning / 0 error.**
-- 단위 테스트: `dotnet test`(Domain/Application; Infrastructure·UI 제외)
-- 패키지 앱 디버그 실행(수동, GUI — 자율 실행에서 관찰 불가, 사용자 확인 필요): Visual Studio F5(MSIX 배포) 또는 `dotnet build` 후 생성 패키지 등록. 절차는 README에 기록(T1b).
-
-> **follow-up(T1a)**: `dotnet new sln`이 .NET 10 기본값인 `WorkGroup.slnx`(신형 XML 솔루션)를 생성 → plan/AGENTS의 `WorkGroup.sln` 표기를 `WorkGroup.slnx`로 통일. 템플릿은 `VijayAnand.WinUITemplates`(서드파티)이나 생성물은 표준 WinUI3 구성(Microsoft.WindowsAppSDK 1.*, Microsoft.Windows.SDK.BuildTools 10.*, Microsoft.Web.WebView2 1.* — 공식 템플릿 baseline과 동일). 기본 `WindowsPackageType=None`(비패키지 실행 가능)이며 `EnableMsixTooling=true`로 MSIX 패키징 가능 — MSIX 식별자/capability 설정은 T2에서 확정.
-- 수동 검증(필수):
-  - T2(게이트): C1~C4 체크리스트(핀/클릭 인자 수신/팝업 위치/드래그 핀) 모두 통과 확인
-  - T4: 주요 설치 앱이 목록에 표시되는지 확인
-  - T7: .lnk 더블클릭 기동 확인
-  - T10: 리스트 드래그→작업 표시줄 핀 확인(대상 환경)
-  - T11: 핀 아이콘 클릭→그리드 팝업→앱 실행 확인
+- 빌드: `dotnet build WorkGroup.slnx` (0 경고/0 에러).
+- 테스트: `dotnet test WorkGroup.slnx` (Domain/Application 80건 회귀 없음).
+- 수동(GUI — 자율 실행 관찰 불가, 사용자 확인 필요):
+  - T1: NavigationView 4메뉴(작업그룹/트레이메뉴/설정/정보) 전환.
+  - T2: Mica 백드롭 + 시작 시 저장된 테마 적용 + 팝업 테마 일치.
+  - T3: 자동시작 토글 동작 + 테마 3택 즉시 적용·재시작 유지.
+  - T4: 버전 표시 + 라이선스 목록 + 링크 열림.
+  - T6/T7: 그룹 추가 다이얼로그(앱 체크/아이콘) → 목록에 그룹아이콘+2라인 표시 → 수정/삭제 → 작업 표시줄 드래그 핀.
 
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
-- **T2 게이트 통과(2026-06-02, 사용자 확인)**: C1(.lnk 생성+핀) / C2(클릭→--group 수신) / C3(작업 표시줄 변 팝업) / C4(앱 드래그→핀) 모두 동작. 검증된 방식 = `%USERPROFILE%\WorkGroup` 저장 + ListView `DragItemsStarting` + 지연 `SetDataProvider(StorageItems)` + 임시 복사. 커스텀 AUMID 불필요(D3 사실상 불요). 승격 유지: GroupArgs/ActivationParser/TaskbarPopupPositioner/ScreenMetricsProvider/ShortcutWriter.
-- **T7·T8 완료**: IShortcutService/ShortcutService(IShellLink, %USERPROFILE% 저장, --group {id} 인자, 표시명 .lnk, CleanupOrphans) + IShortcutWriter 추출(주입형). GroupAppService(아이콘→.lnk→json 일관성 정책 + DeleteAsync + CleanupOrphansAsync). 테스트 ShortcutService 7 + GroupAppService 6. 리뷰 spec/quality 반영 후 spec-compliance 재검토 OK. **Plan 1 전체(T1a~T8) 완료. 빌드 0/0, 테스트 77건(Domain 11 + Application 66).**
-- T1a–T1b 완료 (커밋 1e2b1be 외): WinUI3 앱 + 4 레이어/2 테스트 프로젝트 스캐폴딩, 문서(AGENTS/README/notes) 작성. 전체 빌드 0/0, 테스트 2/2 통과. 빌드 명령 `dotnet build WorkGroup.slnx` 확정(.slnx 채택). **미완(수동 사용자 대기): T1a GUI 창 표시 시각 확인.**
-- T3 완료 (Domain): AppGroup/AppEntry/GroupId/IconSource + Result 패턴(D14). 불변식 단위 테스트 11/11 통과, 빌드 0/0(CS0109 경고 수정). spec-compliance OK. Domain 외부 의존 0 확인.
-- T6 완료 (영속화): IGroupRepository(Application) + JsonGroupRepository(Infrastructure, 경로 주입형·원자적 쓰기·손상 백업·schemaVersion). 테스트 8/8, 빌드 0/0, spec-compliance OK. **부수 변경(필수)**: ① Infrastructure에 Microsoft.Extensions.Logging.Abstractions 추가 ② Application.Tests TFM→net10.0-windows + Infrastructure 참조(net10.0 테스트가 windows 프로젝트 참조 불가 해소) ③ App.xaml.cs 베이스를 `Microsoft.UI.Xaml.Application`로 정규화(WorkGroup.Application 네임스페이스 충돌 CS0118 해소).
-  - follow-up: 향후 UI 코드에서 unqualified `Application` 사용 시 형제 네임스페이스 충돌 재발 가능 → 정규화 또는 alias 주의(T9~). T8에서 JsonGroupRepository에 `ApplicationData.Current.LocalFolder.Path` 주입 연결 필요.
-- T5 완료 (아이콘): IIconService(Application) + IconService(Infrastructure, WIC 디코드/리사이즈/PNG + 셸 썸네일 추출 + 단색 내장/기본 생성 + 폴백) + 순수 IcoWriter(.ico 컨테이너, D16). 테스트 19/19(IcoWriter 6 + IconService 5: CustomImage/BuiltIn/폴백/재디코드/notepad.exe 추출). WIC가 헤드리스 테스트 호스트에서 동작 확인. 빌드 0/0, spec-compliance MINOR1(문서)만. **현재 Application.Tests 19건 누적.**
-- T4 완료 (인벤토리): IAppInventory + InstalledAppInventory(패키지=PackageManager, Win32=시작 메뉴 .lnk, 표시명 dedup, packageQuery capability, 19041 가드, CreateManualEntry 수동추가). 테스트 39건(순수 MergeApps/CreateManualEntry 7 + 실머신 Integration 2 추가). 빌드 0/0. **리뷰 2종 반영**: spec BLOCKER 2(B1 Win32방식·B2 수동추가)+MAJOR1(dedup) → B1/M1은 plan에 구현방식 정당화 기록, B2는 CreateManualEntry 구현으로 해소. 품질 MAJOR2(테스트 분리·통합테스트) → 순수 단위테스트 추가 + Integration 트레이트, MINOR2(빈catch·주석) 수정.
-
-## Next Steps
-<!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-02)**: ✅ **Plan 1 + Plan 2 전체 완료(T1a~T12).** 사용자 시각/동작 검증 통과(앱 목록·그룹 생성·아이콘·드래그 핀·클릭 팝업·실행·트레이·자동시작·minimize-to-tray). 전체 빌드 0/0, 테스트 80건(Domain 11 + Application 69).
-- 검증된 핵심 패턴: 드래그=ListView DragItemsStarting+지연 SetDataProvider, 저장=%USERPROFILE%, 팝업=TaskbarPopupPositioner, 실행 별칭=WorkGroup.exe, 커스텀 AUMID 불요(D3), 매 클릭 새 인스턴스(D11), Win32 트레이(의존성 없음).
-- **남은 follow-up(선택)**: ① 표시명 중복 그룹 .lnk 충돌 회피(파일명 id 접미) ② 트레이 아이콘을 앱 전용 아이콘으로 교체 ③ 단일 인스턴스(D11-A) 필요 시 도입 ④ Fluent 디자인 다듬기(D17) ⑤ 그룹 이름 변경 시 핀된 .lnk 갱신(현재는 CleanupOrphans가 옛 .lnk 정리).
-- Suggested skills: 공식 /code-review, /security-review, PR 생성
-- **사용자 확인 필요(2건)**:
-  1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
-  2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
-- **다음 자율 작업(T2 게이트와 독립, D15)**: T6(영속화)·T5(아이콘)·T4(인벤토리 코드)는 단위 테스트/빌드로 자율 검증 가능 → 이어서 진행 가능. T7·T8은 T2 게이트 통과 후.
-- 재개: "T5부터 계속" 또는 "T2 spike 코드부터" 등으로 지정.
-- Suggested skills: pjc:implement-task / 공식 /code-review
 
 ## Open Questions (모두 해결됨)
-- [x] Q1: task 분할 → **B) 2개 plan으로 분할(Plan 1=T1a~T8, Plan 2=T9~T12)** 로 확정(사용자).
-- [x] Q2: 신규 의존성 → **모두 승인 + WinUIEx 추가 + WinUI 3 Gallery 디자인 가이드(D17) 적용** 으로 확정(사용자). D12/D17 반영.
+- [x] 자동 시작 토글 위치 → **설정 메뉴 신설**, 자동시작 토글 + 테마(시스템/다크/라이트) 포함(사용자).
+- [x] 라이선스 표시 수준 → **이름+종류+링크**(사용자).
+- [x] 아이콘 설정 UI → **기존 옵션 유지**(사용자).
