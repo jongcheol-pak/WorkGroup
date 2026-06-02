@@ -58,9 +58,10 @@
             <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="4,0,0,0">
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameDisplayVisibility, Mode=OneWay}">
                     <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
-                    <!-- 입력창(TextBox)과 콘텐츠 인셋(좌측 보더1+패딩10=11, 상단 보더1+패딩5=6)을 맞춰 모드 전환 시 글자 위치 고정 -->
+                    <!-- 입력창(TextBox)과 동일 높이(40)·세로 중앙 정렬·좌측 인셋(보더1+패딩10=11)을 맞춰 모드 전환 시 위치·크기 고정 -->
                     <Button Click="OnEditNameClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                            Background="Transparent" BorderThickness="0" Padding="11,6,6,5"
+                            Background="Transparent" BorderThickness="0" Padding="11,0,6,0"
+                            Height="40" VerticalContentAlignment="Center"
                             ToolTipService.ToolTip="이름 수정">
                         <Grid ColumnSpacing="6">
                             <Grid.ColumnDefinitions>
@@ -77,7 +78,7 @@
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}">
                     <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
                     <TextBox x:Name="NameTextBox" PlaceholderText="이름 입력(최대 15자)" FontSize="20"
-                             MaxLength="15" Padding="10,5,6,5"
+                             MaxLength="15" Padding="10,0,6,0" Height="40" VerticalContentAlignment="Center"
                              Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
             </Grid>
