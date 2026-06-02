@@ -29,7 +29,7 @@
 - 호출처 grep: `AddApp` = xaml.cs:94(picker, 토글로 대체) + VM 내부. `RemoveApp` = xaml.cs:100(본문 삭제, 유지) + VM ToggleApp.
 
 ## Tasks
-- [ ] **T1 — 팝업 선택 표시 + 토글** *(~1h)*
+- [x] **T1 — 팝업 선택 표시 + 토글** *(~1h)*
   - **Type**: C
   - **Acceptance**:
     - `PopupAppItem`에 `[ObservableProperty] bool IsSelected` + `Visibility SelectionGlyphVisibility => IsSelected ? Visible : Collapsed`(`[NotifyPropertyChangedFor]`로 갱신). `using Microsoft.UI.Xaml` 추가.
@@ -55,3 +55,4 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- T1 완료 (커밋 c38e1f9): 앱 추가 팝업에서 추가된 항목을 제외하지 않고 체크 아이콘 표시(LaunchTarget 기준 IsSelected), 클릭 토글(ToggleApp). PopupAppItem.IsSelected/SelectionGlyphVisibility, RefreshAvailable 전체표시+IsSelected 계산, XAML 체크 열, OnAppPickerItemClick→ToggleApp. 빌드 0/0, 테스트 80/80, spec OK. **plan 완료.** GUI 시각 검증만 잔여.
