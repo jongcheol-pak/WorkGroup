@@ -45,9 +45,16 @@ public sealed partial class GroupEditDialog : ContentDialog
         }
     }
 
-    // 아이콘 Flyout이 열릴 때마다 리소스 그리드를 접어 두 선택지부터 보이게 한다.
-    private void OnIconFlyoutOpening(object? sender, object e)
-        => ViewModel.ShowResourceGrid = false;
+    // 아이콘 Flyout이 열릴 때마다 리소스 그리드를 접고, 리소스 아이콘을 지연 로드한다(오픈 성능).
+    private async void OnIconFlyoutOpening(object? sender, object e)
+    {
+        ViewModel.ShowResourceGrid = false;
+        await ViewModel.EnsureResourceIconsAsync();
+    }
+
+    // "앱 추가" Flyout이 처음 열릴 때 설치 앱을 지연 로드한다(다이얼로그 오픈/취소 성능 — plan.md Debug 섹션).
+    private async void OnAppPickerFlyoutOpening(object? sender, object e)
+        => await ViewModel.EnsurePickerLoadedAsync();
 
     private async void OnUserIconClick(object sender, RoutedEventArgs e)
     {

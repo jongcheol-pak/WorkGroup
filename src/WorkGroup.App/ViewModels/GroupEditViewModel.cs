@@ -30,6 +30,10 @@ public sealed partial class GroupEditViewModel : ObservableObject
     private HashSet<string> _existingNames = new(StringComparer.OrdinalIgnoreCase);
     private GroupId? _editingId;
 
+    // 리소스 아이콘/설치앱 picker는 각 Flyout이 처음 열릴 때 지연 로드한다(오픈/취소 성능 — plan.md Debug 섹션 참조).
+    private bool _resourceLoaded;
+    private bool _pickerLoaded;
+
     public GroupEditViewModel(IAppInventory inventory, IGroupAppService groupService, ResourceIconCatalog resourceIcons)
     {
         _inventory = inventory;
@@ -61,8 +65,13 @@ public sealed partial class GroupEditViewModel : ObservableObject
     [ObservableProperty]
     public partial string PickerSearch { get; set; }
 
+    /// <summary>"앱 추가" 팝업이 설치 앱을 로드 중인지(ProgressRing).</summary>
     [ObservableProperty]
-    public partial bool IsLoading { get; set; }
+    [NotifyPropertyChangedFor(nameof(PickerListVisibility))]
+    public partial bool IsPickerLoading { get; set; }
+
+    /// <summary>로딩 중에는 후보 목록을 숨겨 ProgressRing과 겹치지 않게 한다.</summary>
+    public Visibility PickerListVisibility => IsPickerLoading ? Visibility.Collapsed : Visibility.Visible;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
@@ -85,22 +94,20 @@ public sealed partial class GroupEditViewModel : ObservableObject
 
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
 
-    /// <summary>신규(group=null)/편집 모드로 초기화. UI 스레드에서 호출(BitmapImage 생성, plan.md M2).</summary>
+    /// <summary>
+    /// 신규/편집 모드로 초기화. 무거운 설치앱 인벤토리·리소스 그리드는 여기서 로드하지 않고
+    /// 각 Flyout이 열릴 때 지연 로드한다(편집 멤버는 즉시 복원 — plan.md Debug 섹션 참조).
+    /// </summary>
     public async Task InitializeAsync(AppGroup? group)
     {
-        IsLoading = true;
         ShowResourceGrid = false;
+        _resourceLoaded = false;
+        _pickerLoaded = false;
         try
         {
             _editingId = group?.Id;
             Title = group is null ? "그룹 추가" : "그룹 수정";
             EditingName = group?.Name ?? string.Empty;
-
-            // 리소스 아이콘 그리드(BitmapImage는 UI 스레드에서 생성).
-            var uris = await _resourceIcons.GetIconUrisAsync();
-            ResourceIcons.Clear();
-            foreach (var uri in uris)
-                ResourceIcons.Add(new ResourceIconItem(uri, new BitmapImage(new Uri(uri))));
 
             // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외).
             var groups = await _groupService.GetAllAsync();
@@ -113,7 +120,48 @@ public sealed partial class GroupEditViewModel : ObservableObject
             SelectedIcon = group?.Icon ?? IconSource.FromCustomImage(DefaultIconUri);
             ResolvePreview(group);
 
-            // 설치 앱 로드(아이콘 1회 로드).
+            // 편집 멤버는 느린 설치앱 인벤토리를 기다리지 않고 그룹 데이터에서 즉시 복원한다.
+            SelectedApps.Clear();
+            _installedItems.Clear();
+            if (group is not null)
+                foreach (var app in group.Apps)
+                {
+                    var item = new PopupAppItem(app);
+                    SelectedApps.Add(item);
+                    _ = item.LoadIconAsync();
+                }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"불러오기 실패: {ex.Message}";
+        }
+    }
+
+    /// <summary>아이콘 Flyout이 처음 열릴 때 리소스 아이콘 그리드를 지연 로드한다(UI 스레드).</summary>
+    public async Task EnsureResourceIconsAsync()
+    {
+        if (_resourceLoaded) return;
+        try
+        {
+            var uris = await _resourceIcons.GetIconUrisAsync();
+            ResourceIcons.Clear();
+            foreach (var uri in uris)
+                ResourceIcons.Add(new ResourceIconItem(uri, new BitmapImage(new Uri(uri))));
+            _resourceLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"리소스 아이콘을 불러오지 못했습니다: {ex.Message}";
+        }
+    }
+
+    /// <summary>"앱 추가" Flyout이 처음 열릴 때 설치 앱을 지연 로드한다(아이콘 1회 로드).</summary>
+    public async Task EnsurePickerLoadedAsync()
+    {
+        if (_pickerLoaded) return;
+        IsPickerLoading = true;
+        try
+        {
             _installedItems.Clear();
             foreach (var app in await _inventory.GetInstalledAppsAsync())
             {
@@ -121,22 +169,16 @@ public sealed partial class GroupEditViewModel : ObservableObject
                 _installedItems.Add(item);
                 _ = item.LoadIconAsync();
             }
-
-            // 편집 시 기존 멤버 복원.
-            SelectedApps.Clear();
-            if (group is not null)
-                foreach (var app in group.Apps)
-                    AddApp(app);
-
             RefreshAvailable();
+            _pickerLoaded = true;
         }
         catch (Exception ex)
         {
-            StatusMessage = $"불러오기 실패: {ex.Message}";
+            StatusMessage = $"앱 목록을 불러오지 못했습니다: {ex.Message}";
         }
         finally
         {
-            IsLoading = false;
+            IsPickerLoading = false;
         }
     }
 

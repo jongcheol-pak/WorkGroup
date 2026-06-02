@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 그룹 편집 다이얼로그 성능 버그 수정(근본 원인) — InitializeAsync가 오픈 시 설치앱 전체 인벤토리 + 수백 개 셸 썸네일 아이콘을 eager 로드해 UI 스레드 포화(멤버 목록 지연 + 취소 지연). 편집 멤버는 group.Apps에서 즉시 복원(인벤토리 무관), 설치앱 인벤토리는 "앱 추가" Flyout 열 때, 리소스 아이콘 그리드는 아이콘 Flyout 열 때 지연 로드(1회 가드 + ProgressRing). 빌드 0/0, 테스트 80/80. (근본 원인·가설은 plan.md Debug 섹션.)
 - 2026-06-02: 그룹 추가/수정 다이얼로그 전면 개편 — 상단 [아이콘 미리보기][이름(15자)], 아이콘 클릭 시 사용자 이미지/리소스 아이콘 선택(단일 Flyout 토글 + GridView), "앱 추가" Flyout로 설치 앱을 선택 목록에 추가(항목별 삭제), 확인 시 빈 목록·이름 중복 검증(GetAllAsync 스냅샷). 기존 ComboBox/체크박스 모델 제거(SelectableAppItem 삭제, PopupAppItem 재사용). 리소스 아이콘 91개 번들(Assets/GroupIcons) + IconService ms-appx 디코드 + ResourceIconCatalog. 도메인/직렬화 무변경(리소스=CustomImage ms-appx URI). 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 작업 그룹 목록을 항목별 개별 카드로 표시(SettingsCard 목록과 동일한 룩) — 단일 ListView 카드 래퍼 제거, 각 GroupListItem을 둥근 카드 Border(간격 8)로, ListViewItem 패딩 제거(전체 폭). 드래그 핀/수정·삭제/바인딩 계약 불변. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: WinUI Gallery Fluent 디자인 정합(참조: NapCat) — CommunityToolkit.WinUI.Controls.SettingsControls 8.2.251219 추가(WinAppSDK 1.8 호환). 디자인 토큰 리소스(Resources/Spacing.xaml=PageContentPadding/ContentMaxWidth/SideNavWidth, ControlStyles.xaml=CardStyle/Hero/Primary·SecondaryActionStyle/SettingsGroupHeaderStyle). 셸: 커스텀 TitleBar(ExtendsContentIntoTitleBar) + NavigationView 정교화(280 pane, 컨텐츠 보더 제거, Transparent). 설정/정보 페이지를 SettingsCard로, 작업그룹/트레이/정보/설정 전 페이지를 공통 레이아웃(ScrollViewer/PageContentPadding/MaxWidth/헤더)으로 통일. 기능/바인딩 불변(코드비하인드 미변경). 빌드 0/0, 테스트 80/80. (TitleBar 드래그/캡션 시각은 GUI 수동 확인 대상.)

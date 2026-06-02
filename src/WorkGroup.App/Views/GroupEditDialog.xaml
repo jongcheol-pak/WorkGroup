@@ -68,7 +68,7 @@
                 <TextBlock Text="앱 추가" />
             </StackPanel>
             <Button.Flyout>
-                <Flyout>
+                <Flyout Opening="OnAppPickerFlyoutOpening">
                     <Grid Width="320" Height="380" RowSpacing="8">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -76,7 +76,10 @@
                         </Grid.RowDefinitions>
                         <TextBox PlaceholderText="앱 검색"
                                  Text="{x:Bind ViewModel.PickerSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsPickerLoading, Mode=OneWay}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
                         <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.AvailableApps, Mode=OneWay}"
+                                  Visibility="{x:Bind ViewModel.PickerListVisibility, Mode=OneWay}"
                                   SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAppPickerItemClick">
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:PopupAppItem">
