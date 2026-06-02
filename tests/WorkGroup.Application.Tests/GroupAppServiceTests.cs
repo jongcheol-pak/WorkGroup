@@ -100,8 +100,8 @@ public sealed class GroupAppServiceTests : IDisposable
         var sut = CreateSut();
         await sut.SaveAsync(group); // 유효 그룹 폴더 1개 + Icons\{id}.ico 생성
 
-        // 유효 그룹에 없는 고아 그룹 폴더 생성
-        var orphanDir = Path.Combine(_groupsDir, "orphan-id");
+        // 유효 그룹에 없는 고아 그룹 폴더 생성(폴더명은 그룹 id 형식: GUID "N")
+        var orphanDir = Path.Combine(_groupsDir, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(orphanDir);
         File.WriteAllText(Path.Combine(orphanDir, "x.ico"), "x");
 

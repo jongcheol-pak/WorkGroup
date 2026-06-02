@@ -110,7 +110,9 @@ public sealed class GroupAppService : IGroupAppService
 
                 foreach (var dir in Directory.EnumerateDirectories(_groupsDirectory))
                 {
-                    if (!validIds.Contains(Path.GetFileName(dir)))
+                    var name = Path.GetFileName(dir);
+                    // 그룹 id 형식(GUID "N", 32자 hex) 폴더만 대상으로 한다 → 사용자/타 앱이 둔 임의 폴더 오삭제 방지.
+                    if (IsGroupIdFolder(name) && !validIds.Contains(name))
                         TryDeleteDirectory(dir);
                 }
             }
@@ -120,6 +122,10 @@ public sealed class GroupAppService : IGroupAppService
             _logger.LogWarning(ex, "고아 그룹 폴더 정리 실패");
         }
     }
+
+    /// <summary>폴더명이 그룹 id(GUID "N": 32자 hex)인지 판정한다(고아 정리 안전 가드).</summary>
+    private static bool IsGroupIdFolder(string name)
+        => name.Length == 32 && name.All(Uri.IsHexDigit);
 
     private void TryDeleteGroupFolder(GroupId id) => TryDeleteDirectory(GroupFolder(id));
 
