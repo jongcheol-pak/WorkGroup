@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 그룹 아이콘 .ico+.png 동시 생성, 목록은 .png로 표시(선명도 근본 해결) — IconService가 {id}.ico(작업표시줄)와 함께 {id}.png(원본 해상도, EncodePngAsync no-scale)를 저장(CreateGroupIconAsync/CreateDefaultAsync). GroupIconLoader.GetPngPath 추가. GroupListItem은 PNG 우선 로드(없으면 .ico 폴백, 둘 다 IgnoreImageCache)→ .ico 프레임 디코드 없이 GPU 축소로 선명. GroupAppService 삭제/고아정리에 .png 포함. IconServiceTests에 PNG 생성 검증 추가. 기존 그룹은 재저장 시 .png 생성됨. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 그룹 목록 .ico 표시 방식 수정(선명도) — DecodePixelWidth=32가 .ico의 작은 프레임 선택/업스케일을 유발해 흐림. 크기 미지정 디코드(최대 프레임)→Image(32px) GPU 축소로 변경(편집 미리보기와 동일 방식). IconService는 .ico 프레임을 큰 것부터 기록(frame0=최대). 참고: 기존 그룹 .ico는 옛 파이프라인 산출물이라 그룹 수정→확인으로 재저장해야 개선된 .ico로 재생성됨(수동, 사용자 결정). 빌드 0/0, 테스트 80/80.
 - 2026-06-02: 작업 그룹 목록 아이콘을 다시 .ico로 표시 — .ico 생성 선명도 개선(업스케일 금지+종횡비 보존) 후, 목록도 모든 그룹을 생성된 .ico로 통일(앞서 넣은 CustomImage 원본 직접 로드 분기 제거). GroupListItem.TryLoadCustomImage 제거. .ico 로드 시 DecodePixelType.Logical + IgnoreImageCache는 유지(선명/즉시반영). 빌드 0/0.
 - 2026-06-02: .ico 생성 선명도 개선 — 기존엔 모든 프레임을 size×size로 stretch해 ① 작은 원본(~100px)을 256으로 업스케일(흐림) ② 비정사각 원본 왜곡. 변경: 원본 최대 변 이하의 표준 크기(16/24/32/48/64/128/256)만 생성 + 최상위는 원본 크기(업스케일 금지), 각 프레임은 종횡비 보존 축소(Fant) 후 정사각 투명 캔버스 중앙 배치. IconService.WriteIcoAsync/EncodeFrameAsync/ScaleAsync 추가. 프레임 수 가변이라 IconServiceTests의 프레임 수 단정(4)→(≥1)로 완화. 빌드 0/0, 테스트 80/80(.ico 생성·디코드 테스트 포함).

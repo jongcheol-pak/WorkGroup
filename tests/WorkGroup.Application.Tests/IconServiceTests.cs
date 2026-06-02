@@ -33,6 +33,11 @@ public sealed class IconServiceTests : IDisposable
         Assert.Equal(0, bytes[3]);
         // 프레임 수는 원본 크기에 따라 가변(업스케일 금지). 최소 1개 이상.
         Assert.True(bytes[4] >= 1, "최소 한 개의 프레임이 있어야 한다.");
+
+        // 목록 표시용 PNG가 .ico와 함께 생성되어야 한다.
+        var pngPath = Path.ChangeExtension(path, ".png");
+        Assert.True(File.Exists(pngPath), "png가 ico와 함께 생성되어야 한다.");
+        Assert.True(new FileInfo(pngPath).Length > 0, "png 내용이 있어야 한다.");
     }
 
     [Fact]

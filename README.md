@@ -47,6 +47,7 @@ dotnet test WorkGroup.slnx
 
 ## 데이터 위치
 - 셸이 접근하는 `.lnk`/`.ico`와 `groups.json`은 MSIX 가상화를 피해 `%USERPROFILE%\WorkGroup\` 아래에 저장된다.
+- 그룹 아이콘은 작업 표시줄 핀용 `{id}.ico`와 목록 표시용 `{id}.png`(원본 해상도)를 함께 생성한다(앱 내 목록은 PNG로 선명하게 표시).
 
 ## 아키텍처 메모
 - 그룹 클릭 시 별칭 exe가 새 인스턴스로 떠 팝업만 표시 후 종료(상주 불필요). 관리 화면/트레이는 별도 상주 인스턴스.

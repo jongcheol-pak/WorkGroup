@@ -45,6 +45,8 @@ public sealed class IconService : IIconService
         {
             var bitmap = await ResolveBitmapAsync(source, members, cancellationToken).ConfigureAwait(false);
             await WriteIcoAsync(bitmap, outputPath, cancellationToken).ConfigureAwait(false);
+            // 목록 표시용 PNG(원본 해상도)도 함께 저장한다 — .ico 프레임 디코드 없이 선명하게 표시하기 위함.
+            await WritePngFileAsync(bitmap, Path.ChangeExtension(outputPath, ".png"), cancellationToken).ConfigureAwait(false);
             return Result<string>.Ok(outputPath);
         }
         catch (Exception ex)
@@ -60,6 +62,7 @@ public sealed class IconService : IIconService
         {
             using var bitmap = CreateSolidBitmap(DefaultColor);
             await WriteIcoAsync(bitmap, outputPath, cancellationToken).ConfigureAwait(false);
+            await WritePngFileAsync(bitmap, Path.ChangeExtension(outputPath, ".png"), cancellationToken).ConfigureAwait(false);
             return Result<string>.Ok(outputPath);
         }
         catch (Exception ex)
@@ -180,6 +183,13 @@ public sealed class IconService : IIconService
         }
 
         await IcoWriter.WriteAsync(outputPath, frames, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>목록 표시용 PNG를 원본 해상도 그대로 저장한다(GPU 축소로 선명, .ico 프레임 디코드 회피).</summary>
+    private static async Task WritePngFileAsync(SoftwareBitmap bitmap, string path, CancellationToken cancellationToken)
+    {
+        var bytes = await EncodePngAsync(bitmap, cancellationToken).ConfigureAwait(false);
+        await File.WriteAllBytesAsync(path, bytes, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>종횡비를 보존(업스케일 금지)해 축소하고 size×size 투명 캔버스 중앙에 배치한 PNG 프레임을 만든다.</summary>

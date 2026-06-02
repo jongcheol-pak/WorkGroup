@@ -16,6 +16,7 @@ namespace WorkGroup.Application.Groups;
 public sealed class GroupAppService : IGroupAppService
 {
     private const string IconExtension = ".ico";
+    private const string PngExtension = ".png";
 
     private readonly IIconService _iconService;
     private readonly IShortcutService _shortcutService;
@@ -100,15 +101,17 @@ public sealed class GroupAppService : IGroupAppService
         {
             if (Directory.Exists(_iconsDirectory))
             {
-                var validIcons = groups
-                    .Select(g => g.Id.Value + IconExtension)
+                var validIds = groups
+                    .Select(g => g.Id.Value)
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var ico in Directory.EnumerateFiles(_iconsDirectory, "*" + IconExtension))
-                {
-                    if (!validIcons.Contains(Path.GetFileName(ico)))
-                        TryDeleteFile(ico);
-                }
+                // {groupId}.ico / {groupId}.png 모두 유효 그룹 기준으로 정리.
+                foreach (var ext in new[] { IconExtension, PngExtension })
+                    foreach (var file in Directory.EnumerateFiles(_iconsDirectory, "*" + ext))
+                    {
+                        if (!validIds.Contains(Path.GetFileNameWithoutExtension(file)))
+                            TryDeleteFile(file);
+                    }
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -118,7 +121,11 @@ public sealed class GroupAppService : IGroupAppService
     }
 
     private void TryDeleteIcon(GroupId id)
-        => TryDeleteFile(Path.Combine(_iconsDirectory, id.Value + IconExtension));
+    {
+        // .ico(작업 표시줄)와 목록 표시용 .png를 함께 정리한다.
+        TryDeleteFile(Path.Combine(_iconsDirectory, id.Value + IconExtension));
+        TryDeleteFile(Path.Combine(_iconsDirectory, id.Value + PngExtension));
+    }
 
     private void TryDeleteFile(string path)
     {

@@ -9,9 +9,13 @@ namespace WorkGroup.App.Services;
 /// </summary>
 public static class GroupIconLoader
 {
-    /// <summary>그룹의 .ico 파일 경로(운영 시 %USERPROFILE%\WorkGroup\Icons\{id}.ico).</summary>
+    /// <summary>그룹의 .ico 파일 경로(작업 표시줄 핀용. 운영 시 %USERPROFILE%\WorkGroup\Icons\{id}.ico).</summary>
     public static string GetIconPath(GroupId id) =>
         Path.Combine(WorkGroupPaths.IconsDirectory, $"{id.Value}.ico");
+
+    /// <summary>그룹의 목록 표시용 PNG 경로(원본 해상도. {id}.png). .ico와 함께 생성된다.</summary>
+    public static string GetPngPath(GroupId id) =>
+        Path.Combine(WorkGroupPaths.IconsDirectory, $"{id.Value}.png");
 
     /// <summary>내장 색상 아이콘 식별자의 대략적 표시색(폴백용). 실제 .ico는 IconService가 생성한다.</summary>
     public static Windows.UI.Color ColorForBuiltIn(string iconId) => iconId switch

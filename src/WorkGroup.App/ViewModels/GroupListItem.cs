@@ -56,21 +56,34 @@ public sealed partial class GroupListItem : ObservableObject
 
     private async Task LoadGroupIconAsync()
     {
-        var path = GroupIconLoader.GetIconPath(Group.Id);
-        if (File.Exists(path))
+        // 목록 표시는 원본 해상도 PNG를 우선 사용한다(.ico 프레임 디코드 없이 GPU 축소 → 선명).
+        // PNG가 없으면(옛 그룹 등) .ico로 폴백한다. 둘 다 캐시를 무시해 수정 즉시 반영.
+        var png = GroupIconLoader.GetPngPath(Group.Id);
+        if (File.Exists(png) && TrySetIconFromFile(png))
+            return;
+
+        var ico = GroupIconLoader.GetIconPath(Group.Id);
+        if (File.Exists(ico) && TrySetIconFromFile(ico))
+            return;
+
+        await ApplyFallbackAsync();
+    }
+
+    /// <summary>파일(.png/.ico)을 BitmapImage로 로드해 Icon에 설정한다(캐시 무시, 실패 시 폴백). 성공 시 true.</summary>
+    private bool TrySetIconFromFile(string path)
+    {
+        try
         {
-            // DecodePixelWidth를 지정하면 .ico의 작은 프레임이 선택돼 흐려질 수 있다.
-            // 크기를 지정하지 않고 큰 프레임을 네이티브로 디코드한 뒤 Image(32px)가 GPU로 축소 → 선명(편집 미리보기와 동일).
-            // 같은 경로(.ico) 재로드 시 캐시된 옛 아이콘 방지를 위해 캐시는 무시한다(수정 즉시 반영).
             var bmp = new BitmapImage { CreateOptions = BitmapCreateOptions.IgnoreImageCache };
             // 디코드 실패 시 IconSource 기반 폴백으로 전환한다(plan.md M2).
             bmp.ImageFailed += (_, _) => _ = ApplyFallbackAsync();
             bmp.UriSource = new Uri(path, UriKind.Absolute);
             Icon = bmp;
+            return true;
         }
-        else
+        catch
         {
-            await ApplyFallbackAsync();
+            return false;
         }
     }
 
