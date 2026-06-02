@@ -28,9 +28,9 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Button x:Name="IconButton" Width="56" Height="56" Padding="4" VerticalAlignment="Bottom"
+            <Button x:Name="IconButton" Width="66" Height="66" Padding="4" VerticalAlignment="Bottom"
                     ToolTipService.ToolTip="아이콘 변경">
-                <Image Width="40" Height="40" Source="{x:Bind ViewModel.PreviewImage, Mode=OneWay}" />
+                <Image Width="50" Height="50" Source="{x:Bind ViewModel.PreviewImage, Mode=OneWay}" />
                 <Button.Flyout>
                     <Flyout Opening="OnIconFlyoutOpening">
                         <StackPanel Width="380" Spacing="8">
@@ -55,9 +55,9 @@
                 </Button.Flyout>
             </Button>
             <!-- 이름: 수정 모드는 읽기전용 표시 → 클릭 시 입력창 전환, 신규는 처음부터 입력창 -->
-            <Grid Grid.Column="1" VerticalAlignment="Bottom">
+            <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="4,0,0,0">
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameDisplayVisibility, Mode=OneWay}">
-                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" Margin="4,0,0,0"/>
                     <Button Click="OnEditNameClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                             Background="Transparent" BorderThickness="0" Padding="8,6"
                             ToolTipService.ToolTip="이름 수정">
@@ -84,7 +84,7 @@
 
         <!-- 이름 변경 시 작업 표시줄 핀 재등록 안내 -->
         <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.ShowRenameWarning, Mode=OneWay}" IsClosable="False"
-                 Severity="Warning" Message="이름을 변경하면 작업 표시줄에 핀한 기존 항목을 제거하고 다시 핀해야 합니다." />
+                 Severity="Warning" Message="이름을 변경하면 작업 표시줄에 등록한 기존 항목을 제거하고 다시 등록을 해야 합니다." />
 
         <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
                  Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
