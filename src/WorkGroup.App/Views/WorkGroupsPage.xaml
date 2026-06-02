@@ -68,9 +68,10 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- 그룹 아이콘 -->
+                                <!-- 그룹 아이콘(사각 테두리) -->
                                 <Border Width="40" Height="40" CornerRadius="8" VerticalAlignment="Center"
-                                        Background="{x:Bind IconFallback, Mode=OneWay}">
+                                        Background="{x:Bind IconFallback, Mode=OneWay}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                                     <Image Width="32" Height="32" Source="{x:Bind Icon, Mode=OneWay}" />
                                 </Border>
 
@@ -87,7 +88,12 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:PopupAppItem">
-                                                    <Image Width="16" Height="16" Source="{x:Bind Icon, Mode=OneWay}" />
+                                                    <!-- 멤버 앱 아이콘(사각 테두리 타일) -->
+                                                    <Border Width="30" Height="30" CornerRadius="6"
+                                                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                                                            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                                                        <Image Width="22" Height="22" Source="{x:Bind Icon, Mode=OneWay}" />
+                                                    </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
