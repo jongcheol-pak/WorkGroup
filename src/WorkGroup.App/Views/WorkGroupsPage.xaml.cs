@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using WorkGroup.App.ViewModels;
@@ -61,27 +62,30 @@ public sealed partial class WorkGroupsPage : Page
     }
 
     /// <summary>
-    /// 그룹을 작업 표시줄로 드래그(plan.md T7). 검증된 방식: .lnk 임시 복사 + 지연 SetDataProvider.
+    /// 그룹 카드를 작업 표시줄로 드래그(plan.md T7). 검증된 방식: .lnk 임시 복사 + 지연 SetDataProvider.
+    /// 드래그 비주얼은 그룹 아이콘으로 표시한다(DragUI). DragStarting에는 Cancel이 없어, 중단은 데이터 미설정으로 처리.
     /// </summary>
-    private void OnGroupDragStarting(object sender, DragItemsStartingEventArgs e)
+    private void OnGroupDragStarting(UIElement sender, DragStartingEventArgs e)
     {
-        if (e.Items.Count == 0 || e.Items[0] is not GroupListItem item)
-        {
-            e.Cancel = true;
+        if ((sender as FrameworkElement)?.DataContext is not GroupListItem item)
             return;
-        }
+
+        // 드래그 비주얼을 항목 카드 스냅샷 대신 그룹 아이콘으로(이미 로드된 BitmapImage 재사용; 없으면 기본 비주얼).
+        if (item.Icon is BitmapImage iconBitmap)
+            e.DragUI.SetContentFromBitmapImage(iconBitmap);
 
         var shortcuts = App.Services.GetRequiredService<IShortcutService>();
         var lnkPath = shortcuts.GetShortcutPath(item.Group);
         if (!File.Exists(lnkPath))
         {
-            e.Cancel = true;
+            // DragStarting은 취소 불가 → 데이터를 넣지 않으면 드롭해도 받을 페이로드가 없어 무해(no-op).
             ViewModel.StatusMessage = "그룹을 먼저 저장하세요(.lnk 없음).";
             return;
         }
 
         try
         {
+            e.AllowedOperations = DataPackageOperation.Copy | DataPackageOperation.Link;
             e.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Link;
 
             var tempDir = Path.Combine(Path.GetTempPath(), "WorkGroupDrag");
@@ -110,7 +114,6 @@ public sealed partial class WorkGroupsPage : Page
         }
         catch (Exception ex)
         {
-            e.Cancel = true;
             ViewModel.StatusMessage = $"드래그 준비 실패: {ex.Message}";
         }
     }
