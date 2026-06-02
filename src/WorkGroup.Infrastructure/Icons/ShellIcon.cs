@@ -6,31 +6,47 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
 using Windows.Win32.UI.Shell;
+using WorkGroup.Domain.Groups;
 
 namespace WorkGroup.Infrastructure.Icons;
 
 /// <summary>
-/// 패키지(Store/UWP) 앱의 아이콘을 셸이 렌더한 비트맵으로 추출한다(plan.md T5).
-/// 시작 메뉴와 동일한 IShellItemImageFactory를 사용해 매니페스트 로고 여백 편차 없이 균일한 아이콘을 얻는다.
+/// 설치 앱(Win32·패키지)의 아이콘을 셸이 렌더한 비트맵으로 추출한다(plan.md T5/T7).
+/// 탐색기/시작 메뉴와 동일한 IShellItemImageFactory를 사용해, 콘솔/스크립트 .lnk나 로고 여백 편차 없이 균일한 아이콘을 얻는다.
 /// WinUI 타입(ImageSource)에 의존하지 않도록 WinRT 스트림(PNG)까지만 책임지고, 소비자가 자기 타입으로 변환한다.
 /// </summary>
-public static class PackagedAppIcon
+public static class ShellIcon
 {
+    // 요청 크기 → 시도 크기 캐스케이드(DevDashboard 동일). 큰 자산부터 시도해 선명한 아이콘을 우선.
+    private static int[] SizeCascade(uint size) =>
+        size <= 32 ? [32] : size <= 48 ? [48, 32] : [256, 128, 64, 48, 32];
+
+    // 아이콘만(썸네일/오버레이 배제) 우선, 실패 시 일반 플래그로 폴백.
+    private static readonly SIIGBF[] IconFlags =
+        [SIIGBF.SIIGBF_BIGGERSIZEOK | SIIGBF.SIIGBF_ICONONLY, SIIGBF.SIIGBF_BIGGERSIZEOK];
+
     /// <summary>
-    /// AUMID로 셸 아이콘을 추출해 PNG 스트림으로 연다. 실패하면 예외 없이 null(호출자 폴백).
+    /// 앱 종류에 맞는 셸 파싱 경로(패키지=shell:AppsFolder\AUMID, Win32=파일 경로)로 아이콘 PNG 스트림을 연다.
+    /// 실패하면 예외 없이 null(호출자 폴백).
     /// </summary>
-    /// <param name="aumid">패키지 앱의 AUMID(형식: PackageFamilyName!AppId).</param>
-    /// <param name="size">요청 아이콘 크기(셸이 가장 가까운 크기를 렌더).</param>
-    public static async Task<IRandomAccessStream?> OpenIconStreamAsync(
-        string aumid, uint size, CancellationToken cancellationToken = default)
+    public static Task<IRandomAccessStream?> OpenForAppAsync(AppEntry app, uint size, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(aumid))
+        ArgumentNullException.ThrowIfNull(app);
+        var parsingName = app.Kind == AppKind.Packaged
+            ? "shell:AppsFolder\\" + app.LaunchTarget
+            : app.LaunchTarget;
+        return OpenStreamAsync(parsingName, size, cancellationToken);
+    }
+
+    private static async Task<IRandomAccessStream?> OpenStreamAsync(string parsingName, uint size, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(parsingName))
             return null;
 
         try
         {
             // 셸/GDI 호출은 동기이므로 UI 스레드를 막지 않도록 오프로드한다. PNG 인코딩은 비동기라 밖에서 처리.
-            var bitmap = await Task.Run(() => ExtractShellIcon(aumid, size), cancellationToken).ConfigureAwait(false);
+            var bitmap = await Task.Run(() => ExtractShellIcon(parsingName, size), cancellationToken).ConfigureAwait(false);
             if (bitmap is null)
                 return null;
 
@@ -44,23 +60,39 @@ public static class PackagedAppIcon
         }
     }
 
-    /// <summary>shell:AppsFolder\AUMID 항목에서 셸 렌더 아이콘(HBITMAP)을 얻어 SoftwareBitmap으로 변환한다(동기).</summary>
-    private static SoftwareBitmap? ExtractShellIcon(string aumid, uint size)
+    /// <summary>파싱 경로의 셸 항목에서 렌더 아이콘(HBITMAP)을 얻어 SoftwareBitmap으로 변환한다(동기).</summary>
+    private static SoftwareBitmap? ExtractShellIcon(string parsingName, uint size)
     {
-        var path = "shell:AppsFolder\\" + aumid;
         var iid = typeof(IShellItemImageFactory).GUID;
-        var hr = PInvoke.SHCreateItemFromParsingName(path, null, iid, out object ppv);
+        var hr = PInvoke.SHCreateItemFromParsingName(parsingName, null, iid, out object ppv);
         if (hr.Failed || ppv is not IShellItemImageFactory factory)
             return null;
 
         try
         {
-            var requested = new SIZE { cx = (int)size, cy = (int)size };
-            // 요청보다 큰 자산 허용 + 아이콘만(썸네일/오버레이 배제)으로 시작 메뉴와 동일한 아이콘을 얻는다.
-            // GetImage는 실패 시 예외를 던지며(out SafeHandle), 상위 try/catch가 흡수한다.
-            factory.GetImage(requested, SIIGBF.SIIGBF_BIGGERSIZEOK | SIIGBF.SIIGBF_ICONONLY, out var hbmp);
-            using (hbmp)
-                return ConvertHBitmap(hbmp);
+            foreach (var trySize in SizeCascade(size))
+            {
+                foreach (var flags in IconFlags)
+                {
+                    try
+                    {
+                        // GetImage는 실패 시 예외를 던진다(out SafeHandle). 다음 크기/플래그로 폴백.
+                        factory.GetImage(new SIZE { cx = trySize, cy = trySize }, flags, out var hbmp);
+                        using (hbmp)
+                        {
+                            var bitmap = ConvertHBitmap(hbmp);
+                            if (bitmap is not null)
+                                return bitmap;
+                        }
+                    }
+                    catch
+                    {
+                        // 이 크기/플래그 조합 실패 → 다음 조합 시도.
+                    }
+                }
+            }
+
+            return null;
         }
         finally
         {

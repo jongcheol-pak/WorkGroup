@@ -15,14 +15,13 @@ public static class AppIconLoader
     {
         try
         {
-            // 패키지(Store/UWP) 앱은 셸 공식 로고를 우선 사용한다(package.Logo 경로가 없어도 아이콘 확보 — plan.md T3).
-            if (app.Kind == AppKind.Packaged)
+            // Win32·패키지 모두 셸 렌더 아이콘을 우선 사용한다(시작 메뉴와 동일, .lnk 아이콘 누락 해소 — plan.md T7).
+            using (var shellIcon = await ShellIcon.OpenForAppAsync(app, 48))
             {
-                using var logo = await PackagedAppIcon.OpenIconStreamAsync(app.LaunchTarget, 48);
-                if (logo is not null)
+                if (shellIcon is not null)
                 {
                     var bitmap = new BitmapImage();
-                    await bitmap.SetSourceAsync(logo);
+                    await bitmap.SetSourceAsync(shellIcon);
                     return bitmap;
                 }
             }

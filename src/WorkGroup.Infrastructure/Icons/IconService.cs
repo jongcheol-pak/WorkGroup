@@ -93,13 +93,13 @@ public sealed class IconService : IIconService
 
     private async Task<SoftwareBitmap> ResolveMemberBitmapAsync(AppEntry member, CancellationToken cancellationToken)
     {
-        // 패키지(Store/UWP) 앱은 셸 공식 로고를 우선 사용한다(package.Logo 경로가 없어도 아이콘 확보 — plan.md T2).
-        if (member.Kind == AppKind.Packaged)
+        // Win32·패키지 모두 셸 렌더 아이콘을 우선 사용한다(시작 메뉴와 동일, 누락/여백 편차 해소 — plan.md T7).
+        var shellIcon = await ShellIcon
+            .OpenForAppAsync(member, (uint)CanvasSize, cancellationToken).ConfigureAwait(false);
+        if (shellIcon is not null)
         {
-            using var logo = await PackagedAppIcon
-                .OpenIconStreamAsync(member.LaunchTarget, (uint)CanvasSize, cancellationToken).ConfigureAwait(false);
-            if (logo is not null)
-                return await DecodeStreamAsync(logo, cancellationToken).ConfigureAwait(false);
+            using (shellIcon)
+                return await DecodeStreamAsync(shellIcon, cancellationToken).ConfigureAwait(false);
         }
 
         var location = member.IconLocation;
