@@ -220,6 +220,16 @@ public sealed partial class GroupEditViewModel : ObservableObject
         RefreshAvailable();
     }
 
+    /// <summary>"앱 추가" 팝업 항목 클릭 토글: 이미 선택된 앱이면 제거, 아니면 추가(LaunchTarget 기준).</summary>
+    public void ToggleApp(AppEntry app)
+    {
+        var existing = SelectedApps.FirstOrDefault(i => i.App.SameTarget(app.LaunchTarget));
+        if (existing is not null)
+            RemoveApp(existing);
+        else
+            AddApp(app);
+    }
+
     /// <summary>확인 클릭 시 호출. 빈 목록·이름 중복 검증 통과·저장 성공 시 true(닫힘), 실패 시 false(유지 + 메시지).</summary>
     public async Task<bool> ValidateAndSaveAsync()
     {
@@ -273,12 +283,16 @@ public sealed partial class GroupEditViewModel : ObservableObject
     private void RefreshAvailable()
     {
         AvailableApps.Clear();
+        // 추가된 항목도 목록에 남겨 체크로 표시한다(제외하지 않음). 선택 여부는 LaunchTarget 기준.
         var selectedTargets = SelectedApps.Select(i => i.App.LaunchTarget).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        IEnumerable<PopupAppItem> query = _installedItems.Where(i => !selectedTargets.Contains(i.App.LaunchTarget));
+        IEnumerable<PopupAppItem> query = _installedItems;
         if (!string.IsNullOrWhiteSpace(PickerSearch))
             query = query.Where(i => i.DisplayName.Contains(PickerSearch, StringComparison.OrdinalIgnoreCase));
         foreach (var item in query)
+        {
+            item.IsSelected = selectedTargets.Contains(item.App.LaunchTarget);
             AvailableApps.Add(item);
+        }
     }
 
     private void ResolvePreview(AppGroup? group)

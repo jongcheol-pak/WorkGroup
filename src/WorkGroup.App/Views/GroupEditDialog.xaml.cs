@@ -89,9 +89,9 @@ public sealed partial class GroupEditDialog : ContentDialog
 
     private void OnAppPickerItemClick(object sender, ItemClickEventArgs e)
     {
-        // 후보 앱을 클릭하면 선택 목록에 추가한다(Flyout은 유지하여 연속 추가 가능).
+        // 항목 클릭으로 추가↔해제 토글(Flyout은 유지하여 연속 선택 가능).
         if (e.ClickedItem is PopupAppItem item)
-            ViewModel.AddApp(item.App);
+            ViewModel.ToggleApp(item.App);
     }
 
     private void OnRemoveAppClick(object sender, RoutedEventArgs e)

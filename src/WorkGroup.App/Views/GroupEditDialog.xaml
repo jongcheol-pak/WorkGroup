@@ -85,12 +85,17 @@
                                 <DataTemplate x:DataType="vm:PopupAppItem">
                                     <Grid ColumnSpacing="10" Padding="2">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="20" />
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
                                         </Grid.ColumnDefinitions>
-                                        <Image Width="24" Height="24" VerticalAlignment="Center"
+                                        <!-- 이미 추가된 항목 체크 표시(고정폭으로 아이콘/이름 정렬 유지) -->
+                                        <FontIcon Glyph="&#xE73E;" FontSize="14" VerticalAlignment="Center"
+                                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                  Visibility="{x:Bind SelectionGlyphVisibility, Mode=OneWay}" />
+                                        <Image Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center"
                                                Source="{x:Bind Icon, Mode=OneWay}" />
-                                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="2" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis" />
                                     </Grid>
                                 </DataTemplate>

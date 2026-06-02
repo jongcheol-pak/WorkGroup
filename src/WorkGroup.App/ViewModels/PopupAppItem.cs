@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using WorkGroup.App.Services;
 using WorkGroup.Domain.Groups;
@@ -16,6 +17,14 @@ public sealed partial class PopupAppItem : ObservableObject
 
     [ObservableProperty]
     public partial ImageSource? Icon { get; set; }
+
+    /// <summary>"앱 추가" 팝업에서 이미 선택된 항목인지(체크 표시용).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectionGlyphVisibility))]
+    public partial bool IsSelected { get; set; }
+
+    /// <summary>선택 시에만 체크 아이콘을 보이게 한다.</summary>
+    public Visibility SelectionGlyphVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
     public async Task LoadIconAsync() => Icon = await AppIconLoader.LoadAsync(App);
 }
