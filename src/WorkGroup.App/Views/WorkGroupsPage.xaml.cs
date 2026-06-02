@@ -115,9 +115,8 @@ public sealed partial class WorkGroupsPage : Page
             var deferral = e.GetDeferral();
             try
             {
-                // Windows 기본 드래그 아이콘 크기(SM_CXICON=32 logical)에 맞춘다: 32 × 디스플레이 배율(물리 px).
-                var rasterScale = (sender as FrameworkElement)?.XamlRoot?.RasterizationScale ?? 1.0;
-                var dragSize = (uint)Math.Max(1, Math.Round(32 * rasterScale));
+                // 드래그 비주얼 크기(최대 변, 물리 px). 필요 시 이 값만 조정.
+                const uint dragSize = 96;
                 await SetDragVisualFromIconAsync(e, item.Group.Id, dragSize);
             }
             finally
