@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="WorkGroup.App.Views.GroupPopupWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:WorkGroup.App.ViewModels">
+
+    <Border Background="{ThemeResource AcrylicInAppFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource SurfaceStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="8">
+        <Grid Padding="12" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="TitleText" Style="{ThemeResource SubtitleTextBlockStyle}" />
+
+            <GridView Grid.Row="1" x:Name="AppsGrid"
+                      ItemsSource="{x:Bind Items, Mode=OneWay}"
+                      IsItemClickEnabled="True" SelectionMode="None"
+                      ItemClick="OnAppClick">
+                <GridView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:PopupAppItem">
+                        <StackPanel Width="84" Height="84" Spacing="4" Padding="4"
+                                    HorizontalAlignment="Center">
+                            <Grid Width="40" Height="40" HorizontalAlignment="Center"
+                                  Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6">
+                                <Image Width="32" Height="32" Source="{x:Bind Icon, Mode=OneWay}" />
+                            </Grid>
+                            <TextBlock Text="{x:Bind DisplayName}" TextAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" MaxLines="2"
+                                       Style="{ThemeResource CaptionTextBlockStyle}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </GridView.ItemTemplate>
+            </GridView>
+        </Grid>
+    </Border>
+</Window>

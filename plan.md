@@ -333,7 +333,7 @@
   - **Halt Forecast**: "WinUI 드래그로 OS 파일 드롭 제공 방법?" → T2(C4)에서 검증된 `DataPackage.SetStorageItems`(.lnk StorageFile) 경로. T2 게이트 통과 전제(D15).
   - **Depends on**: T2(C4 통과), T8
 
-- [ ] **T11. 팝업 런처(클릭 시 그룹 그리드 팝업 + 앱 실행)**
+- [/] **T11. 팝업 런처(클릭 시 그룹 그리드 팝업 + 앱 실행)** (빌드 완료 / 클릭·실행 검증 사용자 대기 — spike 팝업을 정식 GridView로 교체)
   - **Type**: D
   - **Acceptance**: 핀된 그룹 아이콘 클릭 → 단일 인스턴스 앱이 `--group {id}` 수신 → D4 좌표 규칙대로 작업 표시줄 변 위에 아이콘 그리드 팝업(항상 위, 포커스 잃으면 자동 닫힘) 표시 → 항목 클릭 시 해당 앱 실행(Win32 경로 실행 / 패키지 AUMID 활성화)(수동 확인). **D17 Fluent 적용**(Acrylic 백드롭, 둥근 모서리). 창 위치·always-on-top·표시는 **WinUIEx** 헬퍼 활용.
   - **Files**:

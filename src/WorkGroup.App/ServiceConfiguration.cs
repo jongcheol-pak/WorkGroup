@@ -3,11 +3,13 @@ using Microsoft.Extensions.Logging;
 using WorkGroup.Application.Groups;
 using WorkGroup.Application.Icons;
 using WorkGroup.Application.Inventory;
+using WorkGroup.Application.Launch;
 using WorkGroup.Application.Persistence;
 using WorkGroup.Application.Shortcuts;
 using WorkGroup.Infrastructure;
 using WorkGroup.Infrastructure.Icons;
 using WorkGroup.Infrastructure.Inventory;
+using WorkGroup.Infrastructure.Launch;
 using WorkGroup.Infrastructure.Persistence;
 using WorkGroup.Infrastructure.Shortcuts;
 
@@ -31,6 +33,7 @@ public static class ServiceConfiguration
 
         services.AddSingleton<IAppInventory, InstalledAppInventory>();
         services.AddSingleton<IIconService, IconService>();
+        services.AddSingleton<IAppLauncher, AppLauncher>();
 
         services.AddSingleton<IShortcutService>(sp =>
             new ShortcutService(

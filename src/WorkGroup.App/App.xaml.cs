@@ -37,7 +37,7 @@ namespace WorkGroup.App
 
             if (!string.IsNullOrWhiteSpace(groupId))
             {
-                _window = new SpikePopupWindow(groupId);
+                _window = new GroupPopupWindow(groupId);
                 _window.Activate();
                 return;
             }
