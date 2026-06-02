@@ -18,7 +18,7 @@ public static class AppIconLoader
             // 패키지(Store/UWP) 앱은 셸 공식 로고를 우선 사용한다(package.Logo 경로가 없어도 아이콘 확보 — plan.md T3).
             if (app.Kind == AppKind.Packaged)
             {
-                using var logo = await PackagedAppIcon.OpenLogoStreamAsync(app.LaunchTarget, 48);
+                using var logo = await PackagedAppIcon.OpenIconStreamAsync(app.LaunchTarget, 48);
                 if (logo is not null)
                 {
                     var bitmap = new BitmapImage();
