@@ -115,7 +115,10 @@ public sealed partial class WorkGroupsPage : Page
             var deferral = e.GetDeferral();
             try
             {
-                await SetDragVisualFromIconAsync(e, item.Group.Id);
+                // Windows 기본 드래그 아이콘 크기(SM_CXICON=32 logical)에 맞춘다: 32 × 디스플레이 배율(물리 px).
+                var rasterScale = (sender as FrameworkElement)?.XamlRoot?.RasterizationScale ?? 1.0;
+                var dragSize = (uint)Math.Max(1, Math.Round(32 * rasterScale));
+                await SetDragVisualFromIconAsync(e, item.Group.Id, dragSize);
             }
             finally
             {
@@ -129,7 +132,8 @@ public sealed partial class WorkGroupsPage : Page
     }
 
     /// <summary>그룹 아이콘 파일(PNG 우선, 없으면 .ico)을 SoftwareBitmap으로 로드해 드래그 비주얼로 지정한다.</summary>
-    private static async Task SetDragVisualFromIconAsync(DragStartingEventArgs e, GroupId id)
+    /// <param name="maxSize">드래그 비주얼 최대 변 크기(물리 px). Windows 표준 아이콘 크기에 맞춤.</param>
+    private static async Task SetDragVisualFromIconAsync(DragStartingEventArgs e, GroupId id, uint maxSize)
     {
         var path = GroupIconLoader.GetPngPath(id);
         if (!File.Exists(path))
@@ -141,8 +145,7 @@ public sealed partial class WorkGroupsPage : Page
         using var stream = await file.OpenReadAsync();
         var decoder = await BitmapDecoder.CreateAsync(stream);
 
-        // 원본 해상도 그대로면 드래그 비주얼이 너무 크다 → 최대 64px로 축소(종횡비 보존, 업스케일 금지).
-        const uint maxSize = 64;
+        // 원본 해상도 그대로면 너무 크다 → maxSize로 축소(종횡비 보존, 업스케일 금지).
         var scale = Math.Min(1.0, (double)maxSize / Math.Max(decoder.PixelWidth, decoder.PixelHeight));
         var transform = new BitmapTransform
         {
