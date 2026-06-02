@@ -7,7 +7,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <!-- T1 stub. 실제 placeholder 안내는 T5에서 채운다. -->
-    <TextBlock Text="트레이 메뉴" Style="{ThemeResource TitleTextBlockStyle}"
-               HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <StackPanel Padding="24" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+        <TextBlock Text="트레이 메뉴" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,0,0,8" />
+        <InfoBar IsOpen="True" IsClosable="False" Severity="Informational"
+                 Title="추후 추가 예정"
+                 Message="트레이 메뉴 설정 기능은 작업 그룹 기능 완료 후 추가될 예정입니다." />
+    </StackPanel>
 </Page>
