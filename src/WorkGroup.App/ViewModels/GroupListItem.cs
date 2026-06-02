@@ -59,15 +59,10 @@ public sealed partial class GroupListItem : ObservableObject
         var path = GroupIconLoader.GetIconPath(Group.Id);
         if (File.Exists(path))
         {
-            var bmp = new BitmapImage
-            {
-                // 표시 크기(32 logical) 기준으로 DPI에 맞춰 디코드 → 확대 블러 방지.
-                DecodePixelType = DecodePixelType.Logical,
-                DecodePixelWidth = 32,
-                DecodePixelHeight = 32,
-                // 같은 경로(.ico)로 재로드 시 캐시된 옛 아이콘이 나오지 않도록 캐시를 무시한다(수정 즉시 반영).
-                CreateOptions = BitmapCreateOptions.IgnoreImageCache
-            };
+            // DecodePixelWidth를 지정하면 .ico의 작은 프레임이 선택돼 흐려질 수 있다.
+            // 크기를 지정하지 않고 큰 프레임을 네이티브로 디코드한 뒤 Image(32px)가 GPU로 축소 → 선명(편집 미리보기와 동일).
+            // 같은 경로(.ico) 재로드 시 캐시된 옛 아이콘 방지를 위해 캐시는 무시한다(수정 즉시 반영).
+            var bmp = new BitmapImage { CreateOptions = BitmapCreateOptions.IgnoreImageCache };
             // 디코드 실패 시 IconSource 기반 폴백으로 전환한다(plan.md M2).
             bmp.ImageFailed += (_, _) => _ = ApplyFallbackAsync();
             bmp.UriSource = new Uri(path, UriKind.Absolute);

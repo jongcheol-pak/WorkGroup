@@ -171,8 +171,9 @@ public sealed class IconService : IIconService
         if (sizes.Count == 0 || sizes[^1] != native)
             sizes.Add(native);
 
+        // 큰 프레임부터 기록한다 → 크기 미지정 디코드(목록 표시)가 frame 0(가장 큰 프레임)을 선택해 선명하게 보이도록.
         var frames = new List<IconFrame>(sizes.Count);
-        foreach (var size in sizes)
+        foreach (var size in sizes.OrderByDescending(s => s))
         {
             var png = await EncodeFrameAsync(bitmap, size, cancellationToken).ConfigureAwait(false);
             frames.Add(new IconFrame(size, png));
