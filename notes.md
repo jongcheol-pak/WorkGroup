@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: WinUIEx 2.9.1 재도입 — 메인 창을 WindowEx로 전환해 창 크기/위치 지속(PersistenceId="WorkGroupMain")·최소 크기(800×560) 관리. Mica는 표준 SystemBackdrop 유지(WinUIEx 자체 Backdrop은 CS0618 deprecated). 트레이 종료 시 `_window.Close()`로 persistence 저장 보장(닫기→트레이 숨김 구조에서 Window.Closed 발생 시점 확보). 트레이는 WinUIEx 미지원이라 Win32 Shell_NotifyIcon 유지. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: UI 전면 개편(Plan 3, T1~T8) — NavigationView 셸(MainShell: 작업 그룹/트레이 메뉴/설정/정보) + Fluent(Mica 백드롭). 설정 페이지(자동 시작 토글 + 테마 시스템/다크/라이트, ThemeService LocalSettings 영속). 정보 페이지(버전 + 오픈소스 라이선스 목록). 트레이 메뉴 placeholder. 그룹 추가/수정은 ContentDialog(설치앱 체크박스 선택 + 아이콘 설정 + 미리보기). 작업 그룹 페이지(그룹 아이콘 + 2라인[이름/멤버 아이콘] + 수정/삭제 아이콘 버튼 + 드래그 핀 + 삭제 확인). 단일 MainPage/MainViewModel 제거. 빌드 0/0, 테스트 80/80.
 - 2026-06-02: T12 — 자동 시작(StartupTask + 토글) + Win32 트레이 아이콘(Shell_NotifyIcon, 열기/종료) + 실행 별칭 `WorkGroupSpike.exe`→`WorkGroup.exe` finalize + README/notes 갱신. 빌드 0/0.
 - 2026-06-02: T11 — 정식 팝업 런처(GroupPopupWindow, 아이콘 그리드 + 클릭 실행) + IAppLauncher + AppIconLoader. spike 팝업 제거.

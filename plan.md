@@ -91,7 +91,7 @@
   - **Halt Forecast**: "WinAppSDK 버전 부족?" → Risks(하한 상향, 승인 후). "WindowEx 기본 백드롭 충돌?" → DW2 명시 설정. "MinWidth 단위?" → DIP(WinUIEx 처리). "`MicaSystemBackdrop`/`WindowEx.Backdrop`/`PersistenceId` 심볼명이 2.9.1과 불일치?" → 빌드 에러 기반으로 WinUIEx 2.9.1 실제 심볼로 교정(WindowManager 문서 예제 기준이나 컴파일로 확정).
   - **Depends on**: -
 
-- [ ] **T2. 문서 갱신** *(~0.3h)*
+- [x] **T2. 문서 갱신** *(~0.3h)*
   - **Type**: A
   - **Acceptance**: `notes.md`에 WinUIEx 재도입 항목 추가. `plan.md`(본 파일)는 결과 기록. `AGENTS.md`의 "승인된 의존성"에 WinUIEx가 이미 등재돼 있어 추가 변경 불필요(확인만). README는 기능 변화 없음(창 크기 지속은 내부 동작)이라 갱신 불요.
   - **Files**: 문서: `notes.md`
@@ -106,6 +106,12 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- **T1-T2 완료** (커밋 39dad5b, 다음): T1=WinUIEx 2.9.1 추가 + 메인 창 WindowEx(PersistenceId/MinSize) + 트레이 종료 시 Close로 persistence 저장 보장(DW5). Mica는 표준 SystemBackdrop 유지(WinUIEx Backdrop=CS0618 deprecated → DW2 교정). T2=notes.md 갱신(AGENTS는 WinUIEx 이미 등재라 불요). 빌드 0/0, 테스트 80/80. spec/quality OK.
+
+## Next Steps
+- **현재 상태(2026-06-02)**: ✅ WinUIEx 재도입 완료. 메인 창 크기/위치 지속 + 최소 크기. **GUI 수동 검증 필요**: ① Mica 유지 ② 창 크기 변경→트레이 종료→재실행 시 복원 ③ 800×560 이하 축소 불가 ④ 닫기→트레이 숨김.
+- 권장 다음 액션: 사용자 GUI 검증 → 정상 시 PR 생성.
+- Suggested skills: 공식 /code-review, /security-review.
 
 ## Open Questions (모두 해결됨)
 - [x] 적용 범위 → **메인 창**(사용자). 트레이는 WinUIEx 미지원이라 제외.
