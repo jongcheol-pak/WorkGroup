@@ -42,13 +42,25 @@
                  Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
         <Grid Grid.Row="2">
-            <Border Style="{StaticResource CardStyle}" Padding="4">
-                <!-- ListView 세로 패딩으로 첫/마지막 항목이 카드 둥근 모서리에 클리핑되지 않게 한다. -->
-                <ListView x:Name="GroupsList" Padding="0,4" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
-                          SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting">
-                    <ListView.ItemTemplate>
-                        <DataTemplate x:DataType="vm:GroupListItem">
-                            <Grid ColumnSpacing="12" Padding="4" MinHeight="48">
+            <ListView x:Name="GroupsList" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
+                      SelectionMode="None" CanDragItems="True" DragItemsStarting="OnGroupDragStarting"
+                      Background="Transparent">
+                <ListView.ItemContainerStyle>
+                    <!-- 항목을 전체 폭으로 펴고 기본 ListViewItem 패딩 제거 → 카드가 폭을 채우도록 -->
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0" />
+                        <Setter Property="MinHeight" Value="0" />
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GroupListItem">
+                        <!-- 그룹 하나를 개별 카드로 표시(이미지 요구사항) -->
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                            <Grid ColumnSpacing="12" MinHeight="40">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
@@ -97,10 +109,10 @@
                                     <SymbolIcon Symbol="Delete" />
                                 </Button>
                             </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </Border>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
 
             <!-- 빈 상태 -->
             <StackPanel Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"
