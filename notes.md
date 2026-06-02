@@ -1,6 +1,7 @@
 # 작업 노트
 
 ## 최근 변경
+- 2026-06-02: 작업 그룹 목록 아이콘을 다시 .ico로 표시 — .ico 생성 선명도 개선(업스케일 금지+종횡비 보존) 후, 목록도 모든 그룹을 생성된 .ico로 통일(앞서 넣은 CustomImage 원본 직접 로드 분기 제거). GroupListItem.TryLoadCustomImage 제거. .ico 로드 시 DecodePixelType.Logical + IgnoreImageCache는 유지(선명/즉시반영). 빌드 0/0.
 - 2026-06-02: .ico 생성 선명도 개선 — 기존엔 모든 프레임을 size×size로 stretch해 ① 작은 원본(~100px)을 256으로 업스케일(흐림) ② 비정사각 원본 왜곡. 변경: 원본 최대 변 이하의 표준 크기(16/24/32/48/64/128/256)만 생성 + 최상위는 원본 크기(업스케일 금지), 각 프레임은 종횡비 보존 축소(Fant) 후 정사각 투명 캔버스 중앙 배치. IconService.WriteIcoAsync/EncodeFrameAsync/ScaleAsync 추가. 프레임 수 가변이라 IconServiceTests의 프레임 수 단정(4)→(≥1)로 완화. 빌드 0/0, 테스트 80/80(.ico 생성·디코드 테스트 포함).
 - 2026-06-02: 작업 그룹 목록 그룹 아이콘 선명도 — 목록이 생성된 .ico(32/48 프레임, 미리 축소돼 흐림)를 쓰던 것을, CustomImage(리소스/사용자 이미지) 그룹은 원본을 네이티브 해상도로 직접 로드(편집 미리보기와 동일). GroupListItem.TryLoadCustomImage 추가(ms-appx 절대 URI/사용자 파일, IgnoreImageCache). BuiltIn/MemberApp은 기존 .ico 유지. 빌드 0/0.
 - 2026-06-02: 작업 그룹 목록 그룹 아이콘 3종 버그 수정 — ① 수정 후 미반영: 같은 .ico 경로 재로드 시 WinUI 이미지 캐시가 옛 아이콘 반환 → `CreateOptions=IgnoreImageCache`. ② 잘림: Border(44/Padding4/테두리1) 내부 영역(≈34)보다 Image(36)가 커서 클리핑 → Image 36→32(Stretch=Uniform). ③ 흐림: DecodePixelWidth=32 디코드 후 확대 → `DecodePixelType=Logical`(+DecodePixelHeight)로 DPI 기준 디코드(.ico 48/256 프레임 활용). GroupListItem.cs/WorkGroupsPage.xaml. 빌드 0/0.
