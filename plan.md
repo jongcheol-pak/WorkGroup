@@ -71,7 +71,7 @@
 > 공통: 한글 주석, UTF-8(BOM 없음), 빌드 `dotnet build WorkGroup.slnx` 0/0, 테스트 회귀 없음.
 > 자율 종료=빌드/테스트. 패키지 GUI 아이콘 표시는 사용자 수동 검증(R3).
 
-- [ ] **T1 — 공통 헬퍼 `PackagedAppIcon` 추가 (Infrastructure)** *(~1.5h)*
+- [x] **T1 — 공통 헬퍼 `PackagedAppIcon` 추가 (Infrastructure)** *(~1.5h)*
   - **Type**: C
   - **신규 파일**: `src/WorkGroup.Infrastructure/Icons/PackagedAppIcon.cs`
   - **Acceptance**:
@@ -95,7 +95,7 @@
     만약 GetLogo 반환 타입 빌드 에러 시 → 4-E의 BitmapDecoder/SetSourceAsync 입력 호환 타입(`IRandomAccessStream`) 기준으로 캐스팅 조정.
   - **Depends on**: -
 
-- [ ] **T2 — `IconService`: 패키지 멤버 앱은 GetLogo 우선** *(~1h)*
+- [x] **T2 — `IconService`: 패키지 멤버 앱은 GetLogo 우선** *(~1h)*
   - **Type**: C
   - **Acceptance**:
     - `ResolveMemberBitmapAsync(member, ct)`(IconService.cs:94)에서, `member.Kind == AppKind.Packaged`이면
@@ -152,3 +152,4 @@
 
 ## Progress Log
 <!-- implement-task가 갱신 -->
+- T1-T2 완료 (커밋 9e94076, 5501ed4): T1=PackagedAppIcon.OpenLogoStreamAsync 신규(AUMID→FindPackagesForUser→GetAppListEntries→DisplayInfo.GetLogo→IRandomAccessStream, OS 19041 가드, 실패 null). T2=IconService.ResolveMemberBitmapAsync에 Packaged 분기(GetLogo 우선)+DecodeStreamAsync 공통화(이미지/썸네일/로고 3경로 통일). 빌드 0/0, 테스트 80/80, spec OK.
