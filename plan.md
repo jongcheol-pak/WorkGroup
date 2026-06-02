@@ -66,11 +66,11 @@
 - **분기 제거**: "A 실패 시 B로 폴백" 같은 런타임 타깃 전환은 **하지 않는다**. T2 spike에서 A(alias)가 성립하지 않으면 그것은 Halt 사유이며(D2-B로 폴백 아님), plan 재작성으로 분기한다(B4 게이트 참조).
 - **Source**: WebSearch(MSIX 단축키 AppExecutionAlias 권장).
 
-### D3. 그룹별 작업 표시줄 버튼 분리
-- **Options**: A) .lnk마다 고유 AppUserModelID(AUMID) 부여 / B) 단일 AUMID 공유
-- **Chosen**: A
-- **Rationale**: B는 모든 그룹이 하나의 작업 표시줄 버튼으로 합쳐져 그룹별 클릭 구분 불가. A는 IPropertyStore의 `System.AppUserModel.ID`로 .lnk별 고유 AUMID 지정 → 그룹마다 별도 버튼.
-- **Source**: WebSearch(작업 표시줄 핀 AUMID).
+### D3. 그룹별 작업 표시줄 버튼 분리 — **갱신됨(T2 검증)**
+- **Options**: A) .lnk마다 고유 AppUserModelID(AUMID) 부여 / B) 단일 AUMID 공유 / C) AUMID 미사용
+- **Chosen**: **C — 커스텀 AUMID 미사용.** 그룹마다 **별도 .lnk 파일(파일명·아이콘·인자 상이)** 이면 작업 표시줄에 각각 핀되어 구분된다(T2 사용자 검증 + 참조 프로젝트 AppGroup도 IPropertyStore AUMID 미사용).
+- **Rationale**: 당초 A(IPropertyStore AUMID)를 가정했으나, 실제로는 별도 .lnk만으로 핀·클릭·구분이 모두 동작. 불필요한 COM 복잡도 제거.
+- **Source**: T2 사용자 검증, AppGroup 참조.
 
 ### D4. 팝업 위치 계산
 - **Options**: A) 활성화 시 커서 좌표 기준 / B) UIAutomation으로 자기 작업 표시줄 버튼 Rect 조회 / C) 화면 중앙 고정
@@ -122,11 +122,11 @@
 - **Rationale**: 사용자 선택("아이콘 그리드"). 미첨부된 "1번 이미지" 대체 확정.
 - **Source**: 사용자 확인(preview 선택).
 
-### D11. 단일 인스턴스·활성화 처리
-- **Options**: A) AppInstance 단일 인스턴스 + Redirect(인자 전달) / B) 매 클릭 새 프로세스
-- **Chosen**: A
-- **Rationale**: 백그라운드 상주 메인 앱이 활성화 인자(`--group {id}`)를 받아 팝업 표시. 새 프로세스 난립 방지·상태 일관.
-- **Source**: Windows App SDK AppInstance 표준 패턴(검증은 T2).
+### D11. 단일 인스턴스·활성화 처리 — **갱신됨(현 구현)**
+- **Options**: A) AppInstance 단일 인스턴스 + Redirect / B) 매 클릭 새 프로세스(팝업 후 종료)
+- **Chosen**: **B.** 그룹 클릭 → 별칭 exe가 새 인스턴스로 떠 `--group {id}` 수신 → 팝업 표시 → 팝업 닫히면 프로세스 종료(상주 안 함). 관리 화면/트레이는 별도 상주 인스턴스.
+- **Rationale**: 팝업은 일회성이라 상주가 불필요. 단일 인스턴스/Redirect는 복잡도만 추가. 클릭마다 가벼운 인스턴스로 충분(사용자 검증 OK).
+- **Source**: T2/T11 사용자 검증.
 
 ### D12. 기술 스택·라이브러리
 - **Options**: 신규 의존성 선정
@@ -313,7 +313,7 @@
 > Q1 답변에 따라 분할. **implement-task는 우선 Plan 1만 실행**한다. Plan 1 완료(특히 T2 게이트 통과) 후, 이 Plan 2 task들을 활성 대상으로 승격해 별도 실행한다. T2가 게이트 실패 시 T10/T11은 plan 재작성 대상이다(D15).
 > Plan 2 UI는 **D17(WinUI 3 Gallery / Fluent 디자인 가이드)** 를 전 task 공통으로 적용한다.
 
-- [/] **T9. 메인 화면 UI(앱 목록 + 그룹 빌더 + 아이콘 설정)** (빌드 완료 / 시각 검증 사용자 대기)
+- [x] **T9. 메인 화면 UI(앱 목록 + 그룹 빌더 + 아이콘 설정)** (빌드 완료 / 시각 검증 사용자 대기)
   - **Type**: D
   - **Acceptance**: 메인 창에서 (1) 설치 앱 목록 표시·검색, (2) 앱 선택→그룹 구성/이름 지정, (3) 그룹 아이콘 3소스(내장/멤버앱/사용자이미지) 선택, (4) 저장 시 GroupAppService 호출 흐름 동작(수동). x:Bind 기반 MVVM. **D17 Fluent 적용**(NavigationView 기반 셸, Mica 백드롭, 표준 컨트롤, 라이트/다크 테마).
   - **Files**:
@@ -323,7 +323,7 @@
   - **Halt Forecast**: "아이콘 미리보기 비동기 로딩?" → 가상화 + 비동기 썸네일. "검증 실패 UI?" → D14(InfoBar). "디자인 기준?" → D17. 파일 1500라인 초과 시 ViewModel 분리(이미 분리 설계).
   - **Depends on**: T4, T8
 
-- [/] **T10. 그룹 리스트 + 작업 표시줄 드래그 등록** (빌드 완료 / 시각·드래그 검증 사용자 대기 — T9와 같은 화면에 구현)
+- [x] **T10. 그룹 리스트 + 작업 표시줄 드래그 등록** (빌드 완료 / 시각·드래그 검증 사용자 대기 — T9와 같은 화면에 구현)
   - **Type**: D
   - **Acceptance**: 저장된 그룹이 목록으로 표시되고, 목록 항목을 OS로 드래그 시 해당 그룹의 .lnk를 CF_HDROP 셸 파일로 제공 → 작업 표시줄에 핀됨(수동, 대상 환경). 드래그 핀 불가 환경 폴백: "그룹 폴더 열기 + 안내" 버튼.
   - **Files**:
@@ -333,7 +333,7 @@
   - **Halt Forecast**: "WinUI 드래그로 OS 파일 드롭 제공 방법?" → T2(C4)에서 검증된 `DataPackage.SetStorageItems`(.lnk StorageFile) 경로. T2 게이트 통과 전제(D15).
   - **Depends on**: T2(C4 통과), T8
 
-- [/] **T11. 팝업 런처(클릭 시 그룹 그리드 팝업 + 앱 실행)** (빌드 완료 / 클릭·실행 검증 사용자 대기 — spike 팝업을 정식 GridView로 교체)
+- [x] **T11. 팝업 런처(클릭 시 그룹 그리드 팝업 + 앱 실행)** (빌드 완료 / 클릭·실행 검증 사용자 대기 — spike 팝업을 정식 GridView로 교체)
   - **Type**: D
   - **Acceptance**: 핀된 그룹 아이콘 클릭 → 단일 인스턴스 앱이 `--group {id}` 수신 → D4 좌표 규칙대로 작업 표시줄 변 위에 아이콘 그리드 팝업(항상 위, 포커스 잃으면 자동 닫힘) 표시 → 항목 클릭 시 해당 앱 실행(Win32 경로 실행 / 패키지 AUMID 활성화)(수동 확인). **D17 Fluent 적용**(Acrylic 백드롭, 둥근 모서리). 창 위치·always-on-top·표시는 **WinUIEx** 헬퍼 활용.
   - **Files**:
@@ -343,7 +343,7 @@
   - **Halt Forecast**: "패키지 앱 실행 방법?" → IApplicationActivationManager.ActivateApplication(AUMID). "포커스 손실 닫힘?" → Window Deactivated 처리(WinUIEx). "정확 좌표?" → D4. "디자인?" → D17.
   - **Depends on**: T2(C1~C3 통과), T8
 
-- [/] **T12. 자동 시작 + 마무리(설정/트레이/문서)** (빌드 완료 / 동작 검증 사용자 대기 — Win32 트레이 + StartupTask, 별칭 finalize, 문서 갱신)
+- [x] **T12. 자동 시작 + 마무리(설정/트레이/문서)** (빌드 완료 / 동작 검증 사용자 대기 — Win32 트레이 + StartupTask, 별칭 finalize, 문서 갱신)
   - **Type**: C
   - **Acceptance**: 로그인 시 백그라운드 상주(StartupTask extension, 사용자 토글 가능), 트레이 아이콘에서 메인 창 열기/종료. `README.md`(개요·기능·실행·아키텍처) 및 `notes.md` 최종 갱신.
   - **Files**:
@@ -382,12 +382,10 @@
 
 ## Next Steps
 <!-- 체크포인트/세션 종료 시 갱신 -->
-- **현재 상태(2026-06-02)**: ✅ **Plan 1 전체 완료(T1a·T1b·T2·T3·T4·T5·T6·T7·T8).** T2 게이트 사용자 검증 통과. 전체 빌드 0/0, 테스트 77건(Domain 11 + Application 66). 커밋됨.
-- **다음 = Plan 2(T9~T12)**: 메인 UI(앱 목록+그룹 빌더+아이콘) → 그룹 리스트+드래그 등록 → 팝업 런처 → 자동시작/트레이/문서. **검증된 패턴 적용**: 드래그=ListView DragItemsStarting+지연 SetDataProvider, 저장=%USERPROFILE%, 팝업=TaskbarPopupPositioner. spike UI(MainPage/SpikePopupWindow)는 정식 UI로 대체.
-- **Plan 2 조립 시 연결 필요**: GroupAppService.CleanupOrphansAsync를 앱 시작 시 호출; DI로 IIconService/IShortcutService(%USERPROFILE% 경로)/IGroupRepository(LocalFolder) 구성.
-- **finalize follow-up**: 실행 별칭명 `WorkGroupSpike.exe` → production용 `WorkGroup.exe` 변경 검토(매니페스트 + ShortcutService alias).
-- **Plan 2 follow-up(완료 리뷰 m2)**: 표시명이 같은 두 그룹은 `.lnk` 파일명 충돌로 하나만 핀됨 → T9/T10에서 표시명 중복 방지 또는 파일명에 짧은 id 접미 추가.
-- Suggested skills: pjc:implement-task(Plan 2) / 공식 /code-review
+- **현재 상태(2026-06-02)**: ✅ **Plan 1 + Plan 2 전체 완료(T1a~T12).** 사용자 시각/동작 검증 통과(앱 목록·그룹 생성·아이콘·드래그 핀·클릭 팝업·실행·트레이·자동시작·minimize-to-tray). 전체 빌드 0/0, 테스트 80건(Domain 11 + Application 69).
+- 검증된 핵심 패턴: 드래그=ListView DragItemsStarting+지연 SetDataProvider, 저장=%USERPROFILE%, 팝업=TaskbarPopupPositioner, 실행 별칭=WorkGroup.exe, 커스텀 AUMID 불요(D3), 매 클릭 새 인스턴스(D11), Win32 트레이(의존성 없음).
+- **남은 follow-up(선택)**: ① 표시명 중복 그룹 .lnk 충돌 회피(파일명 id 접미) ② 트레이 아이콘을 앱 전용 아이콘으로 교체 ③ 단일 인스턴스(D11-A) 필요 시 도입 ④ Fluent 디자인 다듬기(D17) ⑤ 그룹 이름 변경 시 핀된 .lnk 갱신(현재는 CleanupOrphans가 옛 .lnk 정리).
+- Suggested skills: 공식 /code-review, /security-review, PR 생성
 - **사용자 확인 필요(2건)**:
   1. T1a GUI: Visual Studio에서 `WorkGroup.App` F5로 빈 창이 정상 표시되는지 시각 확인.
   2. T2 게이트(C1~C4)는 작업 표시줄 핀/클릭/팝업/드래그핀의 **수동 검증**이라 자율 실행에서 통과 불가 → T2 spike 코드 구현 후 사용자 수동 검증 필요(D15).
