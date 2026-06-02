@@ -99,4 +99,16 @@ public sealed partial class GroupEditDialog : ContentDialog
         if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
             ViewModel.RemoveApp(item);
     }
+
+    // 읽기전용 이름을 클릭하면 입력창으로 전환하고, 전환 직후 포커스를 줘 바로 편집 가능하게 한다.
+    private void OnEditNameClick(object sender, RoutedEventArgs e)
+    {
+        ViewModel.IsNameEditing = true;
+        // Visibility 전환 직후 즉시 Focus가 무시될 수 있어 한 틱 양보 후 포커스/전체 선택.
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            NameTextBox.Focus(FocusState.Programmatic);
+            NameTextBox.SelectAll();
+        });
+    }
 }

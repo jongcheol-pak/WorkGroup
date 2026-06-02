@@ -18,6 +18,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="300" />
         </Grid.RowDefinitions>
 
@@ -53,16 +54,34 @@
                     </Flyout>
                 </Button.Flyout>
             </Button>
-            <TextBox Grid.Column="1" Header="그룹 이름" PlaceholderText="이름 입력(최대 15자)"
-                     MaxLength="15" VerticalAlignment="Bottom"
-                     Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            <!-- 이름: 수정 모드는 읽기전용 표시 → 클릭 시 입력창 전환, 신규는 처음부터 입력창 -->
+            <Grid Grid.Column="1" VerticalAlignment="Bottom">
+                <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameDisplayVisibility, Mode=OneWay}">
+                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
+                    <Button Click="OnEditNameClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderThickness="0" Padding="8,6"
+                            ToolTipService.ToolTip="이름 수정">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{x:Bind ViewModel.EditingName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                            <FontIcon Glyph="&#xE70F;" FontSize="14" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <TextBox x:Name="NameTextBox" Header="그룹 이름" PlaceholderText="이름 입력(최대 15자)"
+                         MaxLength="15" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}"
+                         Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
         </Grid>
 
-        <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
+        <!-- 이름 변경 시 작업 표시줄 핀 재등록 안내 -->
+        <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.ShowRenameWarning, Mode=OneWay}" IsClosable="False"
+                 Severity="Warning" Message="이름을 변경하면 작업 표시줄에 핀한 기존 항목을 제거하고 다시 핀해야 합니다." />
+
+        <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
                  Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
-        <!-- 2행: 앱 추가 -->
-        <Button Grid.Row="2" HorizontalAlignment="Right" Margin="0,12,0,0">
+        <!-- 앱 추가 -->
+        <Button Grid.Row="3" HorizontalAlignment="Right" Margin="0,12,0,0">
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <SymbolIcon Symbol="Add" />
                 <TextBlock Text="앱 추가" />
@@ -106,8 +125,8 @@
             </Button.Flyout>
         </Button>
 
-        <!-- 3행: 선택한 앱 목록 -->
-        <ListView Grid.Row="3" ItemsSource="{x:Bind ViewModel.SelectedApps, Mode=OneWay}" SelectionMode="None"
+        <!-- 선택한 앱 목록 -->
+        <ListView Grid.Row="4" ItemsSource="{x:Bind ViewModel.SelectedApps, Mode=OneWay}" SelectionMode="None"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="vm:PopupAppItem">

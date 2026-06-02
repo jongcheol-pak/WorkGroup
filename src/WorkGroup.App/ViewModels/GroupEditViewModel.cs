@@ -29,6 +29,8 @@ public sealed partial class GroupEditViewModel : ObservableObject
     // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외). 확인 시 재조회하지 않는다(plan.md DI10/M2).
     private HashSet<string> _existingNames = new(StringComparer.OrdinalIgnoreCase);
     private GroupId? _editingId;
+    // 편집 시작 시 원래 이름(이름 변경 감지용). 신규는 빈 문자열.
+    private string _originalName = string.Empty;
 
     // 리소스 아이콘/설치앱 picker는 각 Flyout이 처음 열릴 때 지연 로드한다(오픈/취소 성능 — plan.md Debug 섹션 참조).
     private bool _resourceLoaded;
@@ -60,7 +62,29 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public partial string Title { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowRenameWarning))]
     public partial string EditingName { get; set; }
+
+    /// <summary>편집 모드 여부(신규=false). 이름 읽기전용 표시·핀 재등록 경고는 편집 모드에만 적용.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowRenameWarning))]
+    public partial bool IsEditMode { get; set; }
+
+    /// <summary>이름을 입력창(편집)으로 전환했는지. 신규는 처음부터 true, 편집은 이름 클릭 시 true.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NameDisplayVisibility))]
+    [NotifyPropertyChangedFor(nameof(NameEditVisibility))]
+    public partial bool IsNameEditing { get; set; }
+
+    /// <summary>편집 모드에서 이름이 원래 이름과 달라졌을 때만 핀 재등록 경고를 표시한다.</summary>
+    public bool ShowRenameWarning
+        => IsEditMode && !string.Equals(EditingName.Trim(), _originalName, StringComparison.Ordinal);
+
+    /// <summary>이름 읽기전용 표시 영역의 표시 여부(편집 전환 시 숨김).</summary>
+    public Visibility NameDisplayVisibility => IsNameEditing ? Visibility.Collapsed : Visibility.Visible;
+
+    /// <summary>이름 입력창의 표시 여부(편집 전환 시 표시).</summary>
+    public Visibility NameEditVisibility => IsNameEditing ? Visibility.Visible : Visibility.Collapsed;
 
     [ObservableProperty]
     public partial string PickerSearch { get; set; }
@@ -106,8 +130,14 @@ public sealed partial class GroupEditViewModel : ObservableObject
         try
         {
             _editingId = group?.Id;
+            // 이름 변경 감지·읽기전용 전환 상태는 EditingName 설정 전에 먼저 정한다
+            // (EditingName 설정이 유발하는 ShowRenameWarning 통지 시점에 올바른 값이 보이도록).
+            IsEditMode = group is not null;
+            _originalName = group?.Name ?? string.Empty;
+            IsNameEditing = group is null; // 신규는 즉시 입력, 수정은 읽기전용부터
             Title = group is null ? "그룹 추가" : "그룹 수정";
             EditingName = group?.Name ?? string.Empty;
+            OnPropertyChanged(nameof(ShowRenameWarning)); // 초기 상태 보정
 
             // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외).
             var groups = await _groupService.GetAllAsync();
