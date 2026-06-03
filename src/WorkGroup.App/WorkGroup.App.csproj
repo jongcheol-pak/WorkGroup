@@ -32,6 +32,7 @@
         <Content Include="Assets\Square150x150Logo.scale-200.png" />
         <Content Include="Assets\Square44x44Logo.scale-200.png" />
         <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
+        <Content Include="Assets\StoreLogo.scale-200.png" />
         <Content Include="Assets\Wide310x150Logo.scale-200.png" />
         <!-- 앱 아이콘(.ico) — 창 SetIcon 및 ms-appx 참조용으로 출력/패키지에 포함 -->
         <Content Include="Assets\AppIcon.ico" />
