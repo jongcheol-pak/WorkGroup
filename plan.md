@@ -342,6 +342,21 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - 구현 중 결정 분기가 남아있는가? → 아니오(팝업 수명/포커스/레이아웃/설정 저장 위치 모두 확정).
 - 검증 가능한 acceptance가 각 task에 있는가? → 예.
 
+## Next Steps
+- 권장 다음 액션: **F5(Visual Studio MSIX 배포)로 GUI 수동 검증** 후 사용자 승인 시 머지/PR. 헤드리스 불가 항목이라 자동 검증 완료(빌드 0/0, 테스트 106/106) 뒤 남은 단계는 수동.
+- GUI 수동 검증 체크리스트:
+  1. 트레이 **좌클릭** → 등록 폴더 목록 팝업(작업 표시줄 변), **더블클릭 시 팝업 1회만**(깜빡임 없음).
+  2. 트레이 **우클릭 메뉴 "열기"** → 메인 창, "종료" → 앱 종료.
+  3. "트레이 메뉴" 탭: 폴더 추가(찾아보기)/검색/수정/위치 열기/삭제, "N개 폴더" 카운트.
+  4. 폴더 호버 → 2차 내용 팝업(파일/하위폴더), 파일 클릭 실행, 하위 폴더 재귀(설정 깊이), **팝업 밖 클릭 시 체인 즉시 전체 닫힘**(m1).
+  5. 톱니 → 설정 다이얼로그(열/깊이/숨김) 저장 후 다음 좌클릭 팝업 반영. 톱니(팝업 헤더) → 메인 트레이 메뉴 탭.
+- Suggested skills: 공식 /code-review(머지 전 diff 리뷰), 공식 /security-review(해당 시).
+
+## Follow-ups (plan-completion-reviewer MINOR)
+- m1: 2차+ 팝업 체인 종료 시 드문 깜빡임 여지(WinUI Activated 순서 의존) — GUI 수동 검증으로 확인. 문제 시 자식 Closed에서 부모 재-Activate 보정 검토.
+- m2: 트레이 아이콘 파일 로드(LoadTrayIcon) 변경은 이전 세션 잔재 — notes 2026-06-03 "트레이 아이콘 AppIcon.ico 적용" 항목에 이미 기록됨(추가 조치 불필요).
+- m3(선택): FolderEditDialog 편집 모드 "이름만 변경" 저장소 단위 테스트 추가.
+
 ## Progress Log
 - T1-T2 완료: Domain(FolderShortcut/FolderPopupSettings) + Application 인터페이스(IFolderShortcutRepository/IDirectoryBrowser/IShellOpener). 빌드 OK, Domain 테스트 23/23. 신규 파일만(호출자 0).
 - T3-T4 완료: JsonFolderShortcutRepository(folders.json, 원자적 쓰기/백업) + WorkGroupPaths.FoldersConfigPath + DirectoryBrowser + ShellOpener + ShellIcon.OpenForPathAsync(경로 오버로드, 기존 OpenForAppAsync 무변경). 솔루션 빌드 0/0, Application 테스트 83/83. ShellIcon 기존 소비자 영향 0(빌드 확인).
