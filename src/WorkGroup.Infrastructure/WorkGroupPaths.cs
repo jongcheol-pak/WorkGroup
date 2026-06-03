@@ -26,6 +26,9 @@ public static class WorkGroupPaths
     /// <summary>groups.json이 위치할 디렉터리.</summary>
     public static string ConfigDirectory => RootDirectory;
 
+    /// <summary>folders.json(폴더 바로가기 목록)의 전체 경로. groups.json과 같은 루트에 둔다.</summary>
+    public static string FoldersConfigPath => Path.Combine(RootDirectory, "folders.json");
+
     /// <summary>실행 별칭의 표준 경로(.lnk 타깃).</summary>
     public static string AliasExePath => ShortcutService.DefaultAliasPath(AliasExeName);
 }
