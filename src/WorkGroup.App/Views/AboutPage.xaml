@@ -23,7 +23,7 @@
             <!-- 앱 이름 / 버전 -->
             <controls:SettingsCard Header="{x:Bind ViewModel.AppName}" Description="설치된 버전">
                 <controls:SettingsCard.HeaderIcon>
-                    <ImageIcon Source="ms-appx:///Assets/Square44x44Logo.scale-200.png" />
+                    <ImageIcon Source="ms-appx:///Assets/AppIcon.ico" Width="48" Height="48" />
                 </controls:SettingsCard.HeaderIcon>
                 <TextBlock Text="{x:Bind ViewModel.Version}" VerticalAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
