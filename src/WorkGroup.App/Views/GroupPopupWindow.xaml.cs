@@ -1,8 +1,12 @@
+using System;
 using System.Collections.ObjectModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Graphics;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Groups;
@@ -18,10 +22,20 @@ namespace WorkGroup.App.Views;
 public sealed partial class GroupPopupWindow : Window
 {
     private const int PopupWidth = 360;
-    private const int PopupHeight = 440;
+    // 콘텐츠 측정 전 초기 배치에 쓰는 기본 높이. 로드 후 아이콘 그리드 크기에 맞춰 줄인다.
+    private const int InitialPopupHeight = 200;
+    // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
+    private const int OffScreen = -32000;
 
     private readonly IGroupAppService _groupService;
     private readonly IAppLauncher _launcher;
+    // 핀 클릭 시점의 커서/모니터 좌표(표시를 미뤄도 클릭 위치 기준으로 배치하도록 생성자에서 1회 캡처).
+    private readonly ScreenMetricsProvider.Metrics _metrics;
+
+    // 마지막으로 적용한 창 높이(px). 동일 값이면 재조정을 건너뛰어 SizeChanged 무한 루프를 막는다.
+    private int _lastAppliedHeight = -1;
+    // 콘텐츠 확정 후 작업 표시줄 정위치로 한 번 이동해 표시했는지. 그 전까지는 화면 밖에 머문다.
+    private bool _positioned;
 
     public ObservableCollection<PopupAppItem> Items { get; } = new();
 
@@ -29,15 +43,29 @@ public sealed partial class GroupPopupWindow : Window
     {
         InitializeComponent();
 
+        // 메인 창과 동일한 재질(Mica)을 팝업에도 적용해 흰 외곽선 없는 표준 창 프레임으로 만든다.
+        SystemBackdrop = new MicaBackdrop();
+
+        // 콘텐츠를 타이틀바 영역까지 확장해 상단 빈 캡션 여백을 없앤다(타이틀바는 ConfigurePresenter에서 숨김).
+        ExtendsContentIntoTitleBar = true;
+
         // 메인 창과 동일한 저장 테마를 팝업 루트에도 적용한다(plan.md M1 — 별 프로세스라 직접 읽어 적용).
         if (Content is FrameworkElement root)
+        {
             root.RequestedTheme = App.Services.GetRequiredService<WorkGroup.App.Services.ThemeService>().Read();
+            // 아이템 컨테이너가 실제로 생성·배치되면 콘텐츠 크기가 바뀌므로, 그 시점에 창 높이를 다시 맞춘다.
+            root.SizeChanged += (_, _) => AdjustToContent();
+        }
 
         _groupService = App.Services.GetRequiredService<IGroupAppService>();
         _launcher = App.Services.GetRequiredService<IAppLauncher>();
 
         ConfigurePresenter();
-        PositionNearTaskbar();
+        // 핀 클릭 위치를 즉시 캡처(표시는 콘텐츠 확정 후로 미뤄도 이 좌표 기준으로 배치).
+        _metrics = new ScreenMetricsProvider().Capture();
+        // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
+        AppWindow.Resize(new SizeInt32(PopupWidth, InitialPopupHeight));
+        AppWindow.Move(new PointInt32(OffScreen, OffScreen));
         Activated += OnActivated;
 
         _ = LoadAsync(groupId);
@@ -51,22 +79,71 @@ public sealed partial class GroupPopupWindow : Window
             var group = groups.FirstOrDefault(g => g.Id.Value == groupId);
             if (group is null)
             {
+                TitleText.Visibility = Visibility.Visible; // 에러 메시지는 헤더 설정과 무관하게 항상 표시
                 TitleText.Text = "그룹을 찾을 수 없습니다.";
                 return;
             }
 
-            TitleText.Text = group.Apps.Count == 0 ? $"{group.Name} (멤버 없음)" : group.Name;
+            // 그룹 설정에 따라 이름 헤더 표시/숨김(숨김 시 텍스트 설정 불필요).
+            TitleText.Visibility = group.ShowPopupHeader ? Visibility.Visible : Visibility.Collapsed;
+            if (group.ShowPopupHeader)
+                TitleText.Text = group.Apps.Count == 0 ? $"{group.Name} (멤버 없음)" : group.Name;
+
+            var iconTasks = new List<Task>();
             foreach (var app in group.Apps)
             {
                 var item = new PopupAppItem(app);
                 Items.Add(item);
-                _ = item.LoadIconAsync();
+                iconTasks.Add(item.LoadIconAsync());
             }
+            // 아이콘까지 로드한 뒤 표시해 빈 아이콘→채워짐 깜빡임을 막는다(실패는 무시하고 표시 진행).
+            try { await Task.WhenAll(iconTasks); }
+            catch { /* 일부 아이콘 로드 실패는 표시를 막지 않는다 */ }
         }
         catch (Exception)
         {
+            TitleText.Visibility = Visibility.Visible; // 에러 메시지는 항상 표시
             TitleText.Text = "그룹을 불러오지 못했습니다.";
         }
+        finally
+        {
+            // 콘텐츠 확정 후 한 프레임 뒤에 실제 높이로 측정하고 작업 표시줄 정위치로 이동해 표시한다.
+            DispatcherQueue.TryEnqueue(RevealAtTaskbar);
+        }
+    }
+
+    /// <summary>
+    /// 아이콘 그리드를 포함한 콘텐츠의 실제 세로 길이를 측정해 창 높이를 맞춘다(빈 여백 제거).
+    /// </summary>
+    private void AdjustToContent()
+    {
+        if (Content is not FrameworkElement root)
+            return;
+
+        double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
+        root.UpdateLayout();
+        // 너비는 고정, 높이는 무한 제약으로 측정해 콘텐츠가 필요로 하는 만큼만 사용한다.
+        root.Measure(new Windows.Foundation.Size(PopupWidth / scale, double.PositiveInfinity));
+
+        int contentHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
+        if (contentHeight <= 0)
+            contentHeight = InitialPopupHeight;
+
+        // 표준 프레임(테두리/캡션 등 비클라이언트)만큼 더해 클라이언트 영역이 콘텐츠를 다 담게 한다(잘림 방지).
+        int chrome = AppWindow.Size.Height - AppWindow.ClientSize.Height;
+        if (chrome < 0)
+            chrome = 0;
+
+        int total = contentHeight + chrome;
+        // SizeChanged가 Resize로 재발생해도 같은 높이면 무시해 무한 루프를 막는다.
+        if (total == _lastAppliedHeight)
+            return;
+        _lastAppliedHeight = total;
+
+        AppWindow.Resize(new SizeInt32(PopupWidth, total));
+        // 표시(Reveal) 전에는 화면 밖에서 크기만 맞추고, 이미 표시 중이면 정위치도 따라 갱신한다.
+        if (_positioned)
+            MoveToTaskbar(total);
     }
 
     private void OnAppClick(object sender, ItemClickEventArgs e)
@@ -78,6 +155,30 @@ public sealed partial class GroupPopupWindow : Window
         }
     }
 
+    // 아이콘 위에 마우스가 올라오면 살짝 확대, 벗어나면 원래 크기로(부드럽게).
+    private void OnIconPointerEntered(object sender, PointerRoutedEventArgs e) => AnimateIconScale(sender, 1.15);
+
+    private void OnIconPointerExited(object sender, PointerRoutedEventArgs e) => AnimateIconScale(sender, 1.0);
+
+    private static void AnimateIconScale(object sender, double to)
+    {
+        if (sender is not FrameworkElement { RenderTransform: ScaleTransform scale })
+            return;
+
+        var storyboard = new Storyboard();
+        var duration = new Duration(TimeSpan.FromMilliseconds(120));
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        foreach (var property in new[] { "ScaleX", "ScaleY" })
+        {
+            var animation = new DoubleAnimation { To = to, Duration = duration, EasingFunction = easing };
+            Storyboard.SetTarget(animation, scale);
+            Storyboard.SetTargetProperty(animation, property);
+            storyboard.Children.Add(animation);
+        }
+        storyboard.Begin();
+    }
+
     private void ConfigurePresenter()
     {
         if (AppWindow.Presenter is OverlappedPresenter presenter)
@@ -86,16 +187,28 @@ public sealed partial class GroupPopupWindow : Window
             presenter.IsResizable = false;
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
-            presenter.SetBorderAndTitleBar(false, false);
+            // 메인 창과 동일한 표준 프레임(둥근 모서리/시스템 테두리)은 유지하고 타이틀바(캡션 버튼)만 숨긴다.
+            presenter.SetBorderAndTitleBar(true, false);
         }
+
+        // 팝업 창을 작업 표시줄 버튼·Alt+Tab 스위처에 노출하지 않는다(핀 클릭 시 별도 앱 아이콘/미리보기 방지).
+        AppWindow.IsShownInSwitchers = false;
     }
 
-    private void PositionNearTaskbar()
+    /// <summary>콘텐츠 측정이 끝난 뒤 작업 표시줄 정위치로 이동해 처음으로 화면에 표시한다(점프·깜빡임 방지).</summary>
+    private void RevealAtTaskbar()
     {
-        var metrics = new ScreenMetricsProvider().Capture();
-        AppWindow.Resize(new SizeInt32(PopupWidth, PopupHeight));
+        AdjustToContent(); // 화면 밖에서 최종 크기 확정
+        int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
+        MoveToTaskbar(height);
+        _positioned = true; // 이후 SizeChanged는 정위치에서 조정
+    }
+
+    /// <summary>캡처해 둔 클릭 시점 좌표로 작업 표시줄 변에 창을 이동한다(크기는 AdjustToContent가 담당).</summary>
+    private void MoveToTaskbar(int height)
+    {
         var placement = TaskbarPopupPositioner.Compute(
-            metrics.Monitor, metrics.Work, metrics.CursorX, metrics.CursorY, PopupWidth, PopupHeight);
+            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, PopupWidth, height);
         AppWindow.Move(new PointInt32(placement.X, placement.Y));
     }
 

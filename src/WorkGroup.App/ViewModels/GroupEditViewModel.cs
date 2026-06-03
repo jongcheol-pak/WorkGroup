@@ -46,7 +46,11 @@ public sealed partial class GroupEditViewModel : ObservableObject
         EditingName = string.Empty;
         PickerSearch = string.Empty;
         StatusMessage = string.Empty;
+        ShowPopupHeader = true;
         SelectedIcon = IconSource.FromCustomImage(DefaultIconUri);
+
+        // 선택 앱 개수 표시(AppCountText)는 목록 변경(추가/삭제/Clear)마다 갱신한다. 구독은 생성자에서 단 1회.
+        SelectedApps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(AppCountText));
     }
 
     /// <summary>그룹에 포함된(선택된) 앱 목록.</summary>
@@ -118,6 +122,13 @@ public sealed partial class GroupEditViewModel : ObservableObject
 
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
 
+    /// <summary>핀 팝업에 그룹 이름 헤더를 표시할지(토글). 저장 시 AppGroup에 반영된다.</summary>
+    [ObservableProperty]
+    public partial bool ShowPopupHeader { get; set; }
+
+    /// <summary>선택한 앱 개수 표시 텍스트(목록 위 카운트).</summary>
+    public string AppCountText => $"앱 {SelectedApps.Count}개";
+
     /// <summary>
     /// 신규/편집 모드로 초기화. 무거운 설치앱 인벤토리·리소스 그리드는 여기서 로드하지 않고
     /// 각 Flyout이 열릴 때 지연 로드한다(편집 멤버는 즉시 복원 — plan.md Debug 섹션 참조).
@@ -137,6 +148,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
             IsNameEditing = group is null; // 신규는 즉시 입력, 수정은 읽기전용부터
             Title = group is null ? "그룹 추가" : "그룹 수정";
             EditingName = group?.Name ?? string.Empty;
+            ShowPopupHeader = group?.ShowPopupHeader ?? true; // 편집은 그룹 값, 신규는 표시(true)
             OnPropertyChanged(nameof(ShowRenameWarning)); // 초기 상태 보정
 
             // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외).
@@ -284,7 +296,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         AppGroup group;
         if (_editingId is null)
         {
-            var created = AppGroup.Create(name, SelectedIcon);
+            var created = AppGroup.Create(name, SelectedIcon, ShowPopupHeader);
             if (created.IsFailure)
             {
                 StatusMessage = created.Error ?? "그룹 생성 실패";
@@ -296,7 +308,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }
         else
         {
-            group = AppGroup.Restore(_editingId, name, SelectedIcon, apps);
+            group = AppGroup.Restore(_editingId, name, SelectedIcon, apps, ShowPopupHeader);
         }
 
         var result = await _groupService.SaveAsync(group);

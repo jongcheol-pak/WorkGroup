@@ -170,18 +170,21 @@ public sealed class JsonGroupRepository : IGroupRepository
         var icon = new IconSource(Enum.Parse<IconSourceKind>(dto.Icon.Kind), dto.Icon.Value);
         var apps = dto.Apps.Select(a =>
             new AppEntry(a.DisplayName, a.LaunchTarget, Enum.Parse<AppKind>(a.Kind), a.IconLocation));
-        return AppGroup.Restore(new GroupId(dto.Id), dto.Name, icon, apps);
+        // 레거시 파일(필드 없음)은 ShowPopupHeader가 null → 헤더 표시(true)로 마이그레이션.
+        return AppGroup.Restore(new GroupId(dto.Id), dto.Name, icon, apps, dto.ShowPopupHeader ?? true);
     }
 
     private static GroupDto MapToDto(AppGroup group) => new(
         group.Id.Value,
         group.Name,
         new IconDto(group.Icon.Kind.ToString(), group.Icon.Value),
-        group.Apps.Select(a => new AppDto(a.DisplayName, a.LaunchTarget, a.Kind.ToString(), a.IconLocation)).ToList());
+        group.Apps.Select(a => new AppDto(a.DisplayName, a.LaunchTarget, a.Kind.ToString(), a.IconLocation)).ToList(),
+        group.ShowPopupHeader);
 
     // 직렬화 전용 DTO(스키마 버전 포함 — D7).
     private sealed record GroupsFileDto(int SchemaVersion, List<GroupDto> Groups);
-    private sealed record GroupDto(string Id, string Name, IconDto Icon, List<AppDto> Apps);
+    // ShowPopupHeader는 nullable — 기존 groups.json(필드 없음)도 로드 가능(하위호환). 키명은 ShowPopupHeader 고정.
+    private sealed record GroupDto(string Id, string Name, IconDto Icon, List<AppDto> Apps, bool? ShowPopupHeader);
     private sealed record IconDto(string Kind, string Value);
     private sealed record AppDto(string DisplayName, string LaunchTarget, string Kind, string? IconLocation);
 }

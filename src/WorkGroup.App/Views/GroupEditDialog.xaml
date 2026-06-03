@@ -78,7 +78,7 @@
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}">
                     <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" />
                     <TextBox x:Name="NameTextBox" PlaceholderText="이름 입력(최대 15자)" FontSize="20"
-                             MaxLength="15" Padding="10,0,6,0" Height="40" VerticalContentAlignment="Center"
+                             MaxLength="15" Padding="10,5,0,0"  Height="40" VerticalContentAlignment="Center"
                              Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
             </Grid>
@@ -91,70 +91,91 @@
         <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
                  Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
-        <!-- 앱 추가 -->
-        <Button Grid.Row="3" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <SymbolIcon Symbol="Add" />
-                <TextBlock Text="앱 추가" />
+        <!-- 앱 개수(좌) + 팝업 이름 표시 토글 + 앱 추가 버튼(우) -->
+        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="{x:Bind ViewModel.AppCountText, Mode=OneWay}" VerticalAlignment="Center"
+                       Style="{ThemeResource BodyStrongTextBlockStyle}" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <!-- 핀 팝업의 그룹 이름 헤더 표시 여부 토글 -->
+                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="팝업 이름 표시" VerticalAlignment="Center" />
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.ShowPopupHeader, Mode=TwoWay}"
+                                  MinWidth="0" OnContent="" OffContent="" />
+                </StackPanel>
+
+                <!-- 앱 추가: "+" 아이콘만 표시 -->
+                <Button ToolTipService.ToolTip="앱 추가">
+                    <SymbolIcon Symbol="Add" />
+                    <Button.Flyout>
+                        <Flyout Opening="OnAppPickerFlyoutOpening">
+                            <Grid Width="320" Height="380" RowSpacing="8">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+                                <TextBox PlaceholderText="앱 검색"
+                                         Text="{x:Bind ViewModel.PickerSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsPickerLoading, Mode=OneWay}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.AvailableApps, Mode=OneWay}"
+                                          Visibility="{x:Bind ViewModel.PickerListVisibility, Mode=OneWay}"
+                                          SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAppPickerItemClick">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PopupAppItem">
+                                            <Grid ColumnSpacing="10" Padding="2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="20" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <!-- 이미 추가된 항목 체크 표시(고정폭으로 아이콘/이름 정렬 유지) -->
+                                                <FontIcon Glyph="&#xE73E;" FontSize="14" VerticalAlignment="Center"
+                                                          Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                                          Visibility="{x:Bind SelectionGlyphVisibility, Mode=OneWay}" />
+                                                <Image Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center"
+                                                       Source="{x:Bind Icon, Mode=OneWay}" />
+                                                <TextBlock Grid.Column="2" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </Grid>
+                        </Flyout>
+                    </Button.Flyout>
+                </Button>
             </StackPanel>
-            <Button.Flyout>
-                <Flyout Opening="OnAppPickerFlyoutOpening">
-                    <Grid Width="320" Height="380" RowSpacing="8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <TextBox PlaceholderText="앱 검색"
-                                 Text="{x:Bind ViewModel.PickerSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                        <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsPickerLoading, Mode=OneWay}"
-                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.AvailableApps, Mode=OneWay}"
-                                  Visibility="{x:Bind ViewModel.PickerListVisibility, Mode=OneWay}"
-                                  SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAppPickerItemClick">
-                            <ListView.ItemTemplate>
-                                <DataTemplate x:DataType="vm:PopupAppItem">
-                                    <Grid ColumnSpacing="10" Padding="2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="20" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <!-- 이미 추가된 항목 체크 표시(고정폭으로 아이콘/이름 정렬 유지) -->
-                                        <FontIcon Glyph="&#xE73E;" FontSize="14" VerticalAlignment="Center"
-                                                  Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
-                                                  Visibility="{x:Bind SelectionGlyphVisibility, Mode=OneWay}" />
-                                        <Image Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center"
-                                               Source="{x:Bind Icon, Mode=OneWay}" />
-                                        <TextBlock Grid.Column="2" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                    </Grid>
-                </Flyout>
-            </Button.Flyout>
-        </Button>
+        </Grid>
 
         <!-- 선택한 앱 목록 -->
         <ListView Grid.Row="4" ItemsSource="{x:Bind ViewModel.SelectedApps, Mode=OneWay}" SelectionMode="None"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="vm:PopupAppItem">
-                    <Grid ColumnSpacing="10" Padding="2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Image Width="24" Height="24" VerticalAlignment="Center" Source="{x:Bind Icon, Mode=OneWay}" />
-                        <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="2" Tag="{x:Bind}" Click="OnRemoveAppClick"
-                                Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="삭제">
-                            <SymbolIcon Symbol="Delete" />
-                        </Button>
-                    </Grid>
+                    <!-- 항목 하단 구분선 + 간격으로 행 구분(삭제 버튼 가독성). 선과 콘텐츠는 패딩으로 분리 -->
+                    <Border BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                            Padding="0,0,0,8" Margin="0,0,0,8">
+                        <Grid ColumnSpacing="10" Padding="2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Image Width="24" Height="24" VerticalAlignment="Center" Source="{x:Bind Icon, Mode=OneWay}" />
+                            <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                            <Button Grid.Column="2" Tag="{x:Bind}" Click="OnRemoveAppClick"
+                                    Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="삭제">
+                                <SymbolIcon Symbol="Delete" />
+                            </Button>
+                        </Grid>
+                    </Border>
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>

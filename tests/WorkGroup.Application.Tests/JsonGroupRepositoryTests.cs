@@ -129,4 +129,43 @@ public sealed class JsonGroupRepositoryTests : IDisposable
         var json = await File.ReadAllTextAsync(Path.Combine(_dir, "groups.json"));
         Assert.Contains("\"SchemaVersion\"", json);
     }
+
+    [Fact]
+    public async Task Save_후_Load_ShowPopupHeader_false_라운드트립()
+    {
+        var sut = CreateSut();
+        var group = SampleGroup("업무");
+        group.SetShowPopupHeader(false);
+
+        await sut.SaveAsync(group);
+
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.False(Assert.Single(loaded).ShowPopupHeader);
+    }
+
+    [Fact]
+    public async Task Load_ShowPopupHeader_필드_없는_레거시_JSON은_true()
+    {
+        Directory.CreateDirectory(_dir);
+        // ShowPopupHeader 키를 뺀 레거시 형식(필드 없음 → 마이그레이션으로 true).
+        var legacyJson =
+            $$"""
+            {
+              "SchemaVersion": 1,
+              "Groups": [
+                {
+                  "Id": "{{Guid.NewGuid()}}",
+                  "Name": "업무",
+                  "Icon": { "Kind": "BuiltIn", "Value": "default" },
+                  "Apps": []
+                }
+              ]
+            }
+            """;
+        await File.WriteAllTextAsync(Path.Combine(_dir, "groups.json"), legacyJson);
+
+        var loaded = await CreateSut().LoadAllAsync();
+
+        Assert.True(Assert.Single(loaded).ShowPopupHeader);
+    }
 }

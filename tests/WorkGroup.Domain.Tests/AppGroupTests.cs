@@ -122,4 +122,38 @@ public class AppGroupTests
     {
         Assert.Throws<ArgumentException>(() => new AppEntry("이름", "  ", AppKind.Win32));
     }
+
+    [Fact]
+    public void Create_ShowPopupHeader_기본값은_true()
+    {
+        var group = AppGroup.Create("업무").Value;
+        Assert.True(group.ShowPopupHeader);
+    }
+
+    [Fact]
+    public void Create_ShowPopupHeader_false_지정()
+    {
+        var group = AppGroup.Create("업무", showPopupHeader: false).Value;
+        Assert.False(group.ShowPopupHeader);
+    }
+
+    [Fact]
+    public void Restore_ShowPopupHeader_기본은_true_명시하면_반영()
+    {
+        var id = GroupId.New();
+
+        var on = AppGroup.Restore(id, "업무", IconSource.DefaultBuiltIn, Array.Empty<AppEntry>());
+        Assert.True(on.ShowPopupHeader);
+
+        var off = AppGroup.Restore(id, "업무", IconSource.DefaultBuiltIn, Array.Empty<AppEntry>(), showPopupHeader: false);
+        Assert.False(off.ShowPopupHeader);
+    }
+
+    [Fact]
+    public void SetShowPopupHeader_변경된다()
+    {
+        var group = AppGroup.Create("업무").Value;
+        group.SetShowPopupHeader(false);
+        Assert.False(group.ShowPopupHeader);
+    }
 }

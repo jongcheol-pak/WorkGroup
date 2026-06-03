@@ -1,118 +1,182 @@
-# plan.md — 앱 아이콘 설정 (exe / 창 / 타이틀바 / 정보 카드)
-
-> 이전 plan(그룹 수정 화면 이름 클릭-편집)은 완료(git 이력). 본 plan은 앱 아이콘(AppIcon.ico) 일괄 적용.
+# Plan — 그룹 추가/수정 화면 개선
 
 ## 목표
-프로젝트 루트의 `AppIcon.ico`를 앱 전반의 아이콘으로 적용한다.
-1. **실행 파일(.exe) 아이콘** — 탐색기/작업 관리자에서 보이는 exe 아이콘을 AppIcon.ico로.
-2. **창 아이콘(작업 표시줄 / Alt+Tab 미리보기)** — 메인 창의 작업 표시줄·미리보기 아이콘을 AppIcon.ico로.
-3. **메인 화면 타이틀바 아이콘** — 타이틀바 좌측 앱 아이콘을 AppIcon.ico로 변경 + **크기 28px로 키움**.
-4. **정보 화면 '앱 이름 카드' 아이콘** — AppIcon.ico로 통일 + **크기 48px로 키움**.
+그룹 추가/수정 다이얼로그(`GroupEditDialog`)를 개선한다.
+1. 선택 앱 목록 위 왼쪽에 등록된 앱 개수 표시("앱 N개")
+2. "앱 추가" 버튼을 "+" 아이콘만 표시
+3. 앱 추가 버튼 왼쪽에 "팝업 이름 헤더 표시" on/off 토글 추가 — **그룹별 설정**으로 저장, 핀 팝업이 읽어 헤더 표시/숨김
+4. 선택 앱 목록 항목 사이에 가로 구분선을 넣어 가독성(삭제 버튼 구분) 향상
 
-## 배경 / 근본 원인 (확인된 사실)
-- 프로젝트: WinUI 3 / .NET 10 / MSIX **패키지 앱**(`UseWinUI=true`, `WindowsPackageType` 미지정 = 패키지 빌드). `app.manifest` `dpiAwareness=PerMonitorV2`.
-- `AppIcon.ico`는 저장소 루트(`D:\Personal Project\Windows\WorkGroup\AppIcon.ico`)에 있고, 현재 프로젝트에서 **참조 없음**(grep 전수 확인).
-- **exe 아이콘**: csproj `<ApplicationIcon>`을 지정하면 컴파일 시 exe에 Win32 아이콘 리소스가 박힌다(패키지 앱에서도 exe 자체에는 적용). 물리 파일이 프로젝트 내에 있어야 한다 → Assets로 복사 후 지정.
-- **창 아이콘**: `Microsoft.UI.Windowing.AppWindow.SetIcon(string path)` — `.ico` 파일 경로를 받아 창(작업 표시줄/Alt+Tab 미리보기) 아이콘을 설정(표준 API, WinUIEx 불필요). 패키지 앱은 설치 폴더 기준 상대경로(`Assets\AppIcon.ico`)를 받으며, 파일이 출력에 포함(Content)되어야 한다. 현재 `App.xaml.cs`의 `ShowMainWindow`에서 `WindowEx win`을 생성하므로 `win.AppWindow.SetIcon(...)` 호출 가능.
-- **타이틀바 아이콘 크기**: WinUI 3 `TitleBar` 컨트롤의 `IconSource`는 표시 크기가 **고정**(약 16px)이라 키울 수 없다(공식 확인). 시각 배치 순서는 **LeftHeader → IconSource → Title → Subtitle → Content → RightHeader**(공식 확인). 따라서 `IconSource`를 제거하고 `TitleBar.LeftHeader`에 크기 지정 `Image`를 넣으면 아이콘이 제목 **왼쪽 맨 앞**에 오면서 원하는 크기로 표시된다.
-- **정보 카드 아이콘**: `SettingsCard.HeaderIcon`은 `PART_HeaderIconPresenterHolder`(Viewbox 계열) presenter에서 호스팅된다. `ImageIcon`에 `Width/Height`를 지정하면 그 크기로 스케일된다(슬롯이 제약하면 presenter 크기 리소스 조정 필요 — 위험 섹션).
-- `.ico`는 WinUI `ImageSource`(BitmapImage) 및 `ImageIcon`/`Image`의 `Source`로 디코드 가능(가장 큰 프레임 사용).
+## 범위
+- **In scope**: `GroupEditDialog`(.xaml), `GroupEditViewModel`, `AppGroup` 도메인, `JsonGroupRepository` 직렬화, `GroupPopupWindow`(헤더 읽기), 관련 단위 테스트.
+- **Out of scope**: 그룹 목록 화면(`WorkGroupsPage`), 팝업 아이콘 레이아웃, 테마/전역 설정 구조.
 
-## 영향 범위 (전수 조사 결과 — grep + Read 확인)
-- `Square44x44Logo.scale-200.png` **코드** 참조: `Views/MainShell.xaml:24`(타이틀바 IconSource), `Views/AboutPage.xaml:26`(정보 카드 HeaderIcon) — **둘 다 본 작업의 변경 대상**. 그 외 코드 참조 없음.
-  - `WorkGroup.App.csproj:31`의 `<Content Include="Assets\Square44x44Logo.scale-200.png" />`와 `Package.appxmanifest:42`의 타일 로고(`Square44x44Logo.png`)는 **타일/스토어 자산**으로 본 작업과 별개 → **변경하지 않음**(기존 png 파일·등록 유지).
-- `AppTitleBar`(x:Name): `Views/MainShell.xaml:22`에만 존재. `MainShell.xaml.cs`·`App.xaml.cs`에 **코드 참조 없음** → IconSource 제거·LeftHeader 추가가 코드비하인드에 영향 없음. `SetTitleBar()` 호출도 없음(`ExtendsContentIntoTitleBar=true` + `TitleBar` 컨트롤 자동 동기, App.xaml.cs:99).
-- `AppWindow.SetIcon` 추가 위치: `App.xaml.cs`의 `ShowMainWindow`(L92 `new WindowEx`). 메인 창 분기에만 적용. 팝업창(`GroupPopupWindow`)은 **요청 범위 밖**(Out of Scope).
-- `AppIcon.ico` 기존 참조 없음 → 신규 도입(파일 추가 + csproj 2줄 + 코드/XAML).
-- **테스트**: `WorkGroup.App`은 패키지 WinUI 실행 파일이고 테스트 프로젝트가 App을 참조하지 않아 UI 단위 테스트 불가(AGENTS.md/이전 plan 확인). → 빌드 + **수동 GUI 검증**.
+## 결정사항 (사용자 확정)
+- 헤더 토글 저장 단위: **그룹별**(AppGroup 속성 + groups.json 필드).
+- 토글 기본값: **ON(헤더 표시)** — 기존 동작 유지, 신규 그룹·레거시 데이터 모두 true.
+- 토글 UI: **ToggleSwitch + 라벨**("팝업 이름 표시").
+- 카운트 문구: **"앱 N개"**(0개 포함).
+- 목록 가독성: **항목 사이 가로 구분선**.
 
-## Out of Scope (명시)
-- 트레이 아이콘 변경(`TrayIconService`는 현재 `LoadIcon(IDI_APPLICATION)` 시스템 기본 사용 — 요청에 없음, 미변경).
-- 팝업창(`GroupPopupWindow`)의 창 아이콘(요청은 "메인 화면" 기준).
-- Package.appxmanifest의 타일/스토어 로고 및 시작 메뉴 타일(기존 png 유지).
-- 기존 `Square44x44Logo.*` 자산 파일 삭제(타일에서 계속 사용).
+## 위험
+- `AppGroup.Create`/`Restore` 시그니처 변경 → 호출자/테스트 영향. **선택적 매개변수(기본 true)** 로 추가해 기존 호출자 무변경.
+  - 호출자 전수(grep 확인 완료): 프로덕션 `GroupEditViewModel`(Create×1, Restore×1), `JsonGroupRepository`(Restore×1). 테스트 다수는 default 사용으로 무변경.
+- 직렬화 호환: 기존 `groups.json`에는 새 필드 없음 → DTO를 `bool?`로 받아 `?? true` 마이그레이션.
+- 팝업 헤더 숨김 시 그룹 미발견/에러 메시지는 계속 보여야 함(헤더와 분리 처리).
 
-## 결정 사항 (사용자 확정)
-- **D1. 타이틀바 아이콘 크기**: **28px** (LeftHeader 커스텀 Image 방식).
-- **D2. 정보 카드 아이콘**: **AppIcon.ico로 통일 + 48px**. 구현은 `ImageIcon`에 `Width/Height=48` 지정까지로 **단일 확정**한다(분기 없음). SettingsCard presenter 한계로 GUI상 48px가 미반영되면 그때 사용자와 재협의(implement-task는 Width/Height 지정으로 task 완료, 자율 실행 중 추가 분기 없음).
-- **D3. AppIcon.ico 포함 방식**: **Assets 폴더로 복사 후 Content 포함**(`src/WorkGroup.App/Assets/AppIcon.ico`).
+## Tasks
 
-## 결정 사항 (기술결정 — 추가 입력 불필요)
-- **D4. exe 아이콘 경로**: csproj `<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>`(프로젝트 상대경로).
-- **D5. 창 아이콘 호출 위치/경로**: `ShowMainWindow`에서 `win` 생성 직후(필드 대입 전) `win.AppWindow.SetIcon(@"Assets\AppIcon.ico")` 1회 호출. 패키지 설치 폴더 기준 **상대경로로 단일 확정**(절대경로 폴백 분기 없음 — 미표시 시 사용자 GUI 확인 후 후속 옵션은 R2 참고).
-- **D6. 타이틀바 LeftHeader 구성**: 기존 `<TitleBar.IconSource>` 제거 → `<TitleBar.LeftHeader>` 안에 `Image`(`Source="ms-appx:///Assets/AppIcon.ico"`, `Width=28`, `Height=28`, `VerticalAlignment=Center`, 제목과 간격용 `Margin="0,0,8,0"`). `Title="WorkGroup"` 유지.
-- **D7. 정보 카드 HeaderIcon**: `ImageIcon`의 `Source`를 `ms-appx:///Assets/AppIcon.ico`로 변경하고 `Width="48" Height="48"` 지정.
-- **D8. AppIcon.ico Content 등록**: csproj 기존 Assets `<Content Include>` 그룹에 `<Content Include="Assets\AppIcon.ico" />` 추가(SetIcon 출력 포함 + ms-appx 접근).
-
-## 작업 분해
-
-### T1. AppIcon.ico를 Assets로 복사 + csproj 아이콘 등록 (Type A — 빌드 구성)
-- **Files**: `AppIcon.ico`(루트, 원본) → `src/WorkGroup.App/Assets/AppIcon.ico`(복사 대상, 신규), `src/WorkGroup.App/WorkGroup.App.csproj`
+### T1 — AppGroup 도메인에 ShowPopupHeader 추가 (Type D)
+- **Files**:
+  - `src/WorkGroup.Domain/Groups/AppGroup.cs` (수정)
+  - `tests/WorkGroup.Domain.Tests/AppGroupTests.cs` (테스트 추가)
 - **변경**:
-  1. 루트 `AppIcon.ico`를 `src/WorkGroup.App/Assets/AppIcon.ico`로 **복사**(원본 보존).
-  2. csproj `<PropertyGroup>`(App Options 영역)에 `<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>` 추가.
-  3. csproj 기존 Assets `<ItemGroup>`(현재 28~36행)에 `<Content Include="Assets\AppIcon.ico" />` 추가.
-- **Acceptance (자동·완료 조건)**: `Assets\AppIcon.ico` 파일 존재. `dotnet build WorkGroup.slnx`(플랫폼 미지정, AGENTS.md L9) 경고/에러 0. 빌드 출력 폴더에 `Assets\AppIcon.ico` 복사됨.
-- **사후 검수(사용자 GUI)**: 빌드된 exe의 탐색기/작업관리자 아이콘이 AppIcon.ico.
-- **Edge Cases**: 경로 구분자는 Windows 백슬래시(`Assets\AppIcon.ico`); 파일명 대소문자 일치(`AppIcon.ico`).
-- **Halt Forecast**: `<ApplicationIcon>` 경로 오타 시 빌드 에러(아이콘 파일 못 찾음) → 복사 위치/경로 재확인.
+  - `public bool ShowPopupHeader { get; private set; }` 속성 추가.
+  - private 생성자에 `bool showPopupHeader` 매개변수 추가.
+  - `Create(string name, IconSource? icon = null, bool showPopupHeader = true)` — 선택적 매개변수.
+  - `Restore(GroupId id, string name, IconSource icon, IEnumerable<AppEntry> apps, bool showPopupHeader = true)` — 선택적 매개변수.
+  - `public void SetShowPopupHeader(bool value)` 추가(편집 시 변경용).
+- **Decision points**:
+  - 기본값 true(현행 동작 유지) → 신규/레거시 모두 헤더 표시.
+  - 선택적 매개변수로 추가 → 기존 테스트 호출자 컴파일 무변경.
+- **Edge cases**: 없음(단순 bool 상태).
+- **Acceptance**:
+  - `AppGroup.Create("x").Value.ShowPopupHeader == true`.
+  - `Restore(...)` 기본 호출 시 true, 명시 false 전달 시 false.
+  - `SetShowPopupHeader(false)` 후 속성 false.
+  - `dotnet build` + Domain 테스트 통과.
+- **Halt Forecast**:
+  - 선택적 매개변수 추가 후 기존 테스트가 컴파일 실패하면 → 매개변수 기본값(true)이 빠졌는지 확인(모든 기존 호출자는 default 사용 전제).
 
-### T2. App.xaml.cs — 메인 창 아이콘 SetIcon (Type C)
-- **Files**: `src/WorkGroup.App/App.xaml.cs`
-- **변경**: `ShowMainWindow()`의 `win` 생성 블록(L92~100) 직후, `win.AppWindow.Closing += ...`(L102) 부근에서 `win.AppWindow.SetIcon(@"Assets\AppIcon.ico");` 호출(창 1회 생성 시점에만 실행되도록 `if (_window is null)` 블록 내부). 한글 주석으로 "작업 표시줄/Alt+Tab 미리보기 아이콘 지정" 명시.
-- **Acceptance (자동·완료 조건)**: 빌드 통과. `SetIcon` 호출이 `if (_window is null)` 생성 블록 **내부**라 창 재표시(트레이→열기) 반복 시 중복 호출 없음(코드 검토).
-- **사후 검수(사용자 GUI)**: 메인 창 실행 시 작업 표시줄 아이콘·Alt+Tab 미리보기가 AppIcon.ico.
-- **Edge Cases**: `SetIcon` 경로가 패키지 설치 폴더에 없으면 무시/예외 — T1에서 Content 포함으로 보장. 상대경로는 패키지 앱 기준.
-- **Halt Forecast**: `AppWindow.SetIcon(string)` 오버로드는 Windows App SDK 표준 — 컴파일 이슈 낮음. 경로는 상대경로(`Assets\AppIcon.ico`)로 단일 확정(D5) — 자율 실행 중 분기 없음.
+### T2 — JsonGroupRepository 직렬화 + 레거시 마이그레이션 (Type D)
+- **Files**:
+  - `src/WorkGroup.Infrastructure/Persistence/JsonGroupRepository.cs` (수정)
+  - `tests/WorkGroup.Application.Tests/JsonGroupRepositoryTests.cs` (테스트 추가)
+- **변경**:
+  - `GroupDto`(positional record, 현재 `(string Id, string Name, IconDto Icon, List<AppDto> Apps)`)에 마지막 매개변수로 `bool? ShowPopupHeader` 추가. positional record 기본 직렬화는 속성명을 그대로 쓰므로 **JSON 키는 `ShowPopupHeader`로 고정**(레거시 호환 핵심).
+  - `MapToDomain`(L168-173): `AppGroup.Restore(..., dto.ShowPopupHeader ?? true)`.
+  - `MapToDto`(L176-180): 인자 끝에 `group.ShowPopupHeader` 추가 — **양쪽(MapToDto/MapToDomain) 동시 수정 필수**.
+  - `CurrentSchemaVersion`은 그대로 유지(nullable 하위호환이라 버전 불변 — 기존 파일도 정상 로드).
+- **Decision points**:
+  - 레거시(필드 없는) JSON → `?? true` 로 헤더 ON 유지.
+  - 스키마 버전 유지(파괴적 변경 아님).
+  - JSON 키 이름 `ShowPopupHeader` 고정(positional record 기본 동작).
+- **Edge cases**:
+  - 필드 없는 기존 groups.json 로드 → ShowPopupHeader true.
+  - 손상 파일 → 기존 백업 로직 그대로(영향 없음).
+- **테스트 구체화 (신규 작성)**:
+  - 기존 `SampleGroup`(L29-35)은 `Create(name)` 기본값이라 항상 true → **별도 헬퍼/그룹으로 false 케이스 구성**.
+    - 예: `var g = AppGroup.Create("업무").Value; g.SetShowPopupHeader(false);` → Save → 새 인스턴스 Load → `Assert.False(loaded.Single().ShowPopupHeader)`.
+  - **레거시 JSON 직접 작성 테스트**: `ShowPopupHeader` 키를 뺀 groups.json 문자열을 `_dir`에 직접 써 로드 → `Assert.True(...ShowPopupHeader)`.
+    - JSON 형태(키 없이): `{"SchemaVersion":1,"Groups":[{"Id":"<guid>","Name":"업무","Icon":{"Kind":"BuiltIn","Value":"..."},"Apps":[]}]}` — 실제 `IconDto.Value`는 `IconSource.DefaultBuiltIn.Value`를 사용해 작성.
+- **Acceptance**:
+  - false 라운드트립 테스트 통과(저장→로드 시 false 유지).
+  - 레거시(키 없는) JSON 로드 시 ShowPopupHeader true 테스트 통과.
+  - 기존 라운드트립/스키마 테스트 모두 통과.
+- **Halt Forecast**:
+  - 레거시 JSON 문자열의 `Icon.Value`가 실제 매핑과 안 맞아 로드 실패 시 → `IconSource.DefaultBuiltIn.Value`/`Kind` 실제 값으로 맞춰 재작성(코드 L170 `Enum.Parse<IconSourceKind>` 기준).
 
-### T3. MainShell.xaml — 타이틀바 아이콘 변경 + 28px (Type C)
-- **Files**: `src/WorkGroup.App/Views/MainShell.xaml`
-- **변경**: `<TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="WorkGroup">`(L22)의 기존 `<TitleBar.IconSource>...ImageIconSource...</TitleBar.IconSource>`(L23~25) **제거** → `<TitleBar.LeftHeader>` 추가, 그 안에 `<Image Source="ms-appx:///Assets/AppIcon.ico" Width="28" Height="28" VerticalAlignment="Center" Margin="0,0,8,0" />`. `Title="WorkGroup"` 유지.
-- **Acceptance (자동·완료 조건)**: 빌드 통과. IconSource 블록이 완전히 제거되고 LeftHeader에 28px Image가 추가됨(코드 검토).
-- **사후 검수(사용자 GUI)**: 메인 창 타이틀바 좌측에 28px AppIcon.ico가 제목 "WorkGroup" 왼쪽에 표시.
-- **Edge Cases**: LeftHeader는 IconSource보다 좌측이라 아이콘→제목 순서 유지(공식 배치 순서 확인). Margin으로 제목과 간격 확보.
-- **Halt Forecast**: `ImageIconSource`/`IconSource` 잔존 시 16px 작은 아이콘이 LeftHeader 아이콘과 중복 표시 → IconSource 블록 완전 제거 확인. ms-appx 경로 오타 시 빈 이미지.
+### T3 — GroupEditViewModel: 토글 속성 + 앱 개수 텍스트 (Type C)
+- **Files**: `src/WorkGroup.App/ViewModels/GroupEditViewModel.cs` (수정)
+- **변경**:
+  - `[ObservableProperty] public partial bool ShowPopupHeader { get; set; }` 추가(생성자에서 true 초기화).
+  - `public string AppCountText => $"앱 {SelectedApps.Count}개";` 계산 속성.
+  - **생성자에서 단 1회** `SelectedApps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(AppCountText));` 구독(추가/삭제/Clear 시 갱신). InitializeAsync에는 구독을 두지 않는다(재호출 시 중복 구독 방지).
+  - `InitializeAsync`: `ShowPopupHeader = group?.ShowPopupHeader ?? true;` 설정 + `OnPropertyChanged(nameof(AppCountText));`(편집 멤버 복원 후).
+  - `ValidateAndSaveAsync`:
+    - 신규: `AppGroup.Create(name, SelectedIcon, ShowPopupHeader)`.
+    - 편집: `AppGroup.Restore(_editingId, name, SelectedIcon, apps, ShowPopupHeader)`.
+- **Decision points**:
+  - AppCountText는 ObservableCollection 변경 구독으로 갱신(개별 Add/Remove/Clear 모두 CollectionChanged 발생).
+  - **CollectionChanged 구독은 생성자에서 단 1회**(InitializeAsync 재호출 시 중복 구독 금지).
+  - ShowPopupHeader 기본 true(신규 그룹).
+- **Edge cases**:
+  - SelectedApps 0개 → "앱 0개"(저장은 기존 검증이 0개 차단).
+  - InitializeAsync 재호출(다이얼로그 재사용) 시 ShowPopupHeader는 재설정, 구독은 유지(중복 안 됨).
+- **Acceptance**:
+  - 앱 추가/삭제 시 AppCountText가 즉시 갱신.
+  - 편집 모드 진입 시 토글이 그룹의 ShowPopupHeader 값으로 초기화.
+  - 저장 시 토글 값이 AppGroup에 반영.
+  - `dotnet build` 통과.
+- **Halt Forecast**:
+  - `[ObservableProperty]` partial 속성 생성 충돌 시 → 기존 partial 속성 패턴(L61-66) 그대로 따름.
 
-### T4. AboutPage.xaml — 정보 카드 아이콘 AppIcon.ico + 48px (Type C)
-- **Files**: `src/WorkGroup.App/Views/AboutPage.xaml`
-- **변경**: `SettingsCard.HeaderIcon`의 `<ImageIcon Source="ms-appx:///Assets/Square44x44Logo.scale-200.png" />`(L26)를 `<ImageIcon Source="ms-appx:///Assets/AppIcon.ico" Width="48" Height="48" />`로 변경.
-- **Acceptance (자동·완료 조건)**: 빌드 통과. HeaderIcon ImageIcon의 Source가 AppIcon.ico, Width/Height=48로 변경됨(코드 검토).
-- **사후 검수(사용자 GUI)**: 정보 화면 앱 이름 카드의 아이콘이 AppIcon.ico·48px로 표시.
-- **Edge Cases**: SettingsCard HeaderIcon presenter(Viewbox)가 48px를 수용하는지 — 사용자 GUI에서 확인. 카드 헤더 높이가 아이콘에 맞게 자동 확장.
-- **Halt Forecast**: D2 단일 확정 — 본 task는 `ImageIcon Width/Height=48` 지정으로 **완료**(자율 실행 중 분기 없음). presenter 한계로 GUI상 48px 미반영 시(R1)는 task 완료 후 사용자 GUI 확인 단계에서 드러나며, 그때 재협의.
+### T4 — GroupEditDialog.xaml: 카운트/토글/"+"버튼 + 목록 구분선 (Type C)
+- **Files**: `src/WorkGroup.App/Views/GroupEditDialog.xaml` (수정)
+- **변경**:
+  - Row 3(현재 "앱 추가" 버튼 행)을 한 줄 좌/우 영역으로 재구성:
+    - 왼쪽: `TextBlock Text="{x:Bind ViewModel.AppCountText, Mode=OneWay}"`(세로 중앙).
+    - 오른쪽: `StackPanel Orientation="Horizontal"`에 ① 라벨+ToggleSwitch ② "+" 버튼.
+    - 토글: 라벨 `TextBlock Text="팝업 이름 표시"` + `ToggleSwitch IsOn="{x:Bind ViewModel.ShowPopupHeader, Mode=TwoWay}"`(OnContent/OffContent 비우고 컴팩트).
+    - "+" 버튼: 기존 Flyout(앱 검색/추가) 유지, 콘텐츠를 `SymbolIcon Symbol="Add"` 만으로 변경, `ToolTipService.ToolTip="앱 추가"` 추가.
+  - Row 4 선택 앱 목록(`ListView`) 구분선 — **방식 확정(Border 래핑)**:
+    - 현재 DataTemplate 루트 `Grid`(xaml L144)를 `Border`로 감싼다: `<Border BorderThickness="0,0,0,1" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Padding="0,0,0,8" Margin="0,0,0,8"> <Grid …/> </Border>`.
+    - 즉 항목 콘텐츠 아래 8px 패딩 + 1px 하단선 + 항목 간 8px 마진으로 선과 간격을 분리(선이 콘텐츠에 붙지 않게).
+    - ItemContainerStyle은 손대지 않는다(기본 ListViewItem 패딩 유지).
+- **Decision points**:
+  - 토글 라벨은 가로 배치(ToggleSwitch Header는 세로로 늘어나 한 줄 정렬 깨짐).
+  - "+" 버튼 ToolTip로 의미 보존(아이콘만으로 접근성 보완).
+  - 구분선은 DividerStrokeColorDefaultBrush(테마 대응), **Border 래핑 단일 방식으로 확정**(대안 분기 없음).
+- **Edge cases**:
+  - 앱 0개 → 목록 비어 구분선 없음, 카운트 "앱 0개".
+  - 마지막 항목 하단선은 허용(목록 테두리 안쪽이라 부담 적음).
+- **Acceptance**:
+  - 카운트가 목록 위 왼쪽에 표시.
+  - 토글+「+」버튼이 오른쪽 한 줄에 정렬, 버튼은 + 아이콘만.
+  - 목록 항목 사이 가로 구분선으로 행 구분 명확.
+  - `dotnet build` 통과(x64).
+- **Halt Forecast**:
+  - 구분선이 항목 간격과 어긋나거나 이중선처럼 보이면 → Padding/Margin 값(8/8)을 조정하되 "Border 래핑" 방식은 유지(방식 변경 금지).
+  - ToggleSwitch가 너무 넓어 한 줄이 깨지면 → `MinWidth="0"` + OnContent/OffContent 빈 문자열로 컴팩트화.
 
-### T5. 문서 갱신 (Type A)
-- **Files**: `README.md`, `notes.md`
-- **변경**: README에 앱 아이콘(실행/창/타이틀바/정보) 관련 설명이 있으면 현행화(현재 동작만, 과장 없이). 없으면 UI/아이콘 항목에 간단 반영. `notes.md` `## 최근 변경` 최상단에 본 작업 1줄 추가(`2026-06-03: 앱 아이콘(AppIcon.ico) exe/창/타이틀바28px/정보카드48px 적용`), 1개월 초과 항목 정리.
-- **Acceptance**: 문서가 실제 변경과 일치.
+### T5 — GroupPopupWindow: ShowPopupHeader 읽어 헤더 표시/숨김 (Type C)
+- **Files**:
+  - `src/WorkGroup.App/Views/GroupPopupWindow.xaml.cs` (수정)
+  - `src/WorkGroup.App/Views/GroupPopupWindow.xaml` (수정 — RowSpacing 잔여 여백 처리)
+- **변경**:
+  - **xaml**: 헤더 Collapsed 시 상단 8px 잔여 여백을 막기 위해 `<Grid Padding="12,0,12,0" RowSpacing="8">`의 `RowSpacing="8"`을 제거하고, `TitleText`에 `Margin="0,8,0,8"`을 부여. Collapsed 요소는 레이아웃에서 제외되어 마진까지 사라지므로 헤더 숨김 시 잔여 여백이 없다. (헤더 표시 시 제목 위/아래 8px 간격 유지.)
+  - **xaml.cs `LoadAsync`** 그룹 로드 성공 시:
+    - `TitleText.Visibility = group.ShowPopupHeader ? Visibility.Visible : Visibility.Collapsed;`
+    - 헤더 표시일 때만 기존 이름/("멤버 없음") 텍스트 설정.
+  - 그룹 미발견/에러 분기("그룹을 찾을 수 없습니다" 등)에서는 `TitleText.Visibility = Visibility.Visible`로 강제(메시지 가시성 보장).
+  - 헤더 숨김 시 콘텐츠 높이는 기존 `AdjustToContent`(SizeChanged 측정)로 자동 축소.
+- **Decision points**:
+  - RowSpacing 제거 + TitleText Margin 방식으로 잔여 여백 근본 차단(Collapsed 시 마진째 제외).
+  - 에러 메시지는 헤더 설정과 무관하게 항상 표시.
+- **Edge cases**:
+  - ShowPopupHeader=false인데 멤버 0개 → 헤더 숨김(이름/멤버없음 모두 미표시), 아이콘 그리드만(빈) 표시.
+  - 그룹 로드 실패 → 헤더 강제 표시 후 에러 텍스트.
+- **Acceptance**:
+  - ShowPopupHeader=false 그룹 핀 클릭 시 팝업에 이름 헤더 미표시 + 상단 여백 과다 없음(F5 수동 확인).
+  - ShowPopupHeader=true(기존 그룹) 팝업은 이름 헤더 표시(현행 유지).
+  - 미발견/에러 시 메시지 표시.
+- **Halt Forecast**:
+  - RowSpacing 제거 후 헤더 표시 시 제목-그리드 간격이 사라지면 → TitleText Margin 하단 값으로 보정(8 유지).
+  - 사용자가 최근 수정한 Padding("12,0,12,0")과 충돌 시 → Padding은 보존하고 간격은 TitleText Margin으로만 조정.
 
-## 위험 / 회귀
-- **R1. 정보 카드 48px 미반영**: SettingsCard HeaderIcon presenter(Viewbox)가 크기를 제약하면 ImageIcon Width/Height가 무시될 수 있음 → 수동 GUI 확인 필수. 미반영 시 presenter 크기 리소스 오버라이드는 별도 협의(본 plan 범위는 표준 Width/Height 지정).
-- **R2. 패키지 SetIcon 경로**: 상대경로가 설치 폴더 기준이 아닐 가능성 → T1 Content 포함으로 출력 보장. 경로는 상대경로로 단일 확정(D5, 자율 실행 중 폴백 없음). 미표시 시 사용자 GUI 확인 후 재협의.
-- **R3. 회귀 없음**: 타일/스토어 로고(Package.appxmanifest)·기존 Square44x44Logo 자산은 미변경 → 시작 메뉴/스토어 표시 영향 없음. 타이틀바/정보 카드만 시각 변경.
+## 의존 관계
+- T1 → T2 → T3 → T4 (도메인 → 직렬화 → VM → View)
+- T1 → T5 (도메인 속성 필요)
 
 ## 검증 방법
-**자동 검증(implement-task 자율 완료 조건)**:
-- `dotnet build WorkGroup.slnx`(플랫폼 미지정, AGENTS.md L9) — 경고/에러 0.
-- `dotnet test WorkGroup.slnx` — 기존 테스트 회귀 없음(본 변경은 테스트 대상 외, 그린 유지).
-- 코드 검토: 각 task 변경이 plan대로 반영됐는지(IconSource 제거, LeftHeader/SetIcon/HeaderIcon 추가, csproj 2줄).
+- 각 task: `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64 -p:RuntimeIdentifier=win-x64` (경고/에러 0).
+- 도메인/직렬화: `dotnet test`(Domain.Tests, Application.Tests) 통과.
+- 시각/동작(카운트 갱신, 토글 저장→팝업 반영, 구분선, "+" 버튼)은 F5 MSIX GUI 수동 검증(자동 검증 불가 항목 명시).
 
-**사후 검수(사용자, F5 MSIX — 헤드리스 불가)**: ① 탐색기/작업관리자 exe 아이콘 ② 작업 표시줄·Alt+Tab 미리보기 아이콘 ③ 타이틀바 좌측 28px 아이콘(제목 왼쪽) ④ 정보 화면 카드 48px 아이콘. ③④가 미반영이면 R1/R2에 따라 재협의.
+## 문서 갱신 (구현 완료 시)
+- `README.md`: 그룹 편집 화면 설명에 앱 개수·팝업 이름 표시 토글 반영, 팝업 헤더가 그룹 설정에 따름 명시.
+- `notes.md`: 변경 내역 추가.
 
-## 승인 필요 사항
-- csproj 빌드 구성 변경(`<ApplicationIcon>`, `<Content>`)·파일 추가(Assets\AppIcon.ico)·App.xaml.cs 코드 추가 포함. 의존성 추가/공개 API 변경 없음. 승인 후 implement-task 자율 진행.
-
-## Task 체크리스트
-- [x] T1. AppIcon.ico 복사 + csproj 등록
-- [x] T2. App.xaml.cs 창 아이콘 SetIcon
-- [x] T3. MainShell.xaml 타이틀바 28px
-- [x] T4. AboutPage.xaml 정보 카드 48px
-- [x] T5. 문서 갱신
+## 진행 체크리스트
+- [x] T1 AppGroup ShowPopupHeader
+- [x] T2 직렬화 + 레거시 마이그레이션
+- [x] T3 GroupEditViewModel 토글/카운트
+- [x] T4 GroupEditDialog.xaml 레이아웃/구분선 (시각은 F5 수동 검증)
+- [x] T5 GroupPopupWindow 헤더 표시/숨김 (헤더 숨김 여백은 F5 수동 검증)
 
 ## Progress Log
-- T1~T4 완료 (커밋 e992ed6/f948b2c/8c86113/5861657): AppIcon.ico를 Assets로 복사 + csproj ApplicationIcon·Content 등록(T1), App.xaml.cs AppWindow.SetIcon(T2), MainShell.xaml IconSource→LeftHeader 28px(T3), AboutPage.xaml HeaderIcon AppIcon.ico+48px(T4). 빌드 0/0, 테스트 80/80, spec-compliance OK. 작업 트리의 타일/스토어 자산(png/manifest)은 사용자 진행 작업이라 미커밋 유지(csproj는 사용자 승인하에 함께 포함).
-- T5 완료: notes.md/README.md 갱신.
+- T1~T5 완료(미커밋): AppGroup.ShowPopupHeader(선택적 매개변수 기본 true) → JsonGroupRepository 직렬화(bool?, ?? true 마이그레이션) → GroupEditViewModel(ShowPopupHeader 토글 + AppCountText) → GroupEditDialog.xaml(카운트/토글/「+」버튼 + 목록 구분선) → GroupPopupWindow(헤더 표시/숨김 + RowSpacing→Margin). 빌드 0/0, 테스트 86/86. plan-completion-reviewer: 코드 BLOCKER 0(문서 갱신 후 해소).
 
 ## Next Steps
-- 권장 다음 액션: F5 MSIX 수동 GUI 검증(① exe 아이콘 ② 작업 표시줄/Alt+Tab 미리보기 ③ 타이틀바 28px ④ 정보 카드 48px). ③④ 미반영 시 plan R1/R2 참고. 이후 PR 생성.
-- Suggested skills: 공식 /code-review, 공식 /security-review
+- 권장 다음 액션: F5 MSIX GUI로 토글 저장→팝업 헤더 반영·카운트 갱신·구분선·헤더 숨김 여백 확인 후, 사용자 승인 시 커밋.
+- Suggested skills: 공식 /code-review (커밋 전 diff 리뷰), 공식 /security-review(해당 시)

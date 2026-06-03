@@ -10,11 +10,12 @@ public sealed class AppGroup
 {
     private readonly List<AppEntry> _apps = new();
 
-    private AppGroup(GroupId id, string name, IconSource icon)
+    private AppGroup(GroupId id, string name, IconSource icon, bool showPopupHeader)
     {
         Id = id;
         Name = name;
         Icon = icon;
+        ShowPopupHeader = showPopupHeader;
     }
 
     public GroupId Id { get; }
@@ -22,19 +23,24 @@ public sealed class AppGroup
     public IconSource Icon { get; private set; }
     public IReadOnlyList<AppEntry> Apps => _apps;
 
+    /// <summary>핀 팝업에 그룹 이름 헤더를 표시할지 여부(그룹별 설정).</summary>
+    public bool ShowPopupHeader { get; private set; }
+
     /// <summary>새 그룹을 생성한다. 아이콘 미지정 시 기본 내장 아이콘을 사용한다.</summary>
-    public static Result<AppGroup> Create(string name, IconSource? icon = null)
+    public static Result<AppGroup> Create(string name, IconSource? icon = null, bool showPopupHeader = true)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result<AppGroup>.Fail("그룹 이름은 필수입니다.");
 
-        return Result<AppGroup>.Ok(new AppGroup(GroupId.New(), name.Trim(), icon ?? IconSource.DefaultBuiltIn));
+        return Result<AppGroup>.Ok(
+            new AppGroup(GroupId.New(), name.Trim(), icon ?? IconSource.DefaultBuiltIn, showPopupHeader));
     }
 
     /// <summary>영속화된 데이터로부터 그룹을 복원한다(리포지토리 전용).</summary>
-    public static AppGroup Restore(GroupId id, string name, IconSource icon, IEnumerable<AppEntry> apps)
+    public static AppGroup Restore(
+        GroupId id, string name, IconSource icon, IEnumerable<AppEntry> apps, bool showPopupHeader = true)
     {
-        var group = new AppGroup(id, name, icon);
+        var group = new AppGroup(id, name, icon, showPopupHeader);
         foreach (var app in apps)
         {
             if (!group._apps.Any(a => a.SameTarget(app.LaunchTarget)))
@@ -80,4 +86,7 @@ public sealed class AppGroup
         ArgumentNullException.ThrowIfNull(icon);
         Icon = icon;
     }
+
+    /// <summary>핀 팝업의 그룹 이름 헤더 표시 여부를 설정한다(편집 시).</summary>
+    public void SetShowPopupHeader(bool value) => ShowPopupHeader = value;
 }
