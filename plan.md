@@ -325,7 +325,7 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 
 ## 진행 체크리스트
 - [x] T1 Domain: FolderShortcut + FolderPopupSettings
-- [ ] T2 Application: 인터페이스(Repository/DirectoryBrowser/ShellOpener)
+- [x] T2 Application: 인터페이스(Repository/DirectoryBrowser/ShellOpener)
 - [ ] T3 Infrastructure: JsonFolderShortcutRepository + 경로
 - [ ] T4 Infrastructure: DirectoryBrowser + ShellOpener
 - [ ] T5 App: FolderPopupSettingsService
@@ -341,3 +341,6 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - 다른 사람이 추가 질문 없이 끝낼 수 있는가? → 예(레이어/파일/시그니처/엣지/Halt 명시, 재사용 인프라 파일·라인 인용).
 - 구현 중 결정 분기가 남아있는가? → 아니오(팝업 수명/포커스/레이아웃/설정 저장 위치 모두 확정).
 - 검증 가능한 acceptance가 각 task에 있는가? → 예.
+
+## Progress Log
+- T1-T2 완료: Domain(FolderShortcut/FolderPopupSettings) + Application 인터페이스(IFolderShortcutRepository/IDirectoryBrowser/IShellOpener). 빌드 OK, Domain 테스트 23/23. 신규 파일만(호출자 0).
