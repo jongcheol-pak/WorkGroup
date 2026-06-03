@@ -30,7 +30,7 @@ dotnet test WorkGroup.slnx
 - 패키지 앱 GUI 실행: Visual Studio에서 `WorkGroup.App`을 시작 프로젝트로 두고 F5(MSIX 배포·디버그).
 
 ## 화면 구성 (NavigationView 셸)
-좌측 메뉴 + 우측 컨텐츠 레이아웃. WinUI 3 Gallery / Fluent 디자인(커스텀 TitleBar + Mica 백드롭, 라이트/다크 테마, `SettingsCard`, 공통 페이지 레이아웃). 디자인 토큰은 `src/WorkGroup.App/Resources/`(Spacing/ControlStyles).
+좌측 메뉴 + 우측 컨텐츠 레이아웃. WinUI 3 Gallery / Fluent 디자인(커스텀 TitleBar[앱 아이콘 + 제목] + Mica 백드롭, 라이트/다크 테마, `SettingsCard`, 공통 페이지 레이아웃). 디자인 토큰은 `src/WorkGroup.App/Resources/`(Spacing/ControlStyles).
 - **작업 그룹**: 그룹 목록(그룹 아이콘 + 이름/멤버 앱 아이콘 2라인 + 수정·삭제 아이콘 버튼), 상단 "그룹 추가".
 - **트레이 메뉴**: 추후 추가 예정(placeholder).
 - **설정**(하단): 로그인 시 자동 시작 토글, 앱 테마(시스템/라이트/다크) 전환.

@@ -1,115 +1,118 @@
-# plan.md — 그룹 수정 화면: 이름 클릭-편집 + 핀 재등록 경고
+# plan.md — 앱 아이콘 설정 (exe / 창 / 타이틀바 / 정보 카드)
 
-> 이전 plan들은 완료(git 이력). 본 plan은 그룹 수정 다이얼로그의 이름 편집 UX 개선.
+> 이전 plan(그룹 수정 화면 이름 클릭-편집)은 완료(git 이력). 본 plan은 앱 아이콘(AppIcon.ico) 일괄 적용.
 
 ## 목표
-그룹 **수정** 화면에서:
-1. 그룹 이름을 처음엔 **읽기전용 표시**로 보여주고, **클릭하면 입력창(TextBox)으로 전환**한다.
-2. 입력한 이름이 **원래 이름과 달라지면**, 이름 입력 UI 아래에 **핀 재등록 경고**를 표시한다.
-
-신규 **추가** 화면은 기존과 동일(이름을 처음부터 바로 입력, 경고 없음).
+프로젝트 루트의 `AppIcon.ico`를 앱 전반의 아이콘으로 적용한다.
+1. **실행 파일(.exe) 아이콘** — 탐색기/작업 관리자에서 보이는 exe 아이콘을 AppIcon.ico로.
+2. **창 아이콘(작업 표시줄 / Alt+Tab 미리보기)** — 메인 창의 작업 표시줄·미리보기 아이콘을 AppIcon.ico로.
+3. **메인 화면 타이틀바 아이콘** — 타이틀바 좌측 앱 아이콘을 AppIcon.ico로 변경 + **크기 28px로 키움**.
+4. **정보 화면 '앱 이름 카드' 아이콘** — AppIcon.ico로 통일 + **크기 48px로 키움**.
 
 ## 배경 / 근본 원인 (확인된 사실)
-- 작업 표시줄에 핀된 항목의 표시 이름은 핀 복사본의 **파일명으로 고정**되어, 그룹 이름을 바꿔도 자동으로 바뀌지 않는다(프로그래밍 방식 변경은 Windows 제약상 불가). 따라서 사용자가 직접 **핀을 제거하고 다시 핀**해야 한다 → 이를 경고로 안내한다.
-- 현재 `GroupEditDialog.xaml`(56-58행)의 이름 입력은 항상 편집 가능한 `TextBox`(Header="그룹 이름", MaxLength=15, `EditingName` TwoWay 바인딩).
-- 편집/신규 구분은 `GroupEditViewModel`의 `_editingId`(InitializeAsync에서 `group?.Id`로 설정). 편집이면 `Title="그룹 수정"`.
-- `EditingName`은 `[ObservableProperty]`. `_existingNames`로 중복 검사(편집 시 자기 제외).
-- 검증 메시지는 `StatusMessage` → `InfoBar`(GroupEditDialog.xaml:61, Severity=Warning)로 표시(빈 목록/중복 이름). **핀 경고는 이와 별개의 InfoBar로 추가**한다(역할 분리).
+- 프로젝트: WinUI 3 / .NET 10 / MSIX **패키지 앱**(`UseWinUI=true`, `WindowsPackageType` 미지정 = 패키지 빌드). `app.manifest` `dpiAwareness=PerMonitorV2`.
+- `AppIcon.ico`는 저장소 루트(`D:\Personal Project\Windows\WorkGroup\AppIcon.ico`)에 있고, 현재 프로젝트에서 **참조 없음**(grep 전수 확인).
+- **exe 아이콘**: csproj `<ApplicationIcon>`을 지정하면 컴파일 시 exe에 Win32 아이콘 리소스가 박힌다(패키지 앱에서도 exe 자체에는 적용). 물리 파일이 프로젝트 내에 있어야 한다 → Assets로 복사 후 지정.
+- **창 아이콘**: `Microsoft.UI.Windowing.AppWindow.SetIcon(string path)` — `.ico` 파일 경로를 받아 창(작업 표시줄/Alt+Tab 미리보기) 아이콘을 설정(표준 API, WinUIEx 불필요). 패키지 앱은 설치 폴더 기준 상대경로(`Assets\AppIcon.ico`)를 받으며, 파일이 출력에 포함(Content)되어야 한다. 현재 `App.xaml.cs`의 `ShowMainWindow`에서 `WindowEx win`을 생성하므로 `win.AppWindow.SetIcon(...)` 호출 가능.
+- **타이틀바 아이콘 크기**: WinUI 3 `TitleBar` 컨트롤의 `IconSource`는 표시 크기가 **고정**(약 16px)이라 키울 수 없다(공식 확인). 시각 배치 순서는 **LeftHeader → IconSource → Title → Subtitle → Content → RightHeader**(공식 확인). 따라서 `IconSource`를 제거하고 `TitleBar.LeftHeader`에 크기 지정 `Image`를 넣으면 아이콘이 제목 **왼쪽 맨 앞**에 오면서 원하는 크기로 표시된다.
+- **정보 카드 아이콘**: `SettingsCard.HeaderIcon`은 `PART_HeaderIconPresenterHolder`(Viewbox 계열) presenter에서 호스팅된다. `ImageIcon`에 `Width/Height`를 지정하면 그 크기로 스케일된다(슬롯이 제약하면 presenter 크기 리소스 조정 필요 — 위험 섹션).
+- `.ico`는 WinUI `ImageSource`(BitmapImage) 및 `ImageIcon`/`Image`의 `Source`로 디코드 가능(가장 큰 프레임 사용).
 
-## 영향 범위 (전수 조사 결과)
-- `GroupEditViewModel` 참조처: `ServiceConfiguration.cs`(DI 등록), `GroupEditDialog.xaml`(x:Bind), `GroupEditDialog.xaml.cs`(사용), `WorkGroupsPage.xaml.cs`(다이얼로그 호출). → **공개 메서드 시그니처 변경 없음**. 추가하는 것은 ViewModel의 바인딩용 속성뿐이라 기존 호출자 영향 없음.
-- `WorkGroupsPage.xaml.cs`는 `GroupEditDialog`를 `Configure(group)` 후 `ShowAsync`로 호출(편집/신규 모두). → 변경 불필요(InitializeAsync 내부에서 모드 분기).
-- **테스트**: `GroupEditViewModel`/`GroupEditDialog`에 대한 단위 테스트 없음. `WorkGroup.App`은 `UseWinUI=true`/`WinExe`(패키지 WinUI 실행 파일)이고 **테스트 프로젝트가 App을 참조하지 않아** ViewModel 단위 테스트가 불가하다(Application.Tests TFM은 net10.0-windows로 App과 동일하나 참조가 없음). → 테스트 추가 불가, **빌드 + 수동 GUI 검증**으로 한다(AGENTS.md: 패키지 앱 GUI는 수동).
+## 영향 범위 (전수 조사 결과 — grep + Read 확인)
+- `Square44x44Logo.scale-200.png` **코드** 참조: `Views/MainShell.xaml:24`(타이틀바 IconSource), `Views/AboutPage.xaml:26`(정보 카드 HeaderIcon) — **둘 다 본 작업의 변경 대상**. 그 외 코드 참조 없음.
+  - `WorkGroup.App.csproj:31`의 `<Content Include="Assets\Square44x44Logo.scale-200.png" />`와 `Package.appxmanifest:42`의 타일 로고(`Square44x44Logo.png`)는 **타일/스토어 자산**으로 본 작업과 별개 → **변경하지 않음**(기존 png 파일·등록 유지).
+- `AppTitleBar`(x:Name): `Views/MainShell.xaml:22`에만 존재. `MainShell.xaml.cs`·`App.xaml.cs`에 **코드 참조 없음** → IconSource 제거·LeftHeader 추가가 코드비하인드에 영향 없음. `SetTitleBar()` 호출도 없음(`ExtendsContentIntoTitleBar=true` + `TitleBar` 컨트롤 자동 동기, App.xaml.cs:99).
+- `AppWindow.SetIcon` 추가 위치: `App.xaml.cs`의 `ShowMainWindow`(L92 `new WindowEx`). 메인 창 분기에만 적용. 팝업창(`GroupPopupWindow`)은 **요청 범위 밖**(Out of Scope).
+- `AppIcon.ico` 기존 참조 없음 → 신규 도입(파일 추가 + csproj 2줄 + 코드/XAML).
+- **테스트**: `WorkGroup.App`은 패키지 WinUI 실행 파일이고 테스트 프로젝트가 App을 참조하지 않아 UI 단위 테스트 불가(AGENTS.md/이전 plan 확인). → 빌드 + **수동 GUI 검증**.
 
 ## Out of Scope (명시)
-- 핀 표시 이름의 **프로그래밍 방식 자동 변경/재등록**(Windows 작업 표시줄 핀 제약상 불가 — 조사 완료). 본 작업은 사용자에게 수동 재등록을 **안내**만 한다.
-- **신규 추가 모드 UX 변경**(기존 동작 유지).
-- 아이콘 변경 관련 경고/처리(이름 변경 경고만 대상).
+- 트레이 아이콘 변경(`TrayIconService`는 현재 `LoadIcon(IDI_APPLICATION)` 시스템 기본 사용 — 요청에 없음, 미변경).
+- 팝업창(`GroupPopupWindow`)의 창 아이콘(요청은 "메인 화면" 기준).
+- Package.appxmanifest의 타일/스토어 로고 및 시작 메뉴 타일(기존 png 유지).
+- 기존 `Square44x44Logo.*` 자산 파일 삭제(타일에서 계속 사용).
 
 ## 결정 사항 (사용자 확정)
-- **D1. 이름 편집 방식**: 읽기전용 표시 → 클릭 시 입력창 전환. (사용자 답변)
-- **D2. 적용 범위**: **수정 모드에만**. 신규 추가는 기존대로 바로 입력 + 경고 없음. (사용자 답변)
-- **D3. 경고 표시 조건**: 입력 이름이 **원래 이름과 실제로 달라졌을 때만**. 원래대로 되돌리면 경고 사라짐. (사용자 답변)
-- **D4. 경고 문안**: **"이름을 변경하면 작업 표시줄에 핀한 기존 항목을 제거하고 다시 핀해야 합니다."** (사용자 답변)
+- **D1. 타이틀바 아이콘 크기**: **28px** (LeftHeader 커스텀 Image 방식).
+- **D2. 정보 카드 아이콘**: **AppIcon.ico로 통일 + 48px**. 구현은 `ImageIcon`에 `Width/Height=48` 지정까지로 **단일 확정**한다(분기 없음). SettingsCard presenter 한계로 GUI상 48px가 미반영되면 그때 사용자와 재협의(implement-task는 Width/Height 지정으로 task 완료, 자율 실행 중 추가 분기 없음).
+- **D3. AppIcon.ico 포함 방식**: **Assets 폴더로 복사 후 Content 포함**(`src/WorkGroup.App/Assets/AppIcon.ico`).
 
 ## 결정 사항 (기술결정 — 추가 입력 불필요)
-- **D5. 읽기전용 표시 컨트롤**: 읽기전용 모드는 세로 `StackPanel`로 구성 — ① 라벨 `TextBlock`("그룹 이름", `Style="{ThemeResource CaptionTextBlockStyle}"`, TextBox Header와 동일 위치/톤) + ② 투명 배경 `Button`(Click="OnEditNameClick", `HorizontalAlignment=Stretch`, `HorizontalContentAlignment=Left`) 안에 `StackPanel`(Orientation=Horizontal, Spacing=6) → 이름 `TextBlock`(`EditingName` OneWay, `TextTrimming=CharacterEllipsis`) + 편집 힌트 `FontIcon`(연필 글리프 `&#xE70F;`, FontSize=14). Button을 쓰면 클릭/키보드 포커스/접근성이 자동 확보(TextBlock+Tapped 대비 우수). 이름 칼럼 컨테이너는 기존과 동일하게 `VerticalAlignment="Bottom"` 유지(아이콘 56px와 하단 정렬). TextBox(입력창)는 자체 `Header="그룹 이름"`를 유지하므로 두 모드 모두 동일 라벨이 보인다.
-- **D6. 전환 상태 모델**: ViewModel에 `IsNameEditing`(bool) 추가. 신규=초기 true(바로 입력), 수정=초기 false(읽기전용). 읽기전용 Button 클릭 시 true로 전환(되돌리지 않음 — 한 번 편집 시작하면 입력창 유지, 단순/예측가능).
-- **D7. 경고 노출 모델**: 계산 속성 `ShowRenameWarning => IsEditMode && EditingName.Trim() != _originalName`(Ordinal 비교). `EditingName`/`IsEditMode` 변경 시 `NotifyPropertyChangedFor`로 통지.
-- **D8. 경고 위치**: 이름 행 **바로 아래 새 Grid 행**에 전용 `InfoBar`(Severity=Warning, IsClosable=False, Message=D4 고정 문구). 기존 `StatusMessage` InfoBar(검증용)는 그 아래로 한 행 이동. → 요청("입력 UI 아래")에 정확히 부합, 전체 폭 표시.
-- **D9. 포커스**: 읽기전용→입력창 전환 시 `TextBox.Focus(Programmatic)` + `SelectAll()`로 즉시 편집 가능하게. Visibility 전환 직후 포커스가 누락되지 않도록 `DispatcherQueue.TryEnqueue`로 한 틱 양보 후 Focus(Edge Case E2).
+- **D4. exe 아이콘 경로**: csproj `<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>`(프로젝트 상대경로).
+- **D5. 창 아이콘 호출 위치/경로**: `ShowMainWindow`에서 `win` 생성 직후(필드 대입 전) `win.AppWindow.SetIcon(@"Assets\AppIcon.ico")` 1회 호출. 패키지 설치 폴더 기준 **상대경로로 단일 확정**(절대경로 폴백 분기 없음 — 미표시 시 사용자 GUI 확인 후 후속 옵션은 R2 참고).
+- **D6. 타이틀바 LeftHeader 구성**: 기존 `<TitleBar.IconSource>` 제거 → `<TitleBar.LeftHeader>` 안에 `Image`(`Source="ms-appx:///Assets/AppIcon.ico"`, `Width=28`, `Height=28`, `VerticalAlignment=Center`, 제목과 간격용 `Margin="0,0,8,0"`). `Title="WorkGroup"` 유지.
+- **D7. 정보 카드 HeaderIcon**: `ImageIcon`의 `Source`를 `ms-appx:///Assets/AppIcon.ico`로 변경하고 `Width="48" Height="48"` 지정.
+- **D8. AppIcon.ico Content 등록**: csproj 기존 Assets `<Content Include>` 그룹에 `<Content Include="Assets\AppIcon.ico" />` 추가(SetIcon 출력 포함 + ms-appx 접근).
 
 ## 작업 분해
 
-### T1. GroupEditViewModel — 편집모드/이름편집전환/이름변경경고 상태 추가 (Type C)
-- **Files**: `src/WorkGroup.App/ViewModels/GroupEditViewModel.cs`
+### T1. AppIcon.ico를 Assets로 복사 + csproj 아이콘 등록 (Type A — 빌드 구성)
+- **Files**: `AppIcon.ico`(루트, 원본) → `src/WorkGroup.App/Assets/AppIcon.ico`(복사 대상, 신규), `src/WorkGroup.App/WorkGroup.App.csproj`
 - **변경**:
-  - 필드 `private string _originalName = string.Empty;`(편집 시작 시 원래 이름).
-  - `[ObservableProperty] public partial bool IsEditMode { get; set; }` — `[NotifyPropertyChangedFor(nameof(ShowRenameWarning))]`.
-  - `[ObservableProperty] public partial bool IsNameEditing { get; set; }` — `[NotifyPropertyChangedFor(nameof(NameDisplayVisibility))]` + `[NotifyPropertyChangedFor(nameof(NameEditVisibility))]`.
-  - 계산 속성: `ShowRenameWarning`(D7), `NameDisplayVisibility`(IsNameEditing?Collapsed:Visible), `NameEditVisibility`(반대).
-  - `EditingName`에 `[NotifyPropertyChangedFor(nameof(ShowRenameWarning))]` 부착.
-  - `InitializeAsync` **설정 순서(중요)**: 기존 `EditingName = group?.Name ?? string.Empty;`(현재 110행) **이전에** `_originalName = group?.Name ?? string.Empty;`와 `IsEditMode = group is not null;`, `IsNameEditing = group is null;`(신규 즉시 입력)를 **먼저** 설정한다. 그래야 EditingName 설정이 유발하는 `ShowRenameWarning` 통지 시점에 `_originalName`/`IsEditMode`가 이미 올바른 값을 갖는다. 안전을 위해 위 설정 직후 `OnPropertyChanged(nameof(ShowRenameWarning))`도 1회 호출(초기 상태 보정).
-- **Acceptance**: 신규 모드 초기 `IsNameEditing=true`·`IsEditMode=false`·`ShowRenameWarning=false`; 편집 모드 초기 `IsNameEditing=false`·`IsEditMode=true`·`ShowRenameWarning=false`(이름 미변경), 이름을 다른 값으로 바꾸면 `ShowRenameWarning=true`, 원복하면 다시 false. (빌드 통과 + 로직 코드 검토로 확인)
-- **Edge Cases**: 빈 이름 입력(Trim 후 "" ≠ 원래이름이면 경고 표시 — 정상, 저장은 기존 검증이 막음); 공백만 입력(Trim 처리); 이름 앞뒤 공백 차이(Trim 비교라 공백만 추가 시 경고 안 뜸 — 수용).
-- **Halt Forecast**: CommunityToolkit partial property/Notify 특성 사용은 기존 코드(EditingName 등)와 동일 패턴이라 컴파일 이슈 낮음. 빌드 에러 시 기존 ObservableProperty 선언 형태를 그대로 따른다.
+  1. 루트 `AppIcon.ico`를 `src/WorkGroup.App/Assets/AppIcon.ico`로 **복사**(원본 보존).
+  2. csproj `<PropertyGroup>`(App Options 영역)에 `<ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>` 추가.
+  3. csproj 기존 Assets `<ItemGroup>`(현재 28~36행)에 `<Content Include="Assets\AppIcon.ico" />` 추가.
+- **Acceptance (자동·완료 조건)**: `Assets\AppIcon.ico` 파일 존재. `dotnet build WorkGroup.slnx`(플랫폼 미지정, AGENTS.md L9) 경고/에러 0. 빌드 출력 폴더에 `Assets\AppIcon.ico` 복사됨.
+- **사후 검수(사용자 GUI)**: 빌드된 exe의 탐색기/작업관리자 아이콘이 AppIcon.ico.
+- **Edge Cases**: 경로 구분자는 Windows 백슬래시(`Assets\AppIcon.ico`); 파일명 대소문자 일치(`AppIcon.ico`).
+- **Halt Forecast**: `<ApplicationIcon>` 경로 오타 시 빌드 에러(아이콘 파일 못 찾음) → 복사 위치/경로 재확인.
 
-### T2. GroupEditDialog.xaml — 이름 읽기전용↔입력 전환 UI + 경고 InfoBar (Type C)
-- **Files**: `src/WorkGroup.App/Views/GroupEditDialog.xaml`
-- **변경**:
-  - 1행 이름 칼럼(Column1)을 컨테이너 Grid로 바꿔 두 요소를 겹쳐 둔다:
-    - 읽기전용 표시(`NameDisplayVisibility`): Header 라벨 + 투명 `Button`(Click="OnEditNameClick", 좌측 정렬) 안에 이름 `TextBlock`(`EditingName` OneWay) + 연필 `FontIcon`.
-    - 입력창(`NameEditVisibility`): 기존 `TextBox`에 `x:Name="NameTextBox"` 부여, MaxLength=15, `EditingName` TwoWay 유지.
-  - **RowDefinitions 재구성(현재 4행 → 5행)**: 현재 `[Auto, Auto, Auto, 300]`(이름 Row0 암묵, 검증InfoBar Row1, 앱추가 Row2, 목록 Row3). 변경 후 `[Auto(이름), Auto(경고), Auto(검증InfoBar), Auto(앱추가), 300(목록)]`.
-  - **Grid.Row 명시 매핑(현재값→새값, 누락 금지)**:
-    | 요소 | 현재 Grid.Row | 새 Grid.Row |
-    |---|---|---|
-    | 이름 칼럼 Grid (xaml L25) | 미지정(0) | 미지정(0) 유지 |
-    | **경고 InfoBar (신규)** | — | **1** |
-    | 검증 StatusMessage InfoBar (L61) | 1 | **2** |
-    | "앱 추가" Button (L65) | 2 | **3** |
-    | 선택 목록 ListView (L110) | 3 | **4** |
-  - 경고 `InfoBar`(Grid.Row=1, IsOpen=`ShowRenameWarning`, Severity=Warning, IsClosable=False, Message=D4 문구)를 이름 행 바로 아래에 배치.
-  - **검증**: 편집 완료 후 모든 직속 자식의 Grid.Row가 위 표와 일치하는지, RowDefinitions가 5개인지 재확인(특히 마지막 300px 고정 행이 목록에 매핑되는지).
-- **Acceptance**: 수정 다이얼로그 진입 시 이름이 읽기전용 표시로 보이고, 클릭하면 입력창으로 바뀐다. 이름을 바꾸면 입력 UI 아래 경고 InfoBar가 열리고, 원복하면 닫힌다. 신규 다이얼로그는 처음부터 입력창·경고 없음. (빌드 통과 + 수동 GUI 검증)
-- **Edge Cases**: 긴 이름(15자)일 때 읽기전용 TextBlock 트리밍(`TextTrimming=CharacterEllipsis`); 경고 InfoBar 추가로 다이얼로그 세로 높이 증가(ContentDialog 자동 확장 — 행 높이 Auto라 미표시 시 0).
-- **Halt Forecast**: Grid.Row 인덱스 누락/중복 시 레이아웃 깨짐 → 변경 후 모든 자식의 Grid.Row를 재확인. x:Bind 속성명 오타 시 빌드 에러(컴파일 바인딩).
+### T2. App.xaml.cs — 메인 창 아이콘 SetIcon (Type C)
+- **Files**: `src/WorkGroup.App/App.xaml.cs`
+- **변경**: `ShowMainWindow()`의 `win` 생성 블록(L92~100) 직후, `win.AppWindow.Closing += ...`(L102) 부근에서 `win.AppWindow.SetIcon(@"Assets\AppIcon.ico");` 호출(창 1회 생성 시점에만 실행되도록 `if (_window is null)` 블록 내부). 한글 주석으로 "작업 표시줄/Alt+Tab 미리보기 아이콘 지정" 명시.
+- **Acceptance (자동·완료 조건)**: 빌드 통과. `SetIcon` 호출이 `if (_window is null)` 생성 블록 **내부**라 창 재표시(트레이→열기) 반복 시 중복 호출 없음(코드 검토).
+- **사후 검수(사용자 GUI)**: 메인 창 실행 시 작업 표시줄 아이콘·Alt+Tab 미리보기가 AppIcon.ico.
+- **Edge Cases**: `SetIcon` 경로가 패키지 설치 폴더에 없으면 무시/예외 — T1에서 Content 포함으로 보장. 상대경로는 패키지 앱 기준.
+- **Halt Forecast**: `AppWindow.SetIcon(string)` 오버로드는 Windows App SDK 표준 — 컴파일 이슈 낮음. 경로는 상대경로(`Assets\AppIcon.ico`)로 단일 확정(D5) — 자율 실행 중 분기 없음.
 
-### T3. GroupEditDialog.xaml.cs — 이름 클릭→편집 전환 핸들러 (Type C)
-- **Files**: `src/WorkGroup.App/Views/GroupEditDialog.xaml.cs`
-- **변경**: `OnEditNameClick(object, RoutedEventArgs)` 추가 — `ViewModel.IsNameEditing = true;` 후 `this.DispatcherQueue.TryEnqueue(() => { NameTextBox.Focus(FocusState.Programmatic); NameTextBox.SelectAll(); })`. `DispatcherQueue`는 `ContentDialog`(DependencyObject 상속)의 인스턴스 속성 `this.DispatcherQueue`로 접근(WinUI 3 표준).
-- **Acceptance**: 읽기전용 이름 클릭 시 입력창으로 전환되고 즉시 텍스트가 선택되어 편집 가능. (수동 GUI 검증)
-- **Edge Cases (E2)**: Visibility 전환 직후 즉시 Focus가 무시될 수 있어 DispatcherQueue로 한 틱 양보. SelectAll은 포커스 후 호출.
-- **Halt Forecast**: `NameTextBox`는 T2에서 x:Name 부여 필수(없으면 컴파일 에러) → T2/T3 함께 검증.
+### T3. MainShell.xaml — 타이틀바 아이콘 변경 + 28px (Type C)
+- **Files**: `src/WorkGroup.App/Views/MainShell.xaml`
+- **변경**: `<TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="WorkGroup">`(L22)의 기존 `<TitleBar.IconSource>...ImageIconSource...</TitleBar.IconSource>`(L23~25) **제거** → `<TitleBar.LeftHeader>` 추가, 그 안에 `<Image Source="ms-appx:///Assets/AppIcon.ico" Width="28" Height="28" VerticalAlignment="Center" Margin="0,0,8,0" />`. `Title="WorkGroup"` 유지.
+- **Acceptance (자동·완료 조건)**: 빌드 통과. IconSource 블록이 완전히 제거되고 LeftHeader에 28px Image가 추가됨(코드 검토).
+- **사후 검수(사용자 GUI)**: 메인 창 타이틀바 좌측에 28px AppIcon.ico가 제목 "WorkGroup" 왼쪽에 표시.
+- **Edge Cases**: LeftHeader는 IconSource보다 좌측이라 아이콘→제목 순서 유지(공식 배치 순서 확인). Margin으로 제목과 간격 확보.
+- **Halt Forecast**: `ImageIconSource`/`IconSource` 잔존 시 16px 작은 아이콘이 LeftHeader 아이콘과 중복 표시 → IconSource 블록 완전 제거 확인. ms-appx 경로 오타 시 빈 이미지.
 
-### T4. 문서 갱신 (Type A)
+### T4. AboutPage.xaml — 정보 카드 아이콘 AppIcon.ico + 48px (Type C)
+- **Files**: `src/WorkGroup.App/Views/AboutPage.xaml`
+- **변경**: `SettingsCard.HeaderIcon`의 `<ImageIcon Source="ms-appx:///Assets/Square44x44Logo.scale-200.png" />`(L26)를 `<ImageIcon Source="ms-appx:///Assets/AppIcon.ico" Width="48" Height="48" />`로 변경.
+- **Acceptance (자동·완료 조건)**: 빌드 통과. HeaderIcon ImageIcon의 Source가 AppIcon.ico, Width/Height=48로 변경됨(코드 검토).
+- **사후 검수(사용자 GUI)**: 정보 화면 앱 이름 카드의 아이콘이 AppIcon.ico·48px로 표시.
+- **Edge Cases**: SettingsCard HeaderIcon presenter(Viewbox)가 48px를 수용하는지 — 사용자 GUI에서 확인. 카드 헤더 높이가 아이콘에 맞게 자동 확장.
+- **Halt Forecast**: D2 단일 확정 — 본 task는 `ImageIcon Width/Height=48` 지정으로 **완료**(자율 실행 중 분기 없음). presenter 한계로 GUI상 48px 미반영 시(R1)는 task 완료 후 사용자 GUI 확인 단계에서 드러나며, 그때 재협의.
+
+### T5. 문서 갱신 (Type A)
 - **Files**: `README.md`, `notes.md`
-- **변경**: README의 그룹 수정 화면 설명에 "이름 클릭-편집 + 핀 재등록 경고" 반영(현재 기능만, 과장 없이). notes.md `## 최근 변경` 최상단에 본 작업 1줄 추가. 1개월 초과 항목 정리.
-- **Acceptance**: 문서가 실제 동작과 일치.
+- **변경**: README에 앱 아이콘(실행/창/타이틀바/정보) 관련 설명이 있으면 현행화(현재 동작만, 과장 없이). 없으면 UI/아이콘 항목에 간단 반영. `notes.md` `## 최근 변경` 최상단에 본 작업 1줄 추가(`2026-06-03: 앱 아이콘(AppIcon.ico) exe/창/타이틀바28px/정보카드48px 적용`), 1개월 초과 항목 정리.
+- **Acceptance**: 문서가 실제 변경과 일치.
 
 ## 위험 / 회귀
-- ContentDialog 높이 변동: 경고 InfoBar는 행 높이 Auto라 미표시 시 레이아웃 영향 없음.
-- 기존 검증 InfoBar(StatusMessage)와 경고 InfoBar 동시 표시 가능(중복 이름 + 이름 변경) → 의도된 동작(역할 분리). 세로로 쌓임.
-- 신규 추가 흐름 회귀 없음: IsNameEditing=true로 시작해 기존과 동일하게 바로 입력.
+- **R1. 정보 카드 48px 미반영**: SettingsCard HeaderIcon presenter(Viewbox)가 크기를 제약하면 ImageIcon Width/Height가 무시될 수 있음 → 수동 GUI 확인 필수. 미반영 시 presenter 크기 리소스 오버라이드는 별도 협의(본 plan 범위는 표준 Width/Height 지정).
+- **R2. 패키지 SetIcon 경로**: 상대경로가 설치 폴더 기준이 아닐 가능성 → T1 Content 포함으로 출력 보장. 경로는 상대경로로 단일 확정(D5, 자율 실행 중 폴백 없음). 미표시 시 사용자 GUI 확인 후 재협의.
+- **R3. 회귀 없음**: 타일/스토어 로고(Package.appxmanifest)·기존 Square44x44Logo 자산은 미변경 → 시작 메뉴/스토어 표시 영향 없음. 타이틀바/정보 카드만 시각 변경.
 
 ## 검증 방법
-- `dotnet build WorkGroup.slnx` — 경고/에러 0 확인.
-- `dotnet test WorkGroup.slnx` — 기존 테스트 회귀 없음(이 변경은 테스트 대상 외이나 전체 그린 유지).
-- 수동 GUI(사용자, F5 MSIX): ① 수정 진입 시 이름 읽기전용 표시 ② 클릭 시 입력창+포커스 ③ 이름 변경 시 경고 표시/원복 시 사라짐 ④ 신규는 바로 입력·경고 없음 ⑤ 저장 정상 ⑥ 경고 미표시 상태에서 이름~검증 InfoBar 간격이 과하지 않은지(빈 Auto 행 + RowSpacing=10 영향) 확인.
+**자동 검증(implement-task 자율 완료 조건)**:
+- `dotnet build WorkGroup.slnx`(플랫폼 미지정, AGENTS.md L9) — 경고/에러 0.
+- `dotnet test WorkGroup.slnx` — 기존 테스트 회귀 없음(본 변경은 테스트 대상 외, 그린 유지).
+- 코드 검토: 각 task 변경이 plan대로 반영됐는지(IconSource 제거, LeftHeader/SetIcon/HeaderIcon 추가, csproj 2줄).
+
+**사후 검수(사용자, F5 MSIX — 헤드리스 불가)**: ① 탐색기/작업관리자 exe 아이콘 ② 작업 표시줄·Alt+Tab 미리보기 아이콘 ③ 타이틀바 좌측 28px 아이콘(제목 왼쪽) ④ 정보 화면 카드 48px 아이콘. ③④가 미반영이면 R1/R2에 따라 재협의.
 
 ## 승인 필요 사항
-- 구조/공개 API/의존성 변경 없음(ViewModel 바인딩 속성 추가뿐). 승인 후 implement-task 자율 진행.
+- csproj 빌드 구성 변경(`<ApplicationIcon>`, `<Content>`)·파일 추가(Assets\AppIcon.ico)·App.xaml.cs 코드 추가 포함. 의존성 추가/공개 API 변경 없음. 승인 후 implement-task 자율 진행.
 
 ## Task 체크리스트
-- [x] T1. GroupEditViewModel 상태 추가
-- [x] T2. GroupEditDialog.xaml 이름 전환 UI + 경고 InfoBar
-- [x] T3. GroupEditDialog.xaml.cs 클릭 핸들러
-- [x] T4. 문서 갱신
+- [x] T1. AppIcon.ico 복사 + csproj 등록
+- [x] T2. App.xaml.cs 창 아이콘 SetIcon
+- [x] T3. MainShell.xaml 타이틀바 28px
+- [x] T4. AboutPage.xaml 정보 카드 48px
+- [x] T5. 문서 갱신
 
 ## Progress Log
-- T1-T3 완료 (커밋: 그룹 이름 클릭-편집 + 핀 재등록 경고): GroupEditViewModel 상태 + XAML 전환 UI + code-behind 포커스. 빌드 0/0, 테스트 80/80, spec-compliance OK.
-- T4 완료: README/notes 갱신.
+- T1~T4 완료 (커밋 e992ed6/f948b2c/8c86113/5861657): AppIcon.ico를 Assets로 복사 + csproj ApplicationIcon·Content 등록(T1), App.xaml.cs AppWindow.SetIcon(T2), MainShell.xaml IconSource→LeftHeader 28px(T3), AboutPage.xaml HeaderIcon AppIcon.ico+48px(T4). 빌드 0/0, 테스트 80/80, spec-compliance OK. 작업 트리의 타일/스토어 자산(png/manifest)은 사용자 진행 작업이라 미커밋 유지(csproj는 사용자 승인하에 함께 포함).
+- T5 완료: notes.md/README.md 갱신.
 
 ## Next Steps
-- 권장 다음 액션: F5 MSIX 수동 GUI 검증(이름 읽기전용→클릭 전환, 경고 표시/원복, 신규 즉시 입력) 후 PR 생성.
+- 권장 다음 액션: F5 MSIX 수동 GUI 검증(① exe 아이콘 ② 작업 표시줄/Alt+Tab 미리보기 ③ 타이틀바 28px ④ 정보 카드 48px). ③④ 미반영 시 plan R1/R2 참고. 이후 PR 생성.
 - Suggested skills: 공식 /code-review, 공식 /security-review
