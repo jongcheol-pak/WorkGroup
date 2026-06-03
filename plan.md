@@ -328,7 +328,7 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - [x] T2 Application: 인터페이스(Repository/DirectoryBrowser/ShellOpener)
 - [x] T3 Infrastructure: JsonFolderShortcutRepository + 경로
 - [x] T4 Infrastructure: DirectoryBrowser + ShellOpener
-- [ ] T5 App: FolderPopupSettingsService
+- [x] T5 App: FolderPopupSettingsService + FolderIconLoader
 - [ ] T6 App: TrayMenuPage 관리 화면 + VM + FolderEditDialog
 - [ ] T7 TrayIconService 좌클릭 분리 + App.xaml.cs
 - [ ] T8 FolderListPopupWindow
