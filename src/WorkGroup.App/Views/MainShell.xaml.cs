@@ -19,6 +19,9 @@ public sealed partial class MainShell : Page
         Nav.SelectedItem = Nav.MenuItems[0];
     }
 
+    /// <summary>외부(폴더 팝업 톱니)에서 "트레이 메뉴" 탭으로 전환한다(MenuItems[1]).</summary>
+    public void SelectTrayMenu() => Nav.SelectedItem = Nav.MenuItems[1];
+
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.SelectedItem is not NavigationViewItem item) return;

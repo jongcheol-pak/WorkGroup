@@ -1,0 +1,340 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Windows.Graphics;
+using WorkGroup.App.Services;
+using WorkGroup.Application.Folders;
+using WorkGroup.Domain.Folders;
+using WorkGroup.Infrastructure.Interop;
+
+namespace WorkGroup.App.Views;
+
+/// <summary>
+/// 폴더 호버 시 그 안의 파일/하위폴더를 보여주는 2차(이상) 팝업. 부모 팝업 좌/우에 배치한다.
+/// 부모-자식이 하나의 포커스 체인으로 동작한다(B2): 자식이 떠 있으면 부모가 닫히지 않고,
+/// 파일 실행/최대 깊이 폴더 열기는 <see cref="CloseChainRequested"/>로 체인 전체를 닫는다.
+/// </summary>
+public sealed partial class FolderContentsPopupWindow : Window
+{
+    private const int PopupWidth = 280;
+    private const int InitialPopupHeight = 120;
+    private const int OffScreen = -32000;
+    private const int HoverDelayMs = 200;
+    private const int Overlap = 20;
+    private const int TopMargin = 100;
+
+    private readonly IDirectoryBrowser _browser;
+    private readonly IShellOpener _shellOpener;
+    private readonly string _folderPath;
+    private readonly int _depth;
+    private readonly FolderPopupSettings _settings;
+    private readonly ChildPopupAnchor _anchor;
+
+    private int _lastAppliedHeight = -1;
+    private bool _positioned;
+    private bool _isActive;
+
+    private bool _childOpen;
+    private FolderContentsPopupWindow? _child;
+
+    private readonly DispatcherTimer _hoverTimer;
+    private Button? _hoveredButton;
+    private string? _hoveredPath;
+
+    /// <summary>파일 실행/최대 깊이 폴더 열기 등으로 전체 팝업 체인을 닫아야 할 때 발생.</summary>
+    public event Action? CloseChainRequested;
+
+    public FolderContentsPopupWindow(
+        string folderPath, string folderName, int depth, FolderPopupSettings settings, ChildPopupAnchor anchor)
+    {
+        InitializeComponent();
+
+        _folderPath = folderPath;
+        _depth = depth;
+        _settings = settings;
+        _anchor = anchor;
+
+        SystemBackdrop = new MicaBackdrop();
+        ExtendsContentIntoTitleBar = true;
+
+        if (Content is FrameworkElement root)
+        {
+            root.RequestedTheme = App.Services.GetRequiredService<ThemeService>().Read();
+            root.SizeChanged += (_, _) => AdjustToContent();
+        }
+
+        _browser = App.Services.GetRequiredService<IDirectoryBrowser>();
+        _shellOpener = App.Services.GetRequiredService<IShellOpener>();
+
+        ConfigurePresenter();
+        AppWindow.Resize(new SizeInt32(PopupWidth, InitialPopupHeight));
+        AppWindow.Move(new PointInt32(OffScreen, OffScreen));
+        Activated += OnActivated;
+        Closed += OnClosed;
+
+        _hoverTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(HoverDelayMs) };
+        _hoverTimer.Tick += OnHoverTick;
+
+        HeaderText.Text = folderName;
+        LoadContents();
+        DispatcherQueue.TryEnqueue(RevealAtAnchor);
+    }
+
+    private void LoadContents()
+    {
+        ContentPanel.Children.Clear();
+        var listing = _browser.Browse(_folderPath, _settings.ShowHiddenItems);
+
+        switch (listing.Status)
+        {
+            case DirectoryBrowseStatus.NotFound:
+                ShowMessage("폴더를 찾을 수 없습니다.");
+                return;
+            case DirectoryBrowseStatus.AccessDenied:
+                ShowMessage("접근할 수 없습니다.");
+                return;
+            case DirectoryBrowseStatus.Empty:
+                ShowMessage("폴더가 비어있습니다.");
+                return;
+        }
+
+        // 파일 먼저, 그다음 폴더(각각 이름순 — DirectoryBrowser가 정렬).
+        foreach (var file in listing.Files)
+            ContentPanel.Children.Add(CreateEntryButton(file));
+        foreach (var folder in listing.Folders)
+            ContentPanel.Children.Add(CreateEntryButton(folder));
+    }
+
+    private void ShowMessage(string message)
+    {
+        ContentPanel.Children.Clear();
+        ContentPanel.Children.Add(new TextBlock { Text = message, Margin = new Thickness(8) });
+    }
+
+    private Button CreateEntryButton(DirectoryEntryInfo entry)
+    {
+        var image = new Image { Width = 20, Height = 20, Stretch = Stretch.Uniform };
+        _ = SetIconAsync(image, entry.FullPath);
+
+        var name = new TextBlock
+        {
+            Text = entry.Name,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis
+        };
+
+        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        content.Children.Add(image);
+        content.Children.Add(name);
+
+        var button = new Button
+        {
+            Content = content,
+            Tag = entry,
+            Background = new SolidColorBrush(Colors.Transparent),
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(8, 6, 8, 6),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch
+        };
+        button.Click += OnEntryClick;
+        button.PointerEntered += OnEntryPointerEntered;
+        button.PointerExited += OnEntryPointerExited;
+        return button;
+    }
+
+    private static async Task SetIconAsync(Image image, string path)
+    {
+        var icon = await FolderIconLoader.LoadAsync(path);
+        if (icon is not null)
+            image.Source = icon;
+    }
+
+    private void OnEntryClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: DirectoryEntryInfo entry })
+            return;
+
+        if (!entry.IsDirectory)
+        {
+            // 파일 실행 후 전체 체인 닫기.
+            _shellOpener.Open(entry.FullPath);
+            RequestCloseChain();
+            return;
+        }
+
+        // 폴더: 더 깊이 들어갈 수 있으면 자식 팝업, 아니면 탐색기로 열고 체인 닫기.
+        if (_depth < _settings.SubfolderDepth)
+            ShowChildPopup(entry.FullPath);
+        else
+        {
+            _shellOpener.Open(entry.FullPath);
+            RequestCloseChain();
+        }
+    }
+
+    private void OnEntryPointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        if (sender is Button { Tag: DirectoryEntryInfo { IsDirectory: true } entry } button)
+        {
+            _hoveredButton = button;
+            _hoveredPath = entry.FullPath;
+            _hoverTimer.Stop();
+            _hoverTimer.Start();
+        }
+    }
+
+    private void OnEntryPointerExited(object sender, PointerRoutedEventArgs e) => _hoverTimer.Stop();
+
+    private void OnHoverTick(object? sender, object e)
+    {
+        _hoverTimer.Stop();
+        if (_depth < _settings.SubfolderDepth && _hoveredPath is not null)
+            ShowChildPopup(_hoveredPath);
+    }
+
+    private void ShowChildPopup(string folderPath)
+    {
+        _child?.Close();
+        _childOpen = true;
+
+        var child = new FolderContentsPopupWindow(
+            folderPath, FolderDisplayName(folderPath), _depth + 1, _settings, BuildChildAnchor());
+        _child = child;
+        child.CloseChainRequested += RequestCloseChain;
+        child.Closed += (_, _) =>
+        {
+            _childOpen = false;
+            _child = null;
+            // 자식이 닫혔는데 자신도 포커스가 없으면 체인 종료.
+            if (!_isActive)
+                Close();
+        };
+        child.Activate();
+    }
+
+    // 호버 중인 버튼의 화면 위치를 기준으로 자식 팝업 배치 앵커를 만든다.
+    private ChildPopupAnchor BuildChildAnchor()
+    {
+        double scale = (Content as FrameworkElement)?.XamlRoot?.RasterizationScale ?? 1.0;
+        int buttonY = 0;
+        if (_hoveredButton is not null && Content is FrameworkElement root)
+        {
+            var p = _hoveredButton.TransformToVisual(root).TransformPoint(new Windows.Foundation.Point(0, 0));
+            buttonY = (int)(p.Y * scale);
+        }
+
+        return new ChildPopupAnchor(
+            AppWindow.Position.X, AppWindow.Position.Y,
+            AppWindow.Position.X + AppWindow.Size.Width, buttonY, _anchor.Work);
+    }
+
+    private void RequestCloseChain()
+    {
+        CloseChainRequested?.Invoke(); // 상위로 전파
+        Close();
+    }
+
+    private void AdjustToContent()
+    {
+        if (Content is not FrameworkElement root)
+            return;
+
+        double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
+        root.UpdateLayout();
+        root.Measure(new Windows.Foundation.Size(PopupWidth / scale, double.PositiveInfinity));
+
+        int contentHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
+        if (contentHeight <= 0)
+            contentHeight = InitialPopupHeight;
+
+        int chrome = AppWindow.Size.Height - AppWindow.ClientSize.Height;
+        if (chrome < 0)
+            chrome = 0;
+
+        int total = contentHeight + chrome;
+        // 항목이 많아 화면을 넘으면 작업영역 높이로 제한(내부 ScrollViewer가 스크롤).
+        if (total > _anchor.Work.Height)
+            total = _anchor.Work.Height;
+
+        if (total == _lastAppliedHeight)
+            return;
+        _lastAppliedHeight = total;
+
+        AppWindow.Resize(new SizeInt32(PopupWidth, total));
+        if (_positioned)
+            PlaceAtAnchor(total);
+    }
+
+    private void ConfigurePresenter()
+    {
+        if (AppWindow.Presenter is OverlappedPresenter presenter)
+        {
+            presenter.IsAlwaysOnTop = true;
+            presenter.IsResizable = false;
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
+            presenter.SetBorderAndTitleBar(true, false);
+        }
+        AppWindow.IsShownInSwitchers = false;
+    }
+
+    private void RevealAtAnchor()
+    {
+        AdjustToContent();
+        int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
+        PlaceAtAnchor(height);
+        _positioned = true;
+    }
+
+    // 부모 팝업 왼쪽(공간 없으면 오른쪽)에, 호버 버튼 높이 기준으로 배치한다(작업영역 안으로 클램프).
+    private void PlaceAtAnchor(int height)
+    {
+        var work = _anchor.Work;
+        int x = _anchor.ParentLeft - PopupWidth + Overlap;
+        int y = _anchor.ParentTop + _anchor.ButtonY;
+
+        if (x < work.Left)
+            x = _anchor.ParentRight - Overlap;
+        if (x + PopupWidth > work.Right)
+            x = work.Right - PopupWidth;
+        if (y + height > work.Bottom)
+            y = work.Bottom - height;
+        if (y < work.Top + TopMargin)
+            y = work.Top + TopMargin;
+
+        AppWindow.Move(new PointInt32(x, y));
+    }
+
+    private void OnActivated(object sender, WindowActivatedEventArgs e)
+    {
+        _isActive = e.WindowActivationState != WindowActivationState.Deactivated;
+        if (_isActive)
+            return;
+        // 손자 팝업이 떠 있으면 닫지 않는다.
+        if (_childOpen)
+            return;
+        Close();
+    }
+
+    private void OnClosed(object sender, WindowEventArgs e)
+    {
+        _hoverTimer.Stop();
+        _child?.Close();
+        _child = null;
+    }
+
+    // 폴더 경로에서 표시용 이름을 얻는다(루트 등 이름이 비면 경로 자체).
+    private static string FolderDisplayName(string path)
+    {
+        var name = System.IO.Path.GetFileName(path.TrimEnd('\\', '/'));
+        return string.IsNullOrEmpty(name) ? path : name;
+    }
+}
+
+/// <summary>자식 내용 팝업의 배치 기준(부모 창 사각형 + 호버 버튼 Y + 작업영역).</summary>
+public readonly record struct ChildPopupAnchor(int ParentLeft, int ParentTop, int ParentRight, int ButtonY, ScreenRect Work);

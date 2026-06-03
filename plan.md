@@ -331,8 +331,8 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - [x] T5 App: FolderPopupSettingsService + FolderIconLoader
 - [x] T6 App: TrayMenuPage 관리 화면 + VM + FolderEditDialog
 - [x] T7 TrayIconService 좌클릭 분리 + App.xaml.cs
-- [ ] T8 FolderListPopupWindow
-- [ ] T9 FolderContentsPopupWindow
+- [x] T8 FolderListPopupWindow
+- [x] T9 FolderContentsPopupWindow
 - [ ] T10 폴더 팝업 설정 UI
 - [ ] T11 ServiceConfiguration DI 통합
 - [ ] T12 문서 갱신
@@ -347,3 +347,4 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - T3-T4 완료: JsonFolderShortcutRepository(folders.json, 원자적 쓰기/백업) + WorkGroupPaths.FoldersConfigPath + DirectoryBrowser + ShellOpener + ShellIcon.OpenForPathAsync(경로 오버로드, 기존 OpenForAppAsync 무변경). 솔루션 빌드 0/0, Application 테스트 83/83. ShellIcon 기존 소비자 영향 0(빌드 확인).
 - T5-T6 완료: FolderPopupSettingsService(LocalSettings) + FolderIconLoader + FolderShortcutsViewModel/Item + TrayMenuPage(폴더 관리 화면) + FolderEditDialog. App 빌드 x64 OK. OnSettingsClick은 T10 stub.
 - T7 완료: TrayIconService LeftClickRequested 이벤트 분리(좌클릭=폴더팝업, DBLCLK 무시) + App.xaml.cs ShowFolderListPopup(T8 stub) 연결. OpenRequested는 우클릭 "열기"만 유지. 빌드 OK, caller 전수 확인.
+- T8-T9 완료(함께 구현 — B2 포커스 가드 양방향 의존): FolderListPopupWindow(1차 폴더 목록, 세로/그리드 분기, 톱니→트레이메뉴 탭) + FolderContentsPopupWindow(2차 파일/하위폴더, 재귀 depth) + App.ShowFolderListPopup 본문/ShowTrayMenuFromPopup + MainShell.SelectTrayMenu + ChildPopupAnchor/CloseChainRequested. B2 가드: 자식 Activate 직전 _childOpen=true, OnActivated _isActive 추적+가드, 자식 Closed 콜백, OnClosed 체인 정리. 전체 빌드 0/0, 테스트 106/106. (팝업 실제 표시/위치/호버/포커스는 F5 GUI 수동.)
