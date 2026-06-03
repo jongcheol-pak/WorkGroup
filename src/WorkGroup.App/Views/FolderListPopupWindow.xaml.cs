@@ -36,8 +36,6 @@ public sealed partial class FolderListPopupWindow : Window
     private int _lastAppliedHeight = -1;
     private bool _positioned;
 
-    // 2차 내용 팝업이 떠 있는 동안 1차가 Deactivated로 닫히지 않게 막는 가드(B2).
-    private bool _childOpen;
     private bool _isActive;
     // 창이 닫힌 뒤 큐에 남은 호버 타이머 Tick이 닫힌 창에 접근하는 것을 막는 가드.
     private bool _closed;
@@ -264,7 +262,6 @@ public sealed partial class FolderListPopupWindow : Window
             return;
 
         _child?.CloseSelf();
-        _childOpen = true;
 
         double scale = (Content as FrameworkElement)?.XamlRoot?.RasterizationScale ?? 1.0;
         int buttonY = 0;
@@ -283,16 +280,16 @@ public sealed partial class FolderListPopupWindow : Window
         child.CloseChainRequested += CloseSelf;      // 파일 실행 등으로 체인 닫힘 → 1차도 닫기
         child.Closed += (_, _) =>
         {
-            _childOpen = false;
+            // 이미 다른 자식으로 교체됐으면(기존 자식 Closed가 늦게 도착) 무시 — 새 _child 추적 보존(누적 방지).
+            if (!ReferenceEquals(_child, child))
+                return;
             _child = null;
-            // 자식이 닫힌 뒤, 마우스가 1차 위로 복귀했으면 유지하고 팝업 밖으로 나갔으면 체인 종료.
-            // 창 활성(_isActive)은 마우스 hover로 바뀌지 않으므로 커서 위치로 판정한다.
-            // 한 틱 미뤄 자식 교체(다른 폴더 hover로 새 2차 생성) 시 _child 재설정을 반영한다.
+            // 자식이 닫힌 뒤, 마우스가 체인(1차) 위로 복귀했으면 유지하고 밖으로 나갔으면 체인 종료.
             DispatcherQueue.TryEnqueue(() =>
             {
                 if (_closed)
                     return;
-                if (_child is null && !IsPointerOverWindow())
+                if (_child is null && !IsPointerOverChain())
                     CloseSelf();
             });
         };
@@ -382,10 +379,17 @@ public sealed partial class FolderListPopupWindow : Window
         _isActive = e.WindowActivationState != WindowActivationState.Deactivated;
         if (_isActive)
             return;
-        // 2차 내용 팝업이 떠 있으면 닫지 않는다(B2 포커스 가드).
-        if (_childOpen)
-            return;
-        CloseSelf();
+        // 포커스를 잃으면 한 틱 뒤 마우스가 체인(이 창+자식들) 밖인지 확인해 전체를 닫는다.
+        // 다른 앱/작업표시줄/바탕화면 클릭 모두 Deactivated → 체인 밖이면 닫힘.
+        // (자식으로 마우스/포커스가 이동한 경우는 IsPointerOverChain이 true라 유지)
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_closed || _isActive)
+                return;
+            if (IsPointerOverChain())
+                return;
+            CloseSelf();
+        });
     }
 
     private void OnClosed(object sender, WindowEventArgs e)
@@ -420,6 +424,9 @@ public sealed partial class FolderListPopupWindow : Window
         return pt.X >= pos.X && pt.X < pos.X + size.Width
             && pt.Y >= pos.Y && pt.Y < pos.Y + size.Height;
     }
+
+    /// <summary>마우스가 이 팝업 또는 자식 체인의 어느 창 위에든 있으면 true.</summary>
+    internal bool IsPointerOverChain() => IsPointerOverWindow() || (_child?.IsPointerOverChain() ?? false);
 
     [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
     private struct CursorPoint { public int X; public int Y; }
