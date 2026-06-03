@@ -39,6 +39,8 @@ public sealed partial class FolderContentsPopupWindow : Window
     private bool _isActive;
 
     private bool _childOpen;
+    // 창이 닫힌 뒤 큐에 남은 호버 타이머 Tick이 닫힌 창에 접근하는 것을 막는 가드.
+    private bool _closed;
     private FolderContentsPopupWindow? _child;
 
     private readonly DispatcherTimer _hoverTimer;
@@ -165,6 +167,8 @@ public sealed partial class FolderContentsPopupWindow : Window
         if (sender is not Button { Tag: DirectoryEntryInfo entry })
             return;
 
+        _hoverTimer.Stop();
+
         if (!entry.IsDirectory)
         {
             // 파일 실행 후 전체 체인 닫기.
@@ -199,6 +203,9 @@ public sealed partial class FolderContentsPopupWindow : Window
     private void OnHoverTick(object? sender, object e)
     {
         _hoverTimer.Stop();
+        // 창이 이미 닫혔으면(큐에 남은 Tick) 닫힌 창 접근을 피한다.
+        if (_closed)
+            return;
         if (_depth < _settings.SubfolderDepth && _hoveredPath is not null)
             ShowChildPopup(_hoveredPath);
     }
@@ -329,6 +336,7 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs e)
     {
+        _closed = true;
         _hoverTimer.Stop();
         _child?.Close();
         _child = null;

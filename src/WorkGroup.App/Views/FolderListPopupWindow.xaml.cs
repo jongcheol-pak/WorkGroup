@@ -39,6 +39,8 @@ public sealed partial class FolderListPopupWindow : Window
     // 2차 내용 팝업이 떠 있는 동안 1차가 Deactivated로 닫히지 않게 막는 가드(B2).
     private bool _childOpen;
     private bool _isActive;
+    // 창이 닫힌 뒤 큐에 남은 호버 타이머 Tick이 닫힌 창에 접근하는 것을 막는 가드.
+    private bool _closed;
     private FolderContentsPopupWindow? _child;
 
     // 호버 타이머 + 현재 호버 중인 버튼/경로.
@@ -216,6 +218,7 @@ public sealed partial class FolderListPopupWindow : Window
     {
         if (sender is Button { Tag: string path })
         {
+            _hoverTimer.Stop();
             _shellOpener.Open(path);
             Close();
         }
@@ -237,6 +240,9 @@ public sealed partial class FolderListPopupWindow : Window
     private void OnHoverTick(object? sender, object e)
     {
         _hoverTimer.Stop();
+        // 창이 이미 닫혔으면(큐에 남은 Tick) 닫힌 창 접근을 피한다.
+        if (_closed)
+            return;
         // 하위폴더 깊이가 2 이상일 때만 내용 팝업을 띄운다(깊이 1이면 폴더 클릭=탐색기 열기).
         if (_settings.SubfolderDepth >= 2 && _hoveredButton is not null && _hoveredPath is not null)
             ShowChildPopup(_hoveredButton, _hoveredPath);
@@ -361,6 +367,7 @@ public sealed partial class FolderListPopupWindow : Window
 
     private void OnClosed(object sender, WindowEventArgs e)
     {
+        _closed = true;
         // 1차가 닫히면 살아있는 2차 팝업 체인도 함께 닫는다.
         _hoverTimer.Stop();
         _child?.Close();
