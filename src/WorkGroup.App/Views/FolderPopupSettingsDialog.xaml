@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentDialog
+    x:Class="WorkGroup.App.Views.FolderPopupSettingsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="폴더 팝업 설정"
+    PrimaryButtonText="저장"
+    CloseButtonText="취소"
+    DefaultButton="Primary"
+    PrimaryButtonClick="OnPrimaryButtonClick">
+
+    <StackPanel Spacing="16" MinWidth="320">
+        <StackPanel Spacing="4">
+            <TextBlock Text="폴더 팝업 열 개수" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <ComboBox x:Name="ColumnCountCombo" MinWidth="160">
+                <x:String>1열</x:String>
+                <x:String>2열</x:String>
+                <x:String>3열</x:String>
+                <x:String>4열</x:String>
+                <x:String>5열</x:String>
+            </ComboBox>
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+            <TextBlock Text="하위 폴더 탐색 깊이" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <ComboBox x:Name="DepthCombo" MinWidth="160">
+                <x:String>1단계</x:String>
+                <x:String>2단계</x:String>
+                <x:String>3단계</x:String>
+                <x:String>4단계</x:String>
+                <x:String>5단계</x:String>
+            </ComboBox>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="12">
+            <ToggleSwitch x:Name="HiddenToggle" MinWidth="0" OnContent="" OffContent="" />
+            <TextBlock Text="숨김 파일/폴더 표시" VerticalAlignment="Center" />
+        </StackPanel>
+    </StackPanel>
+</ContentDialog>

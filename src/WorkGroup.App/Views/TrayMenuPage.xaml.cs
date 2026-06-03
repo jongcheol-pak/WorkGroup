@@ -62,8 +62,9 @@ public sealed partial class TrayMenuPage : Page
             await ViewModel.DeleteAsync(item.Id);
     }
 
-    private void OnSettingsClick(object sender, RoutedEventArgs e)
+    private async void OnSettingsClick(object sender, RoutedEventArgs e)
     {
-        // 폴더 팝업 설정 다이얼로그는 T10에서 연결한다.
+        var dialog = new FolderPopupSettingsDialog { XamlRoot = XamlRoot };
+        await dialog.ShowAsync();
     }
 }

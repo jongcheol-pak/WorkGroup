@@ -333,7 +333,7 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - [x] T7 TrayIconService 좌클릭 분리 + App.xaml.cs
 - [x] T8 FolderListPopupWindow
 - [x] T9 FolderContentsPopupWindow
-- [ ] T10 폴더 팝업 설정 UI
+- [x] T10 폴더 팝업 설정 UI
 - [ ] T11 ServiceConfiguration DI 통합
 - [ ] T12 문서 갱신
 
