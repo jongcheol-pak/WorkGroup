@@ -25,9 +25,9 @@ public sealed partial class FolderContentsPopupWindow : Window
     private const int OffScreen = -32000;
     private const int HoverDelayMs = 200;
     // 자식 팝업이 부모 위로 포개지는 가로 겹침(클수록 더 많이 겹침).
-    private const int Overlap = 44;
+    private const int Overlap = 34;
     // 자식 팝업을 부모보다 이만큼 위로 올려 "위쪽으로 겹치게" 한다(계단식 상승).
-    private const int VerticalOverlap = 44;
+    private const int VerticalOverlap = 34;
     private const int TopMargin = 100;
 
     private readonly IDirectoryBrowser _browser;
