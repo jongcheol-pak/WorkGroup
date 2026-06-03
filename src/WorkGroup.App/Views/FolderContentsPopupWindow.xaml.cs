@@ -20,7 +20,7 @@ namespace WorkGroup.App.Views;
 /// </summary>
 public sealed partial class FolderContentsPopupWindow : Window
 {
-    private const int PopupWidth = 280;
+    private const int PopupWidth = 320;
     private const int InitialPopupHeight = 120;
     private const int OffScreen = -32000;
     private const int HoverDelayMs = 200;

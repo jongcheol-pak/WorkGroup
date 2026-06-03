@@ -19,7 +19,7 @@ namespace WorkGroup.App.Views;
 /// </summary>
 public sealed partial class FolderListPopupWindow : Window
 {
-    private const int SingleColumnWidth = 260;
+    private const int SingleColumnWidth = 360;
     private const int GridCellWidth = 96;
     private const int InitialPopupHeight = 120;
     private const int OffScreen = -32000;
