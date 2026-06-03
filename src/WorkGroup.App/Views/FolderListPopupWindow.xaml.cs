@@ -313,7 +313,8 @@ public sealed partial class FolderListPopupWindow : Window
     /// <summary>콘텐츠의 실제 세로 길이를 측정해 창 높이를 맞춘다(작업영역 높이로 상한 클램프).</summary>
     private void AdjustToContent()
     {
-        if (Content is not FrameworkElement root)
+        // 닫힌 뒤 SizeChanged/DispatcherQueue 콜백이 닫힌 창의 Content/AppWindow에 접근하는 것을 막는다.
+        if (_closed || Content is not FrameworkElement root)
             return;
 
         double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
@@ -357,6 +358,9 @@ public sealed partial class FolderListPopupWindow : Window
 
     private void RevealAtTaskbar()
     {
+        // 표시 전에 창이 닫혔으면(빠른 호버/닫힘) 닫힌 창 접근을 피한다.
+        if (_closed)
+            return;
         AdjustToContent();
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
         MoveToTaskbar(height);

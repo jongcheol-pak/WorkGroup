@@ -271,7 +271,8 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private void AdjustToContent()
     {
-        if (Content is not FrameworkElement root)
+        // 닫힌 뒤 SizeChanged/DispatcherQueue 콜백이 닫힌 창의 Content/AppWindow에 접근하는 것을 막는다.
+        if (_closed || Content is not FrameworkElement root)
             return;
 
         double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
@@ -315,6 +316,9 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private void RevealAtAnchor()
     {
+        // 표시 전에 창이 닫혔으면(빠른 호버/닫힘) 닫힌 창 접근을 피한다.
+        if (_closed)
+            return;
         AdjustToContent();
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
         PlaceAtAnchor(height);
