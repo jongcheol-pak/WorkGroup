@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using WorkGroup.Application.Folders;
 using WorkGroup.Application.Groups;
 using WorkGroup.Application.Icons;
 using WorkGroup.Application.Inventory;
@@ -7,6 +8,7 @@ using WorkGroup.Application.Launch;
 using WorkGroup.Application.Persistence;
 using WorkGroup.Application.Shortcuts;
 using WorkGroup.Infrastructure;
+using WorkGroup.Infrastructure.Folders;
 using WorkGroup.Infrastructure.Icons;
 using WorkGroup.Infrastructure.Inventory;
 using WorkGroup.Infrastructure.Launch;
@@ -41,6 +43,14 @@ public static class ServiceConfiguration
                 WorkGroupPaths.AliasExePath,
                 logger: sp.GetRequiredService<ILogger<ShortcutService>>()));
 
+        // 폴더 바로가기(트레이 좌클릭 팝업) — 저장/열거/셸 열기.
+        services.AddSingleton<IFolderShortcutRepository>(sp =>
+            new JsonFolderShortcutRepository(
+                WorkGroupPaths.FoldersConfigPath,
+                sp.GetRequiredService<ILogger<JsonFolderShortcutRepository>>()));
+        services.AddSingleton<IDirectoryBrowser, DirectoryBrowser>();
+        services.AddSingleton<IShellOpener, ShellOpener>();
+
         // 애플리케이션 서비스.
         services.AddSingleton<IGroupAppService>(sp =>
             new GroupAppService(
@@ -56,6 +66,9 @@ public static class ServiceConfiguration
         // 앱 테마 적용·영속(plan.md T2/DU5).
         services.AddSingleton<Services.ThemeService>();
 
+        // 폴더 팝업 설정(LocalSettings).
+        services.AddSingleton<Services.FolderPopupSettingsService>();
+
         // 번들 리소스 그룹 아이콘 열거(plan.md T3).
         services.AddSingleton<Services.ResourceIconCatalog>();
 
@@ -64,6 +77,7 @@ public static class ServiceConfiguration
         services.AddTransient<ViewModels.AboutViewModel>();
         services.AddTransient<ViewModels.GroupEditViewModel>();
         services.AddTransient<ViewModels.WorkGroupsViewModel>();
+        services.AddTransient<ViewModels.FolderShortcutsViewModel>();
 
         return services.BuildServiceProvider();
     }
