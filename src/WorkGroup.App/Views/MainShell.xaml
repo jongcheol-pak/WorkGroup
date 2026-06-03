@@ -20,9 +20,14 @@
         </Grid.RowDefinitions>
 
         <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="WorkGroup">
-            <TitleBar.IconSource>
-                <ImageIconSource ImageSource="ms-appx:///Assets/Square44x44Logo.scale-200.png" />
-            </TitleBar.IconSource>
+            <!-- IconSource는 크기가 고정(약 16px)이라, 크게 표시하기 위해 LeftHeader에 직접 Image를 배치한다. -->
+            <!-- 배치 순서상 LeftHeader는 제목 왼쪽에 온다. -->
+            <TitleBar.LeftHeader>
+                <Image Source="ms-appx:///Assets/AppIcon.ico"
+                       Width="28" Height="28"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0" />
+            </TitleBar.LeftHeader>
         </TitleBar>
 
         <NavigationView
