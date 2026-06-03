@@ -236,11 +236,13 @@ public sealed partial class FolderContentsPopupWindow : Window
         {
             _childOpen = false;
             _child = null;
-            // 부모 Activated가 child.Closed보다 늦게 도착할 수 있어 한 틱 미뤄 _isActive를 재확인한다.
-            // (손자→자신으로 마우스 복귀 시 자신은 살아남아야 하고, 팝업 밖으로 나갔으면 닫혀야 한다.)
+            // 손자가 닫힌 뒤, 마우스가 자신 위로 복귀했으면 유지하고 팝업 밖으로 나갔으면 체인 종료.
+            // 창 활성(_isActive)은 마우스 hover로 바뀌지 않으므로 커서 위치로 판정한다.
             DispatcherQueue.TryEnqueue(() =>
             {
-                if (!_isActive && !_closed)
+                if (_closed)
+                    return;
+                if (_child is null && !IsPointerOverWindow())
                     CloseSelf();
             });
         };
@@ -375,6 +377,23 @@ public sealed partial class FolderContentsPopupWindow : Window
         _hoverTimer.Stop();
         Close();
     }
+
+    /// <summary>마우스 커서가 이 팝업 창 영역 위에 있는지(닫혔으면 false). 포커스(_isActive)는 hover로 안 바뀌므로 좌표로 판정.</summary>
+    private bool IsPointerOverWindow()
+    {
+        if (_closed || !GetCursorPos(out var pt))
+            return false;
+        var pos = AppWindow.Position;
+        var size = AppWindow.Size;
+        return pt.X >= pos.X && pt.X < pos.X + size.Width
+            && pt.Y >= pos.Y && pt.Y < pos.Y + size.Height;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct CursorPoint { public int X; public int Y; }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out CursorPoint lpPoint);
 
     // 폴더 경로에서 표시용 이름을 얻는다(루트 등 이름이 비면 경로 자체).
     private static string FolderDisplayName(string path)
