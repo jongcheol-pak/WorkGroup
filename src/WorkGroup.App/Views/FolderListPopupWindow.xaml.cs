@@ -355,7 +355,13 @@ public sealed partial class FolderListPopupWindow : Window
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
         MoveToTaskbar(height);
         _positioned = true;
+        // 트레이(작업표시줄) 클릭 직후라 Activate()만으론 포그라운드 포커스를 못 잡는다.
+        // SetForegroundWindow로 1차가 활성 상태가 되어야 다른 앱 클릭 시 Deactivated→전체 닫힘이 동작한다(AppGroup 방식).
+        SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     private void MoveToTaskbar(int height)
     {
