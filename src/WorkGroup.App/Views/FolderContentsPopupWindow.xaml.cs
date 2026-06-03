@@ -212,7 +212,11 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private void ShowChildPopup(string folderPath)
     {
-        _child?.Close();
+        // 창이 이미 닫혔으면 닫힌 창 접근(Content/AppWindow)을 피한다.
+        if (_closed)
+            return;
+
+        _child?.CloseSelf();
         _childOpen = true;
 
         var child = new FolderContentsPopupWindow(
@@ -225,7 +229,7 @@ public sealed partial class FolderContentsPopupWindow : Window
             _child = null;
             // 자식이 닫혔는데 자신도 포커스가 없으면 체인 종료.
             if (!_isActive)
-                Close();
+                CloseSelf();
         };
         child.Activate();
     }
@@ -249,7 +253,7 @@ public sealed partial class FolderContentsPopupWindow : Window
     private void RequestCloseChain()
     {
         CloseChainRequested?.Invoke(); // 상위로 전파
-        Close();
+        CloseSelf();
     }
 
     private void AdjustToContent()
@@ -331,15 +335,28 @@ public sealed partial class FolderContentsPopupWindow : Window
         // 손자 팝업이 떠 있으면 닫지 않는다.
         if (_childOpen)
             return;
-        Close();
+        CloseSelf();
     }
 
     private void OnClosed(object sender, WindowEventArgs e)
     {
         _closed = true;
         _hoverTimer.Stop();
-        _child?.Close();
+        _child?.CloseSelf();
         _child = null;
+    }
+
+    /// <summary>
+    /// 자가 종료 경로 통일. Closed 이벤트는 큐에서 Tick보다 늦게 올 수 있으므로,
+    /// Close() 호출 즉시(동기) _closed를 set해 이후 큐에 남은 호버 Tick이 닫힌 창에 접근하지 않게 한다.
+    /// </summary>
+    internal void CloseSelf()
+    {
+        if (_closed)
+            return;
+        _closed = true;
+        _hoverTimer.Stop();
+        Close();
     }
 
     // 폴더 경로에서 표시용 이름을 얻는다(루트 등 이름이 비면 경로 자체).

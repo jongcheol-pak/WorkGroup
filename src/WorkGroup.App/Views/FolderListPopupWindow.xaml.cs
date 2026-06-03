@@ -218,9 +218,8 @@ public sealed partial class FolderListPopupWindow : Window
     {
         if (sender is Button { Tag: string path })
         {
-            _hoverTimer.Stop();
             _shellOpener.Open(path);
-            Close();
+            CloseSelf();
         }
     }
 
@@ -251,7 +250,11 @@ public sealed partial class FolderListPopupWindow : Window
     // 2차 내용 팝업 표시. 부모(이 창) 좌/우에 배치하고 포커스 가드 체인을 설정한다(B2).
     private void ShowChildPopup(Button button, string path)
     {
-        _child?.Close();
+        // 창이 이미 닫혔으면 닫힌 창 접근(Content/AppWindow)을 피한다.
+        if (_closed)
+            return;
+
+        _child?.CloseSelf();
         _childOpen = true;
 
         double scale = (Content as FrameworkElement)?.XamlRoot?.RasterizationScale ?? 1.0;
@@ -268,14 +271,14 @@ public sealed partial class FolderListPopupWindow : Window
 
         var child = new FolderContentsPopupWindow(path, FolderDisplayName(path), 2, _settings, anchor);
         _child = child;
-        child.CloseChainRequested += Close;          // 파일 실행 등으로 체인 닫힘 → 1차도 닫기
+        child.CloseChainRequested += CloseSelf;      // 파일 실행 등으로 체인 닫힘 → 1차도 닫기
         child.Closed += (_, _) =>
         {
             _childOpen = false;
             _child = null;
             // 자식이 닫혔는데 1차도 포커스가 없으면 체인 종료.
             if (!_isActive)
-                Close();
+                CloseSelf();
         };
         child.Activate();
     }
@@ -290,7 +293,7 @@ public sealed partial class FolderListPopupWindow : Window
     {
         // 설정은 메인 창의 "트레이 메뉴" 탭에서 한다.
         // using WorkGroup.Application.* 와의 이름 충돌을 피하려 Application을 정규화한다.
-        Close();
+        CloseSelf();
         ((App)Microsoft.UI.Xaml.Application.Current).ShowTrayMenuFromPopup();
     }
 
@@ -362,7 +365,7 @@ public sealed partial class FolderListPopupWindow : Window
         // 2차 내용 팝업이 떠 있으면 닫지 않는다(B2 포커스 가드).
         if (_childOpen)
             return;
-        Close();
+        CloseSelf();
     }
 
     private void OnClosed(object sender, WindowEventArgs e)
@@ -370,7 +373,20 @@ public sealed partial class FolderListPopupWindow : Window
         _closed = true;
         // 1차가 닫히면 살아있는 2차 팝업 체인도 함께 닫는다.
         _hoverTimer.Stop();
-        _child?.Close();
+        _child?.CloseSelf();
         _child = null;
+    }
+
+    /// <summary>
+    /// 자가 종료 경로 통일. Closed 이벤트는 큐에서 Tick보다 늦게 올 수 있으므로,
+    /// Close() 호출 즉시(동기) _closed를 set해 이후 큐에 남은 호버 Tick이 닫힌 창에 접근하지 않게 한다.
+    /// </summary>
+    internal void CloseSelf()
+    {
+        if (_closed)
+            return;
+        _closed = true;
+        _hoverTimer.Stop();
+        Close();
     }
 }
