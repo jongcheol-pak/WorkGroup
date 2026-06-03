@@ -39,7 +39,6 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private int _lastAppliedHeight = -1;
     private bool _positioned;
-    private bool _isActive;
 
     // 창이 닫힌 뒤 큐에 남은 호버 타이머 Tick이 닫힌 창에 접근하는 것을 막는 가드.
     private bool _closed;
@@ -171,22 +170,9 @@ public sealed partial class FolderContentsPopupWindow : Window
 
         _hoverTimer.Stop();
 
-        if (!entry.IsDirectory)
-        {
-            // 파일 실행 후 전체 체인 닫기.
-            _shellOpener.Open(entry.FullPath);
-            RequestCloseChain();
-            return;
-        }
-
-        // 폴더: 더 깊이 들어갈 수 있으면 자식 팝업, 아니면 탐색기로 열고 체인 닫기.
-        if (_depth < _settings.SubfolderDepth)
-            ShowChildPopup(entry.FullPath);
-        else
-        {
-            _shellOpener.Open(entry.FullPath);
-            RequestCloseChain();
-        }
+        // 파일/폴더 모두 클릭하면 셸로 열고 전체 체인을 닫는다(하위 폴더 탐색은 호버로).
+        _shellOpener.Open(entry.FullPath);
+        RequestCloseChain();
     }
 
     private void OnEntryPointerEntered(object sender, PointerRoutedEventArgs e)
@@ -233,22 +219,13 @@ public sealed partial class FolderContentsPopupWindow : Window
             folderPath, FolderDisplayName(folderPath), _depth + 1, _settings, BuildChildAnchor());
         _child = child;
         child.CloseChainRequested += RequestCloseChain;
+        // 손자가 닫히면 추적만 해제(교체로 늦게 온 Closed는 무시). 닫기 판정은 1차 포커스가 담당.
         child.Closed += (_, _) =>
         {
-            // 이미 다른 손자로 교체됐으면(기존 손자 Closed가 늦게 도착) 무시 — 새 _child 추적 보존(누적 방지).
-            if (!ReferenceEquals(_child, child))
-                return;
-            _child = null;
-            // 손자가 닫힌 뒤, 마우스가 체인(자신) 위로 복귀했으면 유지하고 밖으로 나갔으면 체인 종료.
-            DispatcherQueue.TryEnqueue(() =>
-            {
-                if (_closed)
-                    return;
-                if (_child is null && !IsPointerOverChain())
-                    CloseSelf();
-            });
+            if (ReferenceEquals(_child, child))
+                _child = null;
         };
-        child.Activate();
+        // 자식은 RevealAtAnchor에서 Show(false)로 표시(포커스 안 뺏음) → Activate 호출하지 않는다.
     }
 
     // 호버 중인 버튼의 화면 위치를 기준으로 자식 팝업 배치 앵커를 만든다.
@@ -327,6 +304,9 @@ public sealed partial class FolderContentsPopupWindow : Window
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
         PlaceAtAnchor(height);
         _positioned = true;
+        // 포커스를 뺏지 않고 표시한다(AppGroup의 SWP_NOACTIVATE와 동일). 1차 팝업이 활성 상태를 유지해야
+        // 자식 표시·호버에도 1차가 Deactivated되지 않고, 다른 앱 클릭 시에만 1차 Deactivated→전체 닫힘.
+        AppWindow.Show(activateWindow: false);
     }
 
     // 부모 팝업 왼쪽(공간 없으면 오른쪽)에, 호버 버튼 높이 기준으로 배치한다(작업영역 안으로 클램프).
@@ -351,19 +331,9 @@ public sealed partial class FolderContentsPopupWindow : Window
 
     private void OnActivated(object sender, WindowActivatedEventArgs e)
     {
-        _isActive = e.WindowActivationState != WindowActivationState.Deactivated;
-        if (_isActive)
-            return;
-        // 포커스를 잃으면 한 틱 뒤 마우스가 체인(이 창+손자들) 밖인지 확인해 닫는다.
-        // (부모로 마우스 복귀 시엔 이 창이 체인 밖→닫히고, 부모는 자기 child.Closed에서 유지 판정)
-        DispatcherQueue.TryEnqueue(() =>
-        {
-            if (_closed || _isActive)
-                return;
-            if (IsPointerOverChain())
-                return;
+        // 자식은 Show(false)로 떠 포커스를 거의 받지 않는다. 클릭 등으로 활성화됐다 잃으면 닫는 안전망.
+        if (e.WindowActivationState == WindowActivationState.Deactivated)
             CloseSelf();
-        });
     }
 
     private void OnClosed(object sender, WindowEventArgs e)
@@ -386,26 +356,6 @@ public sealed partial class FolderContentsPopupWindow : Window
         _hoverTimer.Stop();
         Close();
     }
-
-    /// <summary>마우스 커서가 이 팝업 창 영역 위에 있는지(닫혔으면 false). 포커스(_isActive)는 hover로 안 바뀌므로 좌표로 판정.</summary>
-    private bool IsPointerOverWindow()
-    {
-        if (_closed || !GetCursorPos(out var pt))
-            return false;
-        var pos = AppWindow.Position;
-        var size = AppWindow.Size;
-        return pt.X >= pos.X && pt.X < pos.X + size.Width
-            && pt.Y >= pos.Y && pt.Y < pos.Y + size.Height;
-    }
-
-    /// <summary>마우스가 이 팝업 또는 자식(손자) 체인의 어느 창 위에든 있으면 true.</summary>
-    internal bool IsPointerOverChain() => IsPointerOverWindow() || (_child?.IsPointerOverChain() ?? false);
-
-    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
-    private struct CursorPoint { public int X; public int Y; }
-
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out CursorPoint lpPoint);
 
     // 폴더 경로에서 표시용 이름을 얻는다(루트 등 이름이 비면 경로 자체).
     private static string FolderDisplayName(string path)
