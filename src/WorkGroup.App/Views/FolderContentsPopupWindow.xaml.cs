@@ -236,9 +236,13 @@ public sealed partial class FolderContentsPopupWindow : Window
         {
             _childOpen = false;
             _child = null;
-            // 자식이 닫혔는데 자신도 포커스가 없으면 체인 종료.
-            if (!_isActive)
-                CloseSelf();
+            // 부모 Activated가 child.Closed보다 늦게 도착할 수 있어 한 틱 미뤄 _isActive를 재확인한다.
+            // (손자→자신으로 마우스 복귀 시 자신은 살아남아야 하고, 팝업 밖으로 나갔으면 닫혀야 한다.)
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!_isActive && !_closed)
+                    CloseSelf();
+            });
         };
         child.Activate();
     }
