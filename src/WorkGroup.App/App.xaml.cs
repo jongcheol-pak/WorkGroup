@@ -98,6 +98,8 @@ namespace WorkGroup.App
                     // 콘텐츠를 타이틀바 영역까지 확장 → MainShell의 TitleBar 컨트롤이 드래그/캡션 영역과 자동 동기(plan.md DG3).
                     ExtendsContentIntoTitleBar = true
                 };
+                // 작업 표시줄/Alt+Tab 미리보기 아이콘을 앱 아이콘으로 지정(패키지 설치 폴더 기준 상대경로).
+                win.AppWindow.SetIcon(@"Assets\AppIcon.ico");
                 // 닫기를 가로채 트레이로 숨긴다(종료는 트레이 메뉴에서만).
                 win.AppWindow.Closing += OnMainWindowClosing;
                 _window = win;
