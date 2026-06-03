@@ -20,7 +20,7 @@ namespace WorkGroup.App.Views;
 /// </summary>
 public sealed partial class FolderContentsPopupWindow : Window
 {
-    private const int PopupWidth = 320;
+    private const int PopupWidth = 400;
     private const int InitialPopupHeight = 120;
     private const int OffScreen = -32000;
     private const int HoverDelayMs = 200;
@@ -127,7 +127,13 @@ public sealed partial class FolderContentsPopupWindow : Window
             TextTrimming = TextTrimming.CharacterEllipsis
         };
 
-        var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        // 가로 StackPanel은 자식을 무한 너비로 측정해 TextTrimming이 동작하지 않으므로,
+        // Grid(아이콘 Auto + 이름 *)로 이름 열 너비를 제약해 긴 이름이 말줄임(...)으로 표시되게 한다.
+        var content = new Grid { ColumnSpacing = 8 };
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetColumn(image, 0);
+        Grid.SetColumn(name, 1);
         content.Children.Add(image);
         content.Children.Add(name);
 
