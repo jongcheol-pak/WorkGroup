@@ -11,7 +11,6 @@ public sealed class TrayIconService : IDisposable
     private const uint WM_APP_TRAY = 0x8000 + 1; // WM_APP+1
     private const uint WM_COMMAND = 0x0111;
     private const uint WM_LBUTTONUP = 0x0202;
-    private const uint WM_LBUTTONDBLCLK = 0x0203;
     private const uint WM_RBUTTONUP = 0x0205;
     private const uint NIM_ADD = 0x0;
     private const uint NIM_DELETE = 0x2;
@@ -23,17 +22,25 @@ public sealed class TrayIconService : IDisposable
     private const int CMD_OPEN = 1;
     private const int CMD_EXIT = 2;
     private const uint IDI_APPLICATION = 32512;
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x0010;
+    private const int SM_CXSMICON = 49;
+    private const int SM_CYSMICON = 50;
 
     private static readonly IntPtr HwndMessage = new(-3);
 
     // WndProc 델리게이트는 GC되지 않도록 필드로 보관한다.
     private readonly WndProc _wndProc;
     private IntPtr _hwnd;
+    // 파일에서 로드한 트레이 아이콘 핸들(소유 — Dispose에서 DestroyIcon). 폴백(시스템 아이콘)이면 0으로 둔다.
+    private IntPtr _ownedIcon;
     private bool _added;
     private bool _disposed;
 
     public event Action? OpenRequested;
     public event Action? ExitRequested;
+    /// <summary>트레이 아이콘 좌클릭(단일) 시 발생. 폴더 목록 팝업을 띄우는 데 쓴다.</summary>
+    public event Action? LeftClickRequested;
 
     private delegate IntPtr WndProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 
@@ -57,9 +64,33 @@ public sealed class TrayIconService : IDisposable
         var data = CreateData();
         data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         data.uCallbackMessage = WM_APP_TRAY;
-        data.hIcon = LoadIcon(IntPtr.Zero, (IntPtr)IDI_APPLICATION);
+        data.hIcon = LoadTrayIcon();
         data.szTip = "WorkGroup";
         _added = Shell_NotifyIcon(NIM_ADD, ref data);
+    }
+
+    /// <summary>앱 아이콘(Assets\AppIcon.ico)을 작은 아이콘 크기로 로드한다. 실패 시 시스템 기본 아이콘으로 폴백.</summary>
+    private IntPtr LoadTrayIcon()
+    {
+        try
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+            if (File.Exists(path))
+            {
+                var hIcon = LoadImage(IntPtr.Zero, path, IMAGE_ICON,
+                    GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_LOADFROMFILE);
+                if (hIcon != IntPtr.Zero)
+                {
+                    _ownedIcon = hIcon; // 소유 핸들 — Dispose에서 해제
+                    return hIcon;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // 경로/로드 실패는 폴백으로 처리(트레이는 계속 표시).
+        }
+        return LoadIcon(IntPtr.Zero, (IntPtr)IDI_APPLICATION); // 시스템 공유 아이콘(해제 불필요)
     }
 
     private NOTIFYICONDATA CreateData() => new()
@@ -75,8 +106,9 @@ public sealed class TrayIconService : IDisposable
         {
             case WM_APP_TRAY:
                 var mouseMsg = (uint)(lParam.ToInt64() & 0xFFFF);
-                if (mouseMsg is WM_LBUTTONUP or WM_LBUTTONDBLCLK)
-                    OpenRequested?.Invoke();
+                // 좌클릭(단일)은 폴더 목록 팝업을 띄운다. 메인 창은 우클릭 메뉴 "열기"로만 연다.
+                if (mouseMsg == WM_LBUTTONUP)
+                    LeftClickRequested?.Invoke();
                 else if (mouseMsg == WM_RBUTTONUP)
                     ShowContextMenu();
                 return IntPtr.Zero;
@@ -120,6 +152,11 @@ public sealed class TrayIconService : IDisposable
         {
             DestroyWindow(_hwnd);
             _hwnd = IntPtr.Zero;
+        }
+        if (_ownedIcon != IntPtr.Zero)
+        {
+            DestroyIcon(_ownedIcon);
+            _ownedIcon = IntPtr.Zero;
         }
     }
 
@@ -181,6 +218,15 @@ public sealed class TrayIconService : IDisposable
 
     [DllImport("user32.dll")]
     private static extern IntPtr LoadIcon(IntPtr hInstance, IntPtr lpIconName);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadImage(IntPtr hinst, string lpszName, uint uType, int cx, int cy, uint fuLoad);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern bool Shell_NotifyIcon(uint dwMessage, ref NOTIFYICONDATA lpData);

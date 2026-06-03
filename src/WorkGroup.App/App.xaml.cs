@@ -68,7 +68,8 @@ namespace WorkGroup.App
             if (_tray is not null) return;
             _tray = new TrayIconService();
             // 트레이 콜백은 메시지 전용 창의 WndProc(=UI 스레드)에서 호출된다.
-            _tray.OpenRequested += ShowMainWindow;
+            _tray.OpenRequested += ShowMainWindow;       // 우클릭 메뉴 "열기" → 메인 창
+            _tray.LeftClickRequested += ShowFolderListPopup; // 좌클릭 → 폴더 목록 팝업
             _tray.ExitRequested += () =>
             {
                 _exiting = true; // 이후 창 Closing을 취소하지 않고 실제 종료한다.
@@ -80,6 +81,11 @@ namespace WorkGroup.App
                 Exit();
             };
             _tray.Initialize();
+        }
+
+        private void ShowFolderListPopup()
+        {
+            // 폴더 목록 팝업(FolderListPopupWindow)은 T8에서 연결한다.
         }
 
         private void ShowMainWindow()
