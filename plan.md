@@ -335,7 +335,7 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - [x] T9 FolderContentsPopupWindow
 - [x] T10 폴더 팝업 설정 UI
 - [x] T11 ServiceConfiguration DI 통합
-- [ ] T12 문서 갱신
+- [x] T12 문서 갱신
 
 ## 자율 실행 준비도 자문
 - 다른 사람이 추가 질문 없이 끝낼 수 있는가? → 예(레이어/파일/시그니처/엣지/Halt 명시, 재사용 인프라 파일·라인 인용).
