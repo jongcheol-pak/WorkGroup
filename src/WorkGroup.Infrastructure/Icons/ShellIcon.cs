@@ -38,6 +38,13 @@ public static class ShellIcon
         return OpenStreamAsync(parsingName, size, cancellationToken);
     }
 
+    /// <summary>
+    /// 파일/폴더 경로의 셸 항목에서 아이콘 PNG 스트림을 연다(파일=파일 아이콘, 폴더=셸 폴더 아이콘).
+    /// 실패하면 예외 없이 null(호출자 폴백). 폴더 바로가기 기능에서 사용한다.
+    /// </summary>
+    public static Task<IRandomAccessStream?> OpenForPathAsync(string parsingName, uint size, CancellationToken cancellationToken = default)
+        => OpenStreamAsync(parsingName, size, cancellationToken);
+
     private static async Task<IRandomAccessStream?> OpenStreamAsync(string parsingName, uint size, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(parsingName))

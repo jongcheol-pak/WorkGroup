@@ -327,7 +327,7 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 - [x] T1 Domain: FolderShortcut + FolderPopupSettings
 - [x] T2 Application: 인터페이스(Repository/DirectoryBrowser/ShellOpener)
 - [x] T3 Infrastructure: JsonFolderShortcutRepository + 경로
-- [ ] T4 Infrastructure: DirectoryBrowser + ShellOpener
+- [x] T4 Infrastructure: DirectoryBrowser + ShellOpener
 - [ ] T5 App: FolderPopupSettingsService
 - [ ] T6 App: TrayMenuPage 관리 화면 + VM + FolderEditDialog
 - [ ] T7 TrayIconService 좌클릭 분리 + App.xaml.cs
@@ -344,3 +344,4 @@ AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기�
 
 ## Progress Log
 - T1-T2 완료: Domain(FolderShortcut/FolderPopupSettings) + Application 인터페이스(IFolderShortcutRepository/IDirectoryBrowser/IShellOpener). 빌드 OK, Domain 테스트 23/23. 신규 파일만(호출자 0).
+- T3-T4 완료: JsonFolderShortcutRepository(folders.json, 원자적 쓰기/백업) + WorkGroupPaths.FoldersConfigPath + DirectoryBrowser + ShellOpener + ShellIcon.OpenForPathAsync(경로 오버로드, 기존 OpenForAppAsync 무변경). 솔루션 빌드 0/0, Application 테스트 83/83. ShellIcon 기존 소비자 영향 0(빌드 확인).
