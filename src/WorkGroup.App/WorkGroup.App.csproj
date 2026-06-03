@@ -16,6 +16,8 @@
         <RootNamespace>WorkGroup.App</RootNamespace>
 
         <!-- App Options -->
+        <!-- 실행 파일(.exe) 아이콘 — 컴파일 시 Win32 아이콘 리소스로 박힘(탐색기/작업 관리자 표시) -->
+        <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
         <UseRidGraph>true</UseRidGraph>
         <Platforms>x86;x64;ARM64</Platforms>
         <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -30,8 +32,9 @@
         <Content Include="Assets\Square150x150Logo.scale-200.png" />
         <Content Include="Assets\Square44x44Logo.scale-200.png" />
         <Content Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
-        <Content Include="Assets\StoreLogo.png" />
         <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+        <!-- 앱 아이콘(.ico) — 창 SetIcon 및 ms-appx 참조용으로 출력/패키지에 포함 -->
+        <Content Include="Assets\AppIcon.ico" />
         <!-- 그룹 리소스 아이콘(런타임 ms-appx 자산) -->
         <Content Include="Assets\GroupIcons\**\*.png" />
     </ItemGroup>
