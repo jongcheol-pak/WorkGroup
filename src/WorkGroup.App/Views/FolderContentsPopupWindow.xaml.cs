@@ -207,7 +207,16 @@ public sealed partial class FolderContentsPopupWindow : Window
         if (_closed)
             return;
         if (_depth < _settings.SubfolderDepth && _hoveredPath is not null)
-            ShowChildPopup(_hoveredPath);
+        {
+            try
+            {
+                ShowChildPopup(_hoveredPath);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // 창이 외부에서 막 닫히는 라이프사이클 race로 닫힌 창에 접근한 경우 — 무시(안전망).
+            }
+        }
     }
 
     private void ShowChildPopup(string folderPath)

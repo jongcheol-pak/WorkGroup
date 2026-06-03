@@ -20,7 +20,7 @@ namespace WorkGroup.App
         private TrayIconService? _tray;
         private bool _exiting;
         // 트레이 좌클릭으로 띄운 폴더 목록 팝업(중복 생성 방지용 추적).
-        private Window? _folderPopup;
+        private Views.FolderListPopupWindow? _folderPopup;
 
         /// <summary>전역 DI 컨테이너(plan.md T9 조립).</summary>
         public static IServiceProvider Services { get; private set; } = default!;
@@ -88,7 +88,8 @@ namespace WorkGroup.App
         private void ShowFolderListPopup()
         {
             // 직전 팝업이 떠 있으면 닫고 새로 띄운다(중복 창 방지).
-            _folderPopup?.Close();
+            // 외부 Close가 아니라 CloseSelf로 닫아, 직전 팝업의 _closed를 동기 set(큐에 남은 호버 Tick 차단).
+            _folderPopup?.CloseSelf();
             var popup = new FolderListPopupWindow();
             _folderPopup = popup;
             popup.Closed += (_, _) => { if (ReferenceEquals(_folderPopup, popup)) _folderPopup = null; };

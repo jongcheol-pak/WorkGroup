@@ -244,7 +244,16 @@ public sealed partial class FolderListPopupWindow : Window
             return;
         // 하위폴더 깊이가 2 이상일 때만 내용 팝업을 띄운다(깊이 1이면 폴더 클릭=탐색기 열기).
         if (_settings.SubfolderDepth >= 2 && _hoveredButton is not null && _hoveredPath is not null)
-            ShowChildPopup(_hoveredButton, _hoveredPath);
+        {
+            try
+            {
+                ShowChildPopup(_hoveredButton, _hoveredPath);
+            }
+            catch (System.Runtime.InteropServices.COMException)
+            {
+                // 창이 외부에서 막 닫히는 라이프사이클 race로 닫힌 창에 접근한 경우 — 무시(안전망).
+            }
+        }
     }
 
     // 2차 내용 팝업 표시. 부모(이 창) 좌/우에 배치하고 포커스 가드 체인을 설정한다(B2).
