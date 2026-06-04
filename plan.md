@@ -129,6 +129,15 @@
 ## 승인 필요 항목
 - 없음(공개 API·구조·의존성·스키마 변경 없음, 단일 View 2파일 + 문서). 사용자 승인 게이트(ExitPlanMode)만.
 
+## Progress Log
+- T1-T2 완료 (커밋 c69a260): GroupPopupWindow에 작업 표시줄 변 판정(DetectEdge)→`_isVertical`→ItemsPanel 세로/가로 교체 + AdjustToContent를 Measure(H/V)Content로 분기(세로는 양축 상한·세로 스크롤·`_popupWidth` 정합). 빌드 0/0, 테스트 117/117.
+- T3 완료 (커밋 a3503cc): README/notes 문서 갱신(좌/우 세로·상/하 가로). 문서만이라 빌드 무영향.
+- Phase F: plan-completion-reviewer PASS(BLOCKER/MAJOR 0). 좌/우/상/하 실제 렌더링은 F5 MSIX GUI 수동 검증 대상.
+
+## Next Steps
+- 권장 다음 액션: F5 MSIX 배포로 작업 표시줄을 좌/우/상/하로 옮겨가며 핀 클릭 GUI 검증(좌/우 세로 1열·해당 변 접촉, 우측 우변 접촉, 세로 오버플로 스크롤, 빈 여백 없음, 세로에서 48×48 박스 가로 중앙 정렬). 이상 없으면 master로 PR.
+- Suggested skills: 공식 /code-review (PR 전 최종 점검)
+
 ## Follow-ups
 - (MINOR, code-quality M1) `MoveToTaskbar(int height)`는 너비를 `_popupWidth` 필드에서 읽는 비대칭 시그니처다. 현재 동작은 정확(`AdjustToContent`가 `_popupWidth` 갱신 후 호출)하나, 향후 좌/우 변 접촉 오프셋 등 너비 기반 배치 확장 시 `MoveToTaskbar(int width, int height)`로 통일 검토. 기존 코드 패턴이라 이번 범위에서는 미변경.
 
