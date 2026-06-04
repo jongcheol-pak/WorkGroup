@@ -129,5 +129,8 @@
 ## 승인 필요 항목
 - 없음(공개 API·구조·의존성·스키마 변경 없음, 단일 View 2파일 + 문서). 사용자 승인 게이트(ExitPlanMode)만.
 
+## Follow-ups
+- (MINOR, code-quality M1) `MoveToTaskbar(int height)`는 너비를 `_popupWidth` 필드에서 읽는 비대칭 시그니처다. 현재 동작은 정확(`AdjustToContent`가 `_popupWidth` 갱신 후 호출)하나, 향후 좌/우 변 접촉 오프셋 등 너비 기반 배치 확장 시 `MoveToTaskbar(int width, int height)`로 통일 검토. 기존 코드 패턴이라 이번 범위에서는 미변경.
+
 ## Open Questions (모두 해결)
 - 세로 전환 범위 → 좌/우만(D1). 적용 대상 → 그룹 팝업만(D2). 세로 레이아웃 → 추천안(D3). 모두 사용자 답변 반영 완료.

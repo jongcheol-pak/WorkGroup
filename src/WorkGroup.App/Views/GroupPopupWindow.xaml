@@ -78,6 +78,16 @@
             <views:PopupGridItemTemplateSelector x:Key="GridItemSelector"
                                                  AppTemplate="{StaticResource AppItemTemplate}"
                                                  AddButtonTemplate="{StaticResource AddButtonTemplate}" />
+
+            <!-- 작업 표시줄 변에 따라 코드비하인드(_isVertical)에서 GridView.ItemsPanel을 골라 적용한다.
+                 상/하 변=가로 1행, 좌/우 변=세로 1열. 둘 다 비가상화 StackPanel(아이콘 수 적어 성능 무관,
+                 무한 길이 측정 시 자연 길이를 정확히 보고). -->
+            <ItemsPanelTemplate x:Key="HorizontalItemsPanel">
+                <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+            <ItemsPanelTemplate x:Key="VerticalItemsPanel">
+                <StackPanel Orientation="Vertical" />
+            </ItemsPanelTemplate>
         </Grid.Resources>
 
         <TextBlock x:Name="TitleText" Margin="0,0,0,4" Style="{ThemeResource SubtitleTextBlockStyle}" />
@@ -92,14 +102,8 @@
                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                   ScrollViewer.HorizontalScrollMode="Disabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-            <!-- 아이콘을 항상 한 가로줄(1행)로 나열한다(기본 ItemsWrapGrid의 다행 래핑 방지).
-                 가상화 ItemsStackPanel은 측정 방향(가로)이 가상화 방향과 같아 무한 너비 측정 시 자연 너비를
-                 부정확하게 보고(불필요한 가로 스크롤 발생) → 비가상화 StackPanel로 정확히 측정한다(아이콘 수 적어 성능 무관). -->
-            <GridView.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" />
-                </ItemsPanelTemplate>
-            </GridView.ItemsPanel>
+            <!-- ItemsPanel은 코드비하인드 생성자에서 작업 표시줄 변에 따라
+                 HorizontalItemsPanel(상/하) 또는 VerticalItemsPanel(좌/우)로 지정한다. -->
             <GridView.Resources>
                 <!-- 마우스 오버/누름 시 항목 배경(GridViewItem 기본 강조)이 보이지 않도록 투명 처리 -->
                 <SolidColorBrush x:Key="GridViewItemBackgroundPointerOver" Color="Transparent" />
