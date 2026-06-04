@@ -32,6 +32,10 @@ public sealed partial class GroupPopupWindow : Window
     private const int InitialPopupHeight = 200;
     // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
     private const int OffScreen = -32000;
+    // 세로 1열 콘텐츠 폭 좌우에 더하는 루트 Grid 가로 패딩 합(Padding="12,12,12,0" → 좌 12 + 우 12).
+    private const int VerticalContentSidePadding = 24;
+    // 세로 스크롤바가 생길 때 콘텐츠 폭에 더해 잘림을 막는 근사 스크롤바 폭(px).
+    private const int VerticalScrollBarWidth = 16;
 
     private readonly IGroupAppService _groupService;
     private readonly IAppLauncher _launcher;
@@ -87,11 +91,6 @@ public sealed partial class GroupPopupWindow : Window
         if (Content is FrameworkElement contentRoot)
             AppsGrid.ItemsPanel = (ItemsPanelTemplate)contentRoot.Resources[
                 _isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];
-
-        // 세로 1열에서는 GridView가 가로로 늘어나(기본 Stretch) 콘텐츠 폭보다 넓어지지 않도록 좌측 정렬한다.
-        // 가로 1행은 현행 Stretch 유지(StackPanel 너비 합이 곧 콘텐츠 폭이라 과대 없음).
-        if (_isVertical)
-            AppsGrid.HorizontalAlignment = HorizontalAlignment.Left;
 
         // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
         AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
@@ -238,18 +237,33 @@ public sealed partial class GroupPopupWindow : Window
         ScrollViewer.SetHorizontalScrollBarVisibility(AppsGrid, ScrollBarVisibility.Disabled);
         root.UpdateLayout();
 
-        // 너비 측정은 반드시 유한 제약으로 한다. 무한 너비로 측정하면 세로 1열에서 GridView가
-        // cross축(너비) 자연값을 부정확하게(0 또는 과대) 보고한다 — 검증된 FolderListPopupWindow가
-        // 세로 1열을 유한 너비로만 측정하는 것과 동일한 회피. 상한은 작업영역 폭(좌우 여백 확보).
         int maxWidth = Math.Max(InitialPopupWidth, _metrics.Work.Width - WorkAreaMargin);
 
-        // 1) 너비 상한 안에서 아이콘 1열이 필요로 하는 자연 높이를 구한다(GridView 좌측 정렬이라 실제 폭은 콘텐츠만큼).
-        root.Measure(new Windows.Foundation.Size(maxWidth / scale, double.PositiveInfinity));
+        // GridView는 measure 시 주어진 가용 폭을 그대로 DesiredSize로 반환하고(HorizontalAlignment=Left는
+        // arrange만 바꿔 창 크기엔 영향 없음), 무한 폭으로 줘도 cross축 너비를 부정확 보고한다. 따라서 세로 1열
+        // 콘텐츠 폭은 GridView를 거치지 않고 내부 패널(ItemsPanelRoot)과 헤더를 직접 측정해 구한다.
+        int contentWidth = 0;
+        if (AppsGrid.ItemsPanelRoot is { } panel)
+        {
+            panel.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            contentWidth = (int)Math.Ceiling(panel.DesiredSize.Width * scale);
+        }
+        if (TitleText.Visibility == Visibility.Visible)
+        {
+            TitleText.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            contentWidth = Math.Max(contentWidth, (int)Math.Ceiling(TitleText.DesiredSize.Width * scale));
+        }
+        // 루트 Grid 좌우 패딩을 더해 콘텐츠가 잘리지 않게 한다(아이템 컨테이너 생성 전이면 0 → 초기값 폴백).
+        contentWidth = contentWidth > 0 ? contentWidth + VerticalContentSidePadding : InitialPopupWidth;
+        int finalWidth = Math.Min(contentWidth, maxWidth);
+
+        // 확정 폭으로 높이를 측정한다(세로는 높이가 배치축이라 GridView 측정이 정확).
+        root.Measure(new Windows.Foundation.Size(finalWidth / scale, double.PositiveInfinity));
         int desiredHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
         if (desiredHeight <= 0)
             desiredHeight = InitialPopupHeight;
 
-        // 2) 작업영역 높이(상하 여백 확보)를 상한으로 클램프 — 초과분은 세로 스크롤로 처리한다.
+        // 작업영역 높이(상하 여백 확보)를 상한으로 클램프 — 초과분은 세로 스크롤로 처리한다.
         int maxHeight = Math.Max(InitialPopupHeight, _metrics.Work.Height - WorkAreaMargin);
         int finalHeight = Math.Min(desiredHeight, maxHeight);
 
@@ -257,19 +271,9 @@ public sealed partial class GroupPopupWindow : Window
         {
             ScrollViewer.SetVerticalScrollMode(AppsGrid, ScrollMode.Auto);
             ScrollViewer.SetVerticalScrollBarVisibility(AppsGrid, ScrollBarVisibility.Auto);
-            // 스크롤바 가시성 변경을 레이아웃에 반영한 뒤 너비를 재측정해 스크롤바 폭이 누락되지 않게 한다.
-            root.UpdateLayout();
+            // 세로 스크롤바가 생기면 그 폭만큼 콘텐츠 폭에 더해 아이콘이 가려지지 않게 한다(상한 내 클램프).
+            finalWidth = Math.Min(finalWidth + VerticalScrollBarWidth, maxWidth);
         }
-
-        // 3) 확정 높이로 너비를 재측정한다(세로 스크롤바가 생기면 그만큼 너비에 반영).
-        //    스크롤바 유무와 무관하게 1)과 동일한 너비 상한(maxWidth)으로 제약해 GridView 측정 조건을 일관 유지한다.
-        root.Measure(new Windows.Foundation.Size(maxWidth / scale, finalHeight / scale));
-        int desiredWidth = (int)Math.Ceiling(root.DesiredSize.Width * scale);
-        if (desiredWidth <= 0)
-            desiredWidth = InitialPopupWidth;
-
-        // 4) 유한 제약(maxWidth)으로 측정해 이미 상한 이하지만, ceil 올림으로 1px 초과할 여지를 막는 방어 클램프.
-        int finalWidth = Math.Min(desiredWidth, maxWidth);
 
         return (finalWidth, finalHeight);
     }
