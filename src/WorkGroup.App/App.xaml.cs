@@ -44,8 +44,12 @@ namespace WorkGroup.App
 
         public App()
         {
-            this.InitializeComponent();
+            // DI 구성과 전역 로컬라이저 설정을 InitializeComponent 이전에 수행한다(plan.md T1).
+            // → App.xaml을 포함한 모든 XAML 로드 시점에 {loc:Localize}의 Current가 보장된다.
             Services = ServiceConfiguration.Build();
+            LocalizationService.Current = Services.GetRequiredService<LocalizationService>();
+
+            this.InitializeComponent();
         }
 
         /// <summary>

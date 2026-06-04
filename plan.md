@@ -151,7 +151,7 @@
     - 주: `src/WorkGroup.App/Services/LocalizationService.cs`(신규, `ILocalizer` 구현 + static `Current`), `src/WorkGroup.App/Markup/LocalizeExtension.cs`(신규)
     - 주: `src/WorkGroup.Application/Localization/ILocalizer.cs`(신규), `src/WorkGroup.Application/Localization/NullLocalizer.cs`(신규, 키 반환 폴백)
     - 주: `src/WorkGroup.App/Strings/ko-KR/Resources.resw`·`en-US/`·`ja-JP/`·`zh-Hans/Resources.resw`(신규 4개)
-    - 동반: `src/WorkGroup.App/WorkGroup.App.csproj`(PRIResource include, `<DefaultLanguage>ko-KR</DefaultLanguage>`), `src/WorkGroup.App/ServiceConfiguration.cs`(LocalizationService를 자신+`ILocalizer`로 등록), `src/WorkGroup.App/App.xaml.cs`(생성자에서 `LocalizationService.Current` 설정)
+    - 동반: `src/WorkGroup.App/WorkGroup.App.csproj`(`<DefaultLanguage>ko-KR</DefaultLanguage>`만 추가 — `.resw`는 .NET SDK가 PRIResource로 **자동 포함**하므로 명시 include 시 NETSDK1022 중복 오류 발생, 명시하지 않음), `src/WorkGroup.App/ServiceConfiguration.cs`(LocalizationService를 자신+`ILocalizer`로 등록), `src/WorkGroup.App/App.xaml.cs`(생성자에서 `LocalizationService.Current` 설정 — `InitializeComponent` 이전)
   - **Edge Cases**:
     - 키 없음/조회 실패 → `Get`은 키 문자열 자체 반환(크래시 금지). 빈/null 키 → 빈 문자열.
     - 비패키지 실행으로 ResourceManager 초기화 실패 → try/catch로 키 자체 반환(폴백).

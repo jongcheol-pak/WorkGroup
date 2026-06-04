@@ -66,6 +66,11 @@ public static class ServiceConfiguration
         // 앱 테마 적용·영속(plan.md T2/DU5).
         services.AddSingleton<Services.ThemeService>();
 
+        // 다국어 리소스 조회(plan.md T1). 같은 인스턴스를 ILocalizer로도 노출(인프라/도메인 주입용).
+        services.AddSingleton<Services.LocalizationService>();
+        services.AddSingleton<Application.Localization.ILocalizer>(
+            sp => sp.GetRequiredService<Services.LocalizationService>());
+
         // 폴더 팝업 설정(LocalSettings).
         services.AddSingleton<Services.FolderPopupSettingsService>();
 

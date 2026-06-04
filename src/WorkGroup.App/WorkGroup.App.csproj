@@ -9,6 +9,9 @@
         <UseWinUI>true</UseWinUI>
         <EnableMsixTooling>true</EnableMsixTooling>
 
+        <!-- 다국어 리소스 기본(폴백) 언어 — 미지원 시스템 언어일 때 한국어로 폴백(plan.md D4) -->
+        <DefaultLanguage>ko-KR</DefaultLanguage>
+
         <!-- Project Options -->
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
@@ -39,6 +42,9 @@
         <!-- 그룹 리소스 아이콘(런타임 ms-appx 자산) -->
         <Content Include="Assets\GroupIcons\**\*.png" />
     </ItemGroup>
+
+    <!-- 다국어 리소스(.resw, Strings\{lang}\Resources.resw)는 .NET SDK가 PRIResource로 기본 포함 → MRT Core가 resources.pri로 컴파일(plan.md T1) -->
+
 
     <ItemGroup>
         <None Remove="WorkGroup.App.slnx" />

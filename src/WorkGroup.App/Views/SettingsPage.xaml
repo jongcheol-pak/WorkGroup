@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -13,7 +14,7 @@
 
             <!-- 페이지 헤더 -->
             <StackPanel Spacing="4" Margin="0,0,0,8">
-                <TextBlock Text="설정" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="{loc:Localize Key=Settings_Title}" Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock Text="자동 시작과 앱 테마를 설정합니다."
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
