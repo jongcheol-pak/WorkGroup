@@ -83,11 +83,22 @@
                  상/하 변=가로 1행, 좌/우 변=세로 1열. 둘 다 비가상화 StackPanel(아이콘 수 적어 성능 무관,
                  무한 길이 측정 시 자연 길이를 정확히 보고). -->
             <ItemsPanelTemplate x:Key="HorizontalItemsPanel">
-                <StackPanel Orientation="Horizontal" />
+                <StackPanel Orientation="Horizontal" Spacing="4" />
             </ItemsPanelTemplate>
             <ItemsPanelTemplate x:Key="VerticalItemsPanel">
-                <StackPanel Orientation="Vertical" />
+                <StackPanel Orientation="Vertical" Spacing="4" />
             </ItemsPanelTemplate>
+
+            <!-- GridViewItem 컨테이너 기본 여백(Padding/Margin/MinWidth)을 0으로 없애 아이템 폭을 콘텐츠(48px 박스)로
+                 확정한다(여백이 남으면 세로 1열 좁은 폭에서 아이콘이 잘림). 아이템 간격은 ItemsPanel의 Spacing이 담당. -->
+            <Style x:Key="PopupItemContainerStyle" TargetType="GridViewItem">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="MinHeight" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
         </Grid.Resources>
 
         <TextBlock x:Name="TitleText" Margin="0,0,0,4" Style="{ThemeResource SubtitleTextBlockStyle}" />
@@ -95,6 +106,7 @@
         <GridView Grid.Row="1" x:Name="AppsGrid"
                   ItemsSource="{x:Bind Items, Mode=OneWay}"
                   ItemTemplateSelector="{StaticResource GridItemSelector}"
+                  ItemContainerStyle="{StaticResource PopupItemContainerStyle}"
                   IsItemClickEnabled="True" SelectionMode="None"
                   ItemClick="OnAppClick"
                   CornerRadius="8"
