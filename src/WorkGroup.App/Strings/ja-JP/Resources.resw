@@ -70,4 +70,22 @@
   <data name="Settings_Language_System" xml:space="preserve">
     <value>システム言語</value>
   </data>
+  <data name="Settings_Language_Header" xml:space="preserve">
+    <value>言語</value>
+  </data>
+  <data name="Settings_Language_Description" xml:space="preserve">
+    <value>アプリの表示言語を選択します。変更するとアプリが再起動します。</value>
+  </data>
+  <data name="Settings_Language_RestartTitle" xml:space="preserve">
+    <value>言語の変更</value>
+  </data>
+  <data name="Settings_Language_RestartMessage" xml:space="preserve">
+    <value>言語を変更するにはアプリの再起動が必要です。今すぐ再起動しますか？</value>
+  </data>
+  <data name="Settings_Language_RestartConfirm" xml:space="preserve">
+    <value>再起動</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>キャンセル</value>
+  </data>
 </root>

@@ -48,6 +48,21 @@
                     <x:String>다크</x:String>
                 </ComboBox>
             </controls:SettingsCard>
+
+            <!-- 언어 -->
+            <controls:SettingsCard Header="{loc:Localize Key=Settings_Language_Header}"
+                                   Description="{loc:Localize Key=Settings_Language_Description}">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xF2B7;" />
+                </controls:SettingsCard.HeaderIcon>
+                <ComboBox MinWidth="200" SelectedIndex="{x:Bind ViewModel.LanguageIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="{loc:Localize Key=Settings_Language_System}" />
+                    <ComboBoxItem Content="한국어" />
+                    <ComboBoxItem Content="English" />
+                    <ComboBoxItem Content="日本語" />
+                    <ComboBoxItem Content="中文(简体)" />
+                </ComboBox>
+            </controls:SettingsCard>
         </StackPanel>
     </ScrollViewer>
 </Page>

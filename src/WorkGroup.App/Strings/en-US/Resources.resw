@@ -70,4 +70,22 @@
   <data name="Settings_Language_System" xml:space="preserve">
     <value>System language</value>
   </data>
+  <data name="Settings_Language_Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Language_Description" xml:space="preserve">
+    <value>Choose the app display language. Changing it restarts the app.</value>
+  </data>
+  <data name="Settings_Language_RestartTitle" xml:space="preserve">
+    <value>Change language</value>
+  </data>
+  <data name="Settings_Language_RestartMessage" xml:space="preserve">
+    <value>The app needs to restart to change the language. Restart now?</value>
+  </data>
+  <data name="Settings_Language_RestartConfirm" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

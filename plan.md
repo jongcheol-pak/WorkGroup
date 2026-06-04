@@ -161,7 +161,7 @@
     - ".resw 자동 포함?" → csproj `PRIResource` 명시(Files).
   - **Depends on**: -
 
-- [ ] T2. LanguageService(영속/적용/재시작) + 앱 시작 시 언어 적용
+- [x] T2. LanguageService(영속/적용/재시작) + 앱 시작 시 언어 적용
   - **Type**: D
   - **Acceptance**: 빌드 성공. 저장값↔태그 매핑("System"→`""`, 기타→BCP-47) 코드 검토 확인. App 생성자에서 창 생성 이전에 `ApplyOnStartup()` 호출.
   - **Files**:
@@ -324,6 +324,7 @@
 
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
+- T1-T2 완료 (커밋 b4049e2, 2294f85): 리소스 인프라(ILocalizer/NullLocalizer/LocalizationService/{loc:Localize} 마크업/4개 resw) + LanguageService(영속·적용·재시작). 마크업 PoC 빌드 게이트 통과(직접+부착 속성). PRIResource는 SDK 자동 포함(명시 불필요). 빌드 0/0, 테스트 115/115. BASE for reviews 진행: 각 task 직전 커밋.
 
 ## Next Steps
 <!-- 세션 종료/체크포인트 시 갱신 -->

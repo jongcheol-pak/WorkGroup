@@ -70,4 +70,22 @@
   <data name="Settings_Language_System" xml:space="preserve">
     <value>系统语言</value>
   </data>
+  <data name="Settings_Language_Header" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="Settings_Language_Description" xml:space="preserve">
+    <value>选择应用的显示语言。更改后将重启应用。</value>
+  </data>
+  <data name="Settings_Language_RestartTitle" xml:space="preserve">
+    <value>更改语言</value>
+  </data>
+  <data name="Settings_Language_RestartMessage" xml:space="preserve">
+    <value>更改语言需要重启应用。现在重启吗？</value>
+  </data>
+  <data name="Settings_Language_RestartConfirm" xml:space="preserve">
+    <value>重启</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
 </root>
