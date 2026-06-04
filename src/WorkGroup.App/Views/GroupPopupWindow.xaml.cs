@@ -32,6 +32,9 @@ public sealed partial class GroupPopupWindow : Window
     private const int InitialPopupHeight = 200;
     // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
     private const int OffScreen = -32000;
+    // 세로 1열 아이템 영역 폭(px). 모든 아이템이 48px 고정 박스(AppItemTemplate/AddButtonTemplate)라
+    // 콘텐츠 폭이 일정하므로, 가용 폭을 그대로 반환하는 GridView measure 대신 이 고정값을 쓴다(48 + 좌우 여백).
+    private const int VerticalIconColumnWidth = 64;
     // 세로 1열 콘텐츠 폭 좌우에 더하는 루트 Grid 가로 패딩 합(Padding="12,12,12,0" → 좌 12 + 우 12).
     private const int VerticalContentSidePadding = 24;
     // 세로 스크롤바가 생길 때 콘텐츠 폭에 더해 잘림을 막는 근사 스크롤바 폭(px).
@@ -239,22 +242,18 @@ public sealed partial class GroupPopupWindow : Window
 
         int maxWidth = Math.Max(InitialPopupWidth, _metrics.Work.Width - WorkAreaMargin);
 
-        // GridView는 measure 시 주어진 가용 폭을 그대로 DesiredSize로 반환하고(HorizontalAlignment=Left는
-        // arrange만 바꿔 창 크기엔 영향 없음), 무한 폭으로 줘도 cross축 너비를 부정확 보고한다. 따라서 세로 1열
-        // 콘텐츠 폭은 GridView를 거치지 않고 내부 패널(ItemsPanelRoot)과 헤더를 직접 측정해 구한다.
-        int contentWidth = 0;
-        if (AppsGrid.ItemsPanelRoot is { } panel)
-        {
-            panel.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
-            contentWidth = (int)Math.Ceiling(panel.DesiredSize.Width * scale);
-        }
+        // GridView measure는 주어진 가용 폭을 그대로 DesiredSize로 반환하고(HorizontalAlignment=Left는 arrange만
+        // 바꿔 창 크기엔 영향 없음, 내부 패널을 직접 measure해도 arrange된 가용 폭이 남음) 콘텐츠 폭을 신뢰할 수 없다.
+        // 세로 1열 아이템은 모두 48px 고정 박스라 폭이 일정하므로 아이템 폭은 고정값으로 잡고,
+        // 가변인 헤더(그룹 이름)만 측정해 둘 중 큰 값을 콘텐츠 폭으로 한다(헤더는 TextBlock이라 measure 정확).
+        int contentWidth = VerticalIconColumnWidth;
         if (TitleText.Visibility == Visibility.Visible)
         {
             TitleText.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
             contentWidth = Math.Max(contentWidth, (int)Math.Ceiling(TitleText.DesiredSize.Width * scale));
         }
-        // 루트 Grid 좌우 패딩을 더해 콘텐츠가 잘리지 않게 한다(아이템 컨테이너 생성 전이면 0 → 초기값 폴백).
-        contentWidth = contentWidth > 0 ? contentWidth + VerticalContentSidePadding : InitialPopupWidth;
+        // 루트 Grid 좌우 패딩을 더해 콘텐츠가 잘리지 않게 한다.
+        contentWidth += VerticalContentSidePadding;
         int finalWidth = Math.Min(contentWidth, maxWidth);
 
         // 확정 폭으로 높이를 측정한다(세로는 높이가 배치축이라 GridView 측정이 정확).
