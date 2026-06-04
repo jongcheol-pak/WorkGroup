@@ -144,7 +144,7 @@
 
 ## Tasks
 
-- [ ] T1. 리소스 인프라 골격 + 마크업 PoC 게이트(LocalizationService + 마크업 + ILocalizer + resw 4개 + csproj)
+- [x] T1. 리소스 인프라 골격 + 마크업 PoC 게이트(LocalizationService + 마크업 + ILocalizer + resw 4개 + csproj)
   - **Type**: D
   - **Acceptance**: `dotnet build WorkGroup.slnx` 성공. **PoC 게이트**: SettingsPage 등 1개 요소의 `Text`와 1개 `ToolTipService.ToolTip`에 `{loc:Localize Key=...}` 적용 후 빌드 그린(마크업 익스텐션이 XAML 컴파일러에 인식됨 확인). 빌드 실패 시 D1 Fallback(x:Bind 정적 메서드)으로 전환. `LocalizationService.Current.Get("App_DisplayName")`가 기본 언어 값 반환. 4개 resw가 `App_DisplayName`/`App_Description`/`Settings_Language_*` + PoC 키 포함.
   - **Files**:

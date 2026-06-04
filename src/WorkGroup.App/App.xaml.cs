@@ -49,6 +49,9 @@ namespace WorkGroup.App
             Services = ServiceConfiguration.Build();
             LocalizationService.Current = Services.GetRequiredService<LocalizationService>();
 
+            // 저장된 언어를 창 생성 이전에 적용한다(plan.md T2) — 이후 모든 XAML이 해당 언어로 로드된다.
+            Services.GetRequiredService<LanguageService>().ApplyOnStartup();
+
             this.InitializeComponent();
         }
 

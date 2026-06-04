@@ -71,6 +71,9 @@ public static class ServiceConfiguration
         services.AddSingleton<Application.Localization.ILocalizer>(
             sp => sp.GetRequiredService<Services.LocalizationService>());
 
+        // 앱 표시 언어 영속·적용·재시작(plan.md T2).
+        services.AddSingleton<Services.LanguageService>();
+
         // 폴더 팝업 설정(LocalSettings).
         services.AddSingleton<Services.FolderPopupSettingsService>();
 
