@@ -88,6 +88,11 @@ public sealed partial class GroupPopupWindow : Window
             AppsGrid.ItemsPanel = (ItemsPanelTemplate)contentRoot.Resources[
                 _isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];
 
+        // 세로 1열에서는 GridView가 가로로 늘어나(기본 Stretch) 콘텐츠 폭보다 넓어지지 않도록 좌측 정렬한다.
+        // 가로 1행은 현행 Stretch 유지(StackPanel 너비 합이 곧 콘텐츠 폭이라 과대 없음).
+        if (_isVertical)
+            AppsGrid.HorizontalAlignment = HorizontalAlignment.Left;
+
         // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
         AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
         AppWindow.Move(new PointInt32(OffScreen, OffScreen));
@@ -233,8 +238,13 @@ public sealed partial class GroupPopupWindow : Window
         ScrollViewer.SetHorizontalScrollBarVisibility(AppsGrid, ScrollBarVisibility.Disabled);
         root.UpdateLayout();
 
-        // 1) 무제한 측정으로 아이콘 1열이 필요로 하는 자연 높이를 구한다.
-        root.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+        // 너비 측정은 반드시 유한 제약으로 한다. 무한 너비로 측정하면 세로 1열에서 GridView가
+        // cross축(너비) 자연값을 부정확하게(0 또는 과대) 보고한다 — 검증된 FolderListPopupWindow가
+        // 세로 1열을 유한 너비로만 측정하는 것과 동일한 회피. 상한은 작업영역 폭(좌우 여백 확보).
+        int maxWidth = Math.Max(InitialPopupWidth, _metrics.Work.Width - WorkAreaMargin);
+
+        // 1) 너비 상한 안에서 아이콘 1열이 필요로 하는 자연 높이를 구한다(GridView 좌측 정렬이라 실제 폭은 콘텐츠만큼).
+        root.Measure(new Windows.Foundation.Size(maxWidth / scale, double.PositiveInfinity));
         int desiredHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
         if (desiredHeight <= 0)
             desiredHeight = InitialPopupHeight;
@@ -252,13 +262,13 @@ public sealed partial class GroupPopupWindow : Window
         }
 
         // 3) 확정 높이로 너비를 재측정한다(세로 스크롤바가 생기면 그만큼 너비에 반영).
-        root.Measure(new Windows.Foundation.Size(double.PositiveInfinity, finalHeight / scale));
+        //    스크롤바 유무와 무관하게 1)과 동일한 너비 상한(maxWidth)으로 제약해 GridView 측정 조건을 일관 유지한다.
+        root.Measure(new Windows.Foundation.Size(maxWidth / scale, finalHeight / scale));
         int desiredWidth = (int)Math.Ceiling(root.DesiredSize.Width * scale);
         if (desiredWidth <= 0)
             desiredWidth = InitialPopupWidth;
 
-        // 4) 너비도 작업영역 폭 상한으로 클램프 — 긴 그룹명/메시지로 좁은 좌/우 작업영역을 넘어 화면 밖으로 나가지 않게 한다.
-        int maxWidth = Math.Max(InitialPopupWidth, _metrics.Work.Width - WorkAreaMargin);
+        // 4) 유한 제약(maxWidth)으로 측정해 이미 상한 이하지만, ceil 올림으로 1px 초과할 여지를 막는 방어 클램프.
         int finalWidth = Math.Min(desiredWidth, maxWidth);
 
         return (finalWidth, finalHeight);
