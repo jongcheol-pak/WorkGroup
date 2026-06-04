@@ -273,9 +273,11 @@ public sealed partial class FolderListPopupWindow : Window
             buttonY = (int)(p.Y * scale);
         }
 
+        // 작업 표시줄 변을 자식 배치에 전달해, 좌/우 작업 표시줄이면 자식을 공간과 무관하게 반대쪽으로 고정한다.
         var anchor = new ChildPopupAnchor(
             AppWindow.Position.X, AppWindow.Position.Y,
-            AppWindow.Position.X + AppWindow.Size.Width, buttonY, _metrics.Work);
+            AppWindow.Position.X + AppWindow.Size.Width, buttonY, _metrics.Work,
+            TaskbarPopupPositioner.DetectEdge(_metrics.Monitor, _metrics.Work));
 
         var child = new FolderContentsPopupWindow(path, FolderDisplayName(path), 2, _settings, anchor);
         _child = child;

@@ -239,7 +239,7 @@ public sealed partial class FolderContentsPopupWindow : Window
 
         return new ChildPopupAnchor(
             AppWindow.Position.X, AppWindow.Position.Y,
-            AppWindow.Position.X + AppWindow.Size.Width, buttonY, _anchor.Work);
+            AppWindow.Position.X + AppWindow.Size.Width, buttonY, _anchor.Work, _anchor.Edge);
     }
 
     private void RequestCloseChain()
@@ -307,19 +307,35 @@ public sealed partial class FolderContentsPopupWindow : Window
         AppWindow.Show(activateWindow: false);
     }
 
-    // 부모 팝업 왼쪽(공간 없으면 오른쪽)에, 호버 버튼 높이 기준으로 배치한다(작업영역 안으로 클램프).
+    // 호버 버튼 높이 기준으로 자식 팝업을 배치한다. 작업 표시줄이 좌/우 변이면 공간과 무관하게 그 반대쪽으로
+    // 고정 배치해 이전 단계 팝업을 가리지 않게 하고(왼쪽 변→항상 오른쪽, 오른쪽 변→항상 왼쪽),
+    // 상/하(또는 미지정)는 부모 왼쪽 우선·공간 없으면 오른쪽·작업영역 우변 클램프(기존 동작).
     private void PlaceAtAnchor(int height)
     {
         var work = _anchor.Work;
-        int x = _anchor.ParentLeft - PopupWidth + Overlap;
-        // 호버한 항목 높이에 맞춰 배치한다(선택한 폴더 위치에 하위 팝업 표시).
         // ButtonY는 부모 클라이언트 기준 항목 Y 오프셋 → 부모 창 상단(ParentTop)을 더해 화면 절대 Y로 변환.
         int y = _anchor.ParentTop + _anchor.ButtonY;
 
-        if (x < work.Left)
+        int x;
+        if (_anchor.Edge == TaskbarEdge.Left)
+        {
+            // 왼쪽 작업 표시줄: 부모가 화면 왼쪽이므로 자식은 항상 부모 오른쪽(공간 부족해도 클램프하지 않음).
             x = _anchor.ParentRight - Overlap;
-        if (x + PopupWidth > work.Right)
-            x = work.Right - PopupWidth;
+        }
+        else if (_anchor.Edge == TaskbarEdge.Right)
+        {
+            // 오른쪽 작업 표시줄: 자식은 항상 부모 왼쪽.
+            x = _anchor.ParentLeft - PopupWidth + Overlap;
+        }
+        else
+        {
+            x = _anchor.ParentLeft - PopupWidth + Overlap;
+            if (x < work.Left)
+                x = _anchor.ParentRight - Overlap;
+            if (x + PopupWidth > work.Right)
+                x = work.Right - PopupWidth;
+        }
+
         if (y + height > work.Bottom)
             y = work.Bottom - height;
         if (y < work.Top + TopMargin)
@@ -365,4 +381,4 @@ public sealed partial class FolderContentsPopupWindow : Window
 }
 
 /// <summary>자식 내용 팝업의 배치 기준(부모 창 사각형 + 호버 버튼 Y + 작업영역).</summary>
-public readonly record struct ChildPopupAnchor(int ParentLeft, int ParentTop, int ParentRight, int ButtonY, ScreenRect Work);
+public readonly record struct ChildPopupAnchor(int ParentLeft, int ParentTop, int ParentRight, int ButtonY, ScreenRect Work, TaskbarEdge Edge);
