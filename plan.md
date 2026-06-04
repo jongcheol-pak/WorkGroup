@@ -285,7 +285,7 @@
     - "테스트 실행 시 resw 위치?" → 리포지토리 루트 상대 탐색(Edge Cases).
   - **Depends on**: T4, T5, T6, T7, T8, T9
 
-- [ ] T11. 문서 갱신(README/notes)
+- [x] T11. 문서 갱신(README/notes)
   - **Type**: A
   - **Acceptance**: README에 다국어 지원(4개 언어)·설정 "언어" 항목(기본 시스템 언어, 변경 시 재시작) 반영. notes.md 최상단 변경 항목 추가, 1개월 초과 항목 정리.
   - **Files**:
@@ -335,7 +335,10 @@
 - T7-T8 완료 (커밋 d3093ab, +T8): App 레이어 C#(VM 주입 + 코드비하인드/Tray static) + Infra 6개 서비스 ILocalizer 선택 인자 주입. 6개 서비스 모두 ServiceConfiguration에서 ILocalizer 명시 전달(DI 선택인자 자동해석 비의존). JsonFolderShortcutRepositoryTests 단언 키로 갱신. resw 누적 122키, 4개 언어 동일. 빌드 0/0, 테스트 115/115. Domain Result.Fail 한국어는 범위 외 follow-up(Known Workarounds).
 
 ## Next Steps
-<!-- 세션 종료/체크포인트 시 갱신 -->
+- 모든 task(T1~T11) 완료·커밋. 빌드 0/0, 테스트 117/117, resw 122키×4언어 패리티, PRI 컴파일(Resources 맵) makepri 검증.
+- 권장 다음 액션: ① **F5 MSIX GUI 수동 검증**(언어 변경→재시작 반영, "시스템 언어"=OS 언어, 시작 메뉴/매니페스트 표시 이름 다국어, 각 화면 문구) ② resw 변경 후엔 클린 빌드 ③ 필요 시 공식 `/code-review`·`/security-review`.
+- Follow-ups(Known Workarounds): Domain Result.Fail 한국어 로컬라이즈(에러 코드 방식, 별도 승인), 증분 빌드 PRI stale(빌드 도구 특성, 클린 빌드로 회피).
+- Suggested skills: 공식 /code-review, 공식 /security-review.
 
 ## Open Questions
 - (없음 — 모든 결정 해결됨. T8 인프라 직접 `new` 사용처는 구현 시 grep 재확인으로 처리, 결정 분기 아님.)
