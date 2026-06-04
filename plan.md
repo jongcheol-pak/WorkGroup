@@ -260,7 +260,7 @@
     - "DI 등록 방식?" → type-based 등록(`AddSingleton<IAppInventory, InstalledAppInventory>`)은 ILocalizer를 DI가 자동 해석; factory 등록(repos/ShortcutService)은 `sp.GetRequiredService<ILocalizer>()` 명시 전달.
   - **Depends on**: T1
 
-- [ ] T9. 매니페스트 ms-resource 다국어화
+- [x] T9. 매니페스트 ms-resource 다국어화
   - **Type**: D
   - **Acceptance**: `dotnet build WorkGroup.slnx` 및 패키지 빌드 성공(resources.pri 생성). `DisplayName`/`VisualElements DisplayName`·`Description`/`StartupTask DisplayName`이 `ms-resource:///Resources/App_DisplayName`·`App_Description` 치환. 키 4개 언어 존재.
   - **Files**:
@@ -318,6 +318,8 @@
 
 ## Known Workarounds / Follow-ups
 - **Domain 레이어 Result.Fail 한국어 문구(범위 외)**: 구현 중 발견 — `AppGroup.Create`("그룹 이름은 필수입니다."), `AppGroup.AddApp/RemoveApp`("이미 추가된 앱입니다: {앱}", "그룹에 없는 앱입니다."), `FolderShortcut.Create`("폴더 이름은 필수입니다.", "폴더 경로는 필수입니다.")가 `Result.Fail`로 한국어를 반환한다. 이들은 UI에 도달 가능하나 **App 레이어 검증(GroupEditViewModel/FolderEditDialog)이 먼저 같은 조건을 잡아 로컬라이즈된 메시지를 표시**하므로 실사용에서 거의 가려진다. AGENTS.md "Domain 외부 의존 0" 원칙상 Domain에 ILocalizer 주입은 부적절 → 근본 해결은 Domain이 **에러 코드/키**를 반환하고 App이 매핑하는 방식(계약 변경, 별도 승인 필요). **승인된 본 plan 범위 밖**이라 follow-up으로 남긴다.
+
+- **증분 빌드의 stale resources.pri (빌드 도구 특성)**: T9 검증 중 발견 — 증분 빌드가 신규/변경된 `.resw`를 `resources.pri`에 재생성하지 않아, 한때 컴파일된 PRI에 문자열 키가 빠져 있었다. **클린 재빌드**(`dotnet clean` + obj/bin 제거 후 재빌드) 시 PRI에 4개 언어 키가 `Resources` 맵으로 정상 포함됨을 makepri dump로 확인(`ms-resource://{pkg}/Resources/App_DisplayName`). 코드 결함 아님. **resw 변경 후에는 클린 빌드 권장**(VS F5 배포는 대개 정상). README/notes에 안내.
 
 ## Verification Strategy
 - 빌드: `dotnet build WorkGroup.slnx` — 경고/에러 0 목표(마크업 익스텐션/생성자 변경 컴파일 검증).
