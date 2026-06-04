@@ -217,4 +217,79 @@
   <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
     <value>アプリを検索</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Common_Open" xml:space="preserve">
+    <value>開く</value>
+  </data>
+  <data name="FolderEdit_AddTitle" xml:space="preserve">
+    <value>フォルダーを追加</value>
+  </data>
+  <data name="FolderEdit_EditTitle" xml:space="preserve">
+    <value>フォルダーを編集</value>
+  </data>
+  <data name="FolderEdit_NameHeader" xml:space="preserve">
+    <value>名前</value>
+  </data>
+  <data name="FolderEdit_NamePlaceholder" xml:space="preserve">
+    <value>フォルダー名</value>
+  </data>
+  <data name="FolderEdit_PathLabel" xml:space="preserve">
+    <value>フォルダーのパス</value>
+  </data>
+  <data name="FolderEdit_Browse" xml:space="preserve">
+    <value>参照</value>
+  </data>
+  <data name="FolderPopup_SettingsTitle" xml:space="preserve">
+    <value>フォルダーポップアップ設定</value>
+  </data>
+  <data name="FolderPopup_Header" xml:space="preserve">
+    <value>フォルダー</value>
+  </data>
+  <data name="FolderPopup_ColumnCountLabel" xml:space="preserve">
+    <value>フォルダーポップアップの列数</value>
+  </data>
+  <data name="FolderPopup_Columns_1" xml:space="preserve">
+    <value>1列</value>
+  </data>
+  <data name="FolderPopup_Columns_2" xml:space="preserve">
+    <value>2列</value>
+  </data>
+  <data name="FolderPopup_Columns_3" xml:space="preserve">
+    <value>3列</value>
+  </data>
+  <data name="FolderPopup_Columns_4" xml:space="preserve">
+    <value>4列</value>
+  </data>
+  <data name="FolderPopup_Columns_5" xml:space="preserve">
+    <value>5列</value>
+  </data>
+  <data name="FolderPopup_DepthLabel" xml:space="preserve">
+    <value>サブフォルダーの探索の深さ</value>
+  </data>
+  <data name="FolderPopup_Depth_1" xml:space="preserve">
+    <value>1階層</value>
+  </data>
+  <data name="FolderPopup_Depth_2" xml:space="preserve">
+    <value>2階層</value>
+  </data>
+  <data name="FolderPopup_Depth_3" xml:space="preserve">
+    <value>3階層</value>
+  </data>
+  <data name="FolderPopup_Depth_4" xml:space="preserve">
+    <value>4階層</value>
+  </data>
+  <data name="FolderPopup_Depth_5" xml:space="preserve">
+    <value>5階層</value>
+  </data>
+  <data name="FolderPopup_ShowHidden" xml:space="preserve">
+    <value>隠しファイル・フォルダーを表示</value>
+  </data>
+  <data name="GroupPopup_RunAsAdmin" xml:space="preserve">
+    <value>管理者として実行</value>
+  </data>
+  <data name="GroupPopup_EditGroup" xml:space="preserve">
+    <value>グループを編集</value>
+  </data>
 </root>

@@ -4,19 +4,20 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="폴더 추가"
-    PrimaryButtonText="저장"
-    CloseButtonText="취소"
+    Title="{loc:Localize Key=FolderEdit_AddTitle}"
+    PrimaryButtonText="{loc:Localize Key=Common_Save}"
+    CloseButtonText="{loc:Localize Key=Common_Cancel}"
     DefaultButton="Primary"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
     <StackPanel Spacing="12" MinWidth="360">
-        <TextBox x:Name="NameTextBox" Header="이름" PlaceholderText="폴더 이름" />
+        <TextBox x:Name="NameTextBox" Header="{loc:Localize Key=FolderEdit_NameHeader}" PlaceholderText="{loc:Localize Key=FolderEdit_NamePlaceholder}" />
 
         <StackPanel Spacing="4">
-            <TextBlock Text="폴더 경로" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <TextBlock Text="{loc:Localize Key=FolderEdit_PathLabel}" Style="{ThemeResource BodyStrongTextBlockStyle}" />
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -25,7 +26,7 @@
                 <TextBlock x:Name="PathTextBlock" Grid.Column="0" VerticalAlignment="Center"
                            TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                <Button x:Name="BrowseButton" Grid.Column="1" Content="찾아보기" Click="OnBrowseClick" />
+                <Button x:Name="BrowseButton" Grid.Column="1" Content="{loc:Localize Key=FolderEdit_Browse}" Click="OnBrowseClick" />
             </Grid>
         </StackPanel>
 

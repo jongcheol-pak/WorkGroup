@@ -217,4 +217,79 @@
   <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
     <value>앱 검색</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>저장</value>
+  </data>
+  <data name="Common_Open" xml:space="preserve">
+    <value>열기</value>
+  </data>
+  <data name="FolderEdit_AddTitle" xml:space="preserve">
+    <value>폴더 추가</value>
+  </data>
+  <data name="FolderEdit_EditTitle" xml:space="preserve">
+    <value>폴더 편집</value>
+  </data>
+  <data name="FolderEdit_NameHeader" xml:space="preserve">
+    <value>이름</value>
+  </data>
+  <data name="FolderEdit_NamePlaceholder" xml:space="preserve">
+    <value>폴더 이름</value>
+  </data>
+  <data name="FolderEdit_PathLabel" xml:space="preserve">
+    <value>폴더 경로</value>
+  </data>
+  <data name="FolderEdit_Browse" xml:space="preserve">
+    <value>찾아보기</value>
+  </data>
+  <data name="FolderPopup_SettingsTitle" xml:space="preserve">
+    <value>폴더 팝업 설정</value>
+  </data>
+  <data name="FolderPopup_Header" xml:space="preserve">
+    <value>폴더</value>
+  </data>
+  <data name="FolderPopup_ColumnCountLabel" xml:space="preserve">
+    <value>폴더 팝업 열 개수</value>
+  </data>
+  <data name="FolderPopup_Columns_1" xml:space="preserve">
+    <value>1열</value>
+  </data>
+  <data name="FolderPopup_Columns_2" xml:space="preserve">
+    <value>2열</value>
+  </data>
+  <data name="FolderPopup_Columns_3" xml:space="preserve">
+    <value>3열</value>
+  </data>
+  <data name="FolderPopup_Columns_4" xml:space="preserve">
+    <value>4열</value>
+  </data>
+  <data name="FolderPopup_Columns_5" xml:space="preserve">
+    <value>5열</value>
+  </data>
+  <data name="FolderPopup_DepthLabel" xml:space="preserve">
+    <value>하위 폴더 탐색 깊이</value>
+  </data>
+  <data name="FolderPopup_Depth_1" xml:space="preserve">
+    <value>1단계</value>
+  </data>
+  <data name="FolderPopup_Depth_2" xml:space="preserve">
+    <value>2단계</value>
+  </data>
+  <data name="FolderPopup_Depth_3" xml:space="preserve">
+    <value>3단계</value>
+  </data>
+  <data name="FolderPopup_Depth_4" xml:space="preserve">
+    <value>4단계</value>
+  </data>
+  <data name="FolderPopup_Depth_5" xml:space="preserve">
+    <value>5단계</value>
+  </data>
+  <data name="FolderPopup_ShowHidden" xml:space="preserve">
+    <value>숨김 파일/폴더 표시</value>
+  </data>
+  <data name="GroupPopup_RunAsAdmin" xml:space="preserve">
+    <value>관리자 권한으로 실행</value>
+  </data>
+  <data name="GroupPopup_EditGroup" xml:space="preserve">
+    <value>그룹 수정</value>
+  </data>
 </root>

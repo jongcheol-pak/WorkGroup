@@ -217,4 +217,79 @@
   <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
     <value>搜索应用</value>
   </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Common_Open" xml:space="preserve">
+    <value>打开</value>
+  </data>
+  <data name="FolderEdit_AddTitle" xml:space="preserve">
+    <value>添加文件夹</value>
+  </data>
+  <data name="FolderEdit_EditTitle" xml:space="preserve">
+    <value>编辑文件夹</value>
+  </data>
+  <data name="FolderEdit_NameHeader" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="FolderEdit_NamePlaceholder" xml:space="preserve">
+    <value>文件夹名称</value>
+  </data>
+  <data name="FolderEdit_PathLabel" xml:space="preserve">
+    <value>文件夹路径</value>
+  </data>
+  <data name="FolderEdit_Browse" xml:space="preserve">
+    <value>浏览</value>
+  </data>
+  <data name="FolderPopup_SettingsTitle" xml:space="preserve">
+    <value>文件夹弹出设置</value>
+  </data>
+  <data name="FolderPopup_Header" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="FolderPopup_ColumnCountLabel" xml:space="preserve">
+    <value>文件夹弹出列数</value>
+  </data>
+  <data name="FolderPopup_Columns_1" xml:space="preserve">
+    <value>1列</value>
+  </data>
+  <data name="FolderPopup_Columns_2" xml:space="preserve">
+    <value>2列</value>
+  </data>
+  <data name="FolderPopup_Columns_3" xml:space="preserve">
+    <value>3列</value>
+  </data>
+  <data name="FolderPopup_Columns_4" xml:space="preserve">
+    <value>4列</value>
+  </data>
+  <data name="FolderPopup_Columns_5" xml:space="preserve">
+    <value>5列</value>
+  </data>
+  <data name="FolderPopup_DepthLabel" xml:space="preserve">
+    <value>子文件夹深度</value>
+  </data>
+  <data name="FolderPopup_Depth_1" xml:space="preserve">
+    <value>1级</value>
+  </data>
+  <data name="FolderPopup_Depth_2" xml:space="preserve">
+    <value>2级</value>
+  </data>
+  <data name="FolderPopup_Depth_3" xml:space="preserve">
+    <value>3级</value>
+  </data>
+  <data name="FolderPopup_Depth_4" xml:space="preserve">
+    <value>4级</value>
+  </data>
+  <data name="FolderPopup_Depth_5" xml:space="preserve">
+    <value>5级</value>
+  </data>
+  <data name="FolderPopup_ShowHidden" xml:space="preserve">
+    <value>显示隐藏文件/文件夹</value>
+  </data>
+  <data name="GroupPopup_RunAsAdmin" xml:space="preserve">
+    <value>以管理员身份运行</value>
+  </data>
+  <data name="GroupPopup_EditGroup" xml:space="preserve">
+    <value>编辑组</value>
+  </data>
 </root>

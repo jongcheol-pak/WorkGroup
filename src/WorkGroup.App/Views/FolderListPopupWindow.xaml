@@ -2,7 +2,8 @@
 <Window
     x:Class="WorkGroup.App.Views.FolderListPopupWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:loc="using:WorkGroup.App.Markup">
 
     <!-- 메인 창과 동일하게 창 프레임(Mica 배경 + 둥근 모서리)이 외곽을 담당한다. -->
     <Grid Padding="12,12,12,12" RowSpacing="8">
@@ -18,9 +19,9 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="폴더" VerticalAlignment="Center" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+            <TextBlock Text="{loc:Localize Key=FolderPopup_Header}" VerticalAlignment="Center" Style="{ThemeResource BodyStrongTextBlockStyle}" />
             <Button Grid.Column="1" Click="OnSettingsClick" Background="Transparent" BorderThickness="0"
-                    Padding="6" ToolTipService.ToolTip="설정">
+                    Padding="6" ToolTipService.ToolTip="{loc:Localize Key=Common_Settings}">
                 <SymbolIcon Symbol="Setting" />
             </Button>
         </Grid>

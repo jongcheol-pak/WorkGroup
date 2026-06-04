@@ -215,7 +215,7 @@
     - "GroupEditDialog Title 동적(추가/수정)" → C#은 T7 처리(여기선 XAML만).
   - **Depends on**: T1
 
-- [ ] T6. XAML 배치 C — FolderEditDialog / FolderPopupSettingsDialog / FolderListPopupWindow / GroupPopupWindow
+- [x] T6. XAML 배치 C — FolderEditDialog / FolderPopupSettingsDialog / FolderListPopupWindow / GroupPopupWindow
   - **Type**: C
   - **Acceptance**: 빌드 성공. 네 파일 표시 문구(레이블/버튼/플레이스홀더/툴팁/헤더/열·깊이 ComboBoxItem/컨텍스트 MenuFlyout 3항목) 전부 치환. 키 4개 언어 존재.
   - **Files**:
@@ -325,7 +325,8 @@
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
 - T1-T2 완료 (커밋 b4049e2, 2294f85): 리소스 인프라(ILocalizer/NullLocalizer/LocalizationService/{loc:Localize} 마크업/4개 resw) + LanguageService(영속·적용·재시작). 마크업 PoC 빌드 게이트 통과(직접+부착 속성). PRIResource는 SDK 자동 포함(명시 불필요). 빌드 0/0, 테스트 115/115. BASE for reviews 진행: 각 task 직전 커밋.
-- T3-T4 완료 (커밋 9c79388, +T4): 설정 언어 변경 UI(ConfirmRestartAsync 콜백/재시작 다이얼로그) + XAML 배치 A(MainShell/SettingsPage/AboutPage 전수 치환). resw 누적 29키, 4개 언어 키 집합 완전 일치(자체 diff 검증). 빌드 0/0, 테스트 115/115.
+- T3-T4 완료 (커밋 9c79388, 25ed1fd): 설정 언어 변경 UI(ConfirmRestartAsync 콜백/재시작 다이얼로그) + XAML 배치 A(MainShell/SettingsPage/AboutPage 전수 치환). resw 누적 29키, 4개 언어 키 집합 완전 일치(자체 diff 검증). 빌드 0/0, 테스트 115/115.
+- T5-T6 완료 (커밋 46b4216, +T6): XAML 배치 B(WorkGroups/TrayMenu/GroupEdit) + 배치 C(FolderEdit/FolderPopupSettings/FolderListPopup/GroupPopup). Window 루트 마크업도 빌드 검증. ComboBoxItem 변환은 SelectedIndex 기반이라 안전. resw 누적 78키, 4개 언어 동일. 빌드 0/0, 테스트 115/115. 남은 XAML 하드코딩 없음(코드비하인드/인프라 C#은 T7/T8).
 
 ## Next Steps
 <!-- 세션 종료/체크포인트 시 갱신 -->
