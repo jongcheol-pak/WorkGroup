@@ -249,7 +249,7 @@ public sealed partial class GroupPopupWindow : Window
         }
         catch (Exception)
         {
-            // 별칭 실행 실패(파일 없음/권한 등)는 사용자 개입 없이 무시한다(plan D7 — 팝업은 곧 닫히고 로거 없음).
+            // 별칭 실행 실패(파일 없음/권한 등)는 사용자 개입 없이 무시한다(팝업은 곧 닫히고 로거 없음).
         }
         Close();
     }
