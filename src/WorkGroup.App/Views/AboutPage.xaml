@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:svc="using:WorkGroup.App.Services"
     mc:Ignorable="d">
@@ -14,8 +15,8 @@
 
             <!-- 페이지 헤더 -->
             <StackPanel Spacing="4" Margin="0,0,0,8">
-                <TextBlock Text="정보" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock Text="앱 정보와 오픈소스 라이선스를 표시합니다."
+                <TextBlock Text="{loc:Localize Key=About_Title}" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="{loc:Localize Key=About_Subtitle}"
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -38,7 +39,7 @@
             </Border>
 
             <!-- 오픈소스 라이선스 -->
-            <TextBlock Text="오픈소스 라이선스" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <TextBlock Text="{loc:Localize Key=About_Licenses_Header}" Style="{StaticResource SettingsGroupHeaderStyle}" />
             <ItemsControl ItemsSource="{x:Bind ViewModel.Licenses}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="svc:LicenseInfo">

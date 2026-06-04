@@ -15,7 +15,7 @@
             <!-- 페이지 헤더 -->
             <StackPanel Spacing="4" Margin="0,0,0,8">
                 <TextBlock Text="{loc:Localize Key=Settings_Title}" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock Text="자동 시작과 앱 테마를 설정합니다."
+                <TextBlock Text="{loc:Localize Key=Settings_Subtitle}"
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -25,27 +25,27 @@
                      Margin="0,0,0,8" />
 
             <!-- 일반 -->
-            <TextBlock Text="일반" Style="{StaticResource SettingsGroupHeaderStyle}" />
-            <controls:SettingsCard Header="로그인 시 자동 시작"
-                                   Description="Windows 로그인 시 백그라운드(트레이)로 시작합니다.">
+            <TextBlock Text="{loc:Localize Key=Settings_Section_General}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <controls:SettingsCard Header="{loc:Localize Key=Settings_AutoStart_Header}"
+                                   Description="{loc:Localize Key=Settings_AutoStart_Description}">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE7E8;" />
                 </controls:SettingsCard.HeaderIcon>
-                <ToggleSwitch OnContent="켜짐" OffContent="꺼짐"
+                <ToggleSwitch OnContent="{loc:Localize Key=Common_On}" OffContent="{loc:Localize Key=Common_Off}"
                               IsOn="{x:Bind ViewModel.AutoStartEnabled, Mode=TwoWay}" />
             </controls:SettingsCard>
 
             <!-- 모양 -->
-            <TextBlock Text="모양" Style="{StaticResource SettingsGroupHeaderStyle}" />
-            <controls:SettingsCard Header="앱 테마"
-                                   Description="시스템 설정을 따르거나 라이트/다크를 선택합니다.">
+            <TextBlock Text="{loc:Localize Key=Settings_Section_Appearance}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <controls:SettingsCard Header="{loc:Localize Key=Settings_Theme_Header}"
+                                   Description="{loc:Localize Key=Settings_Theme_Description}">
                 <controls:SettingsCard.HeaderIcon>
                     <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE790;" />
                 </controls:SettingsCard.HeaderIcon>
                 <ComboBox MinWidth="160" SelectedIndex="{x:Bind ViewModel.ThemeIndex, Mode=TwoWay}">
-                    <x:String>시스템 설정 사용</x:String>
-                    <x:String>라이트</x:String>
-                    <x:String>다크</x:String>
+                    <ComboBoxItem Content="{loc:Localize Key=Settings_Theme_System}" />
+                    <ComboBoxItem Content="{loc:Localize Key=Settings_Theme_Light}" />
+                    <ComboBoxItem Content="{loc:Localize Key=Settings_Theme_Dark}" />
                 </ComboBox>
             </controls:SettingsCard>
 

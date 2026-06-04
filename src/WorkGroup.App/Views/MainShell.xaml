@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Background="Transparent"
     mc:Ignorable="d">
@@ -19,7 +20,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="작업 관리">
+        <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="{loc:Localize Key=App_DisplayName}">
             <!-- IconSource는 크기가 고정(약 16px)이라, 크게 표시하기 위해 LeftHeader에 직접 Image를 배치한다. -->
             <!-- 배치 순서상 LeftHeader는 제목 왼쪽에 온다. -->
             <TitleBar.LeftHeader>
@@ -52,12 +53,12 @@
             </NavigationView.Resources>
 
             <NavigationView.MenuItems>
-                <NavigationViewItem Content="작업 그룹" Tag="WorkGroups">
+                <NavigationViewItem Content="{loc:Localize Key=Nav_WorkGroups}" Tag="WorkGroups">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="AllApps" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="트레이 메뉴" Tag="TrayMenu">
+                <NavigationViewItem Content="{loc:Localize Key=Nav_TrayMenu}" Tag="TrayMenu">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="List" />
                     </NavigationViewItem.Icon>
@@ -65,12 +66,12 @@
             </NavigationView.MenuItems>
 
             <NavigationView.FooterMenuItems>
-                <NavigationViewItem Content="설정" Tag="Settings">
+                <NavigationViewItem Content="{loc:Localize Key=Nav_Settings}" Tag="Settings">
                     <NavigationViewItem.Icon>
                         <SymbolIcon Symbol="Setting" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem Content="정보" Tag="About">
+                <NavigationViewItem Content="{loc:Localize Key=Nav_About}" Tag="About">
                     <NavigationViewItem.Icon>
                         <!-- Segoe Fluent Icons의 정보(ⓘ) 글리프 -->
                         <FontIcon Glyph="&#xE946;" />

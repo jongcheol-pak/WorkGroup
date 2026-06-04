@@ -176,7 +176,7 @@
     - "적용 시점?" → App 생성자, `Build()` 직후·`OnLaunched` 이전(Investigation).
   - **Depends on**: T1
 
-- [ ] T3. 설정 화면 언어 변경 UI + ViewModel 전환 로직
+- [x] T3. 설정 화면 언어 변경 UI + ViewModel 전환 로직
   - **Type**: C
   - **Acceptance**: 빌드 성공. 설정 페이지에 "언어" `SettingsCard`+ComboBox(시스템 언어/한국어/English/日本語/中文(简体)) 추가. 항목 선택 시 확인 다이얼로그 후 저장+재시작 경로 호출(코드 검토). 진입 시 현재 선택값 로드.
   - **Files**:
@@ -191,7 +191,7 @@
     - "테마/자동시작 핸들러 간섭?" → 동일 `_suppress` 게이트 공유.
   - **Depends on**: T2
 
-- [ ] T4. XAML 로컬라이즈 배치 A — MainShell / SettingsPage(잔여) / AboutPage
+- [x] T4. XAML 로컬라이즈 배치 A — MainShell / SettingsPage(잔여) / AboutPage
   - **Type**: C
   - **Acceptance**: 빌드 성공. 세 파일 하드코딩 표시 문구 모두 `{loc:Localize Key=...}` 치환, `xmlns:loc` 선언. 키 4개 resw 존재(T10 검증).
   - **Files**:
@@ -325,6 +325,7 @@
 ## Progress Log
 <!-- implement-task가 2 task마다 갱신 -->
 - T1-T2 완료 (커밋 b4049e2, 2294f85): 리소스 인프라(ILocalizer/NullLocalizer/LocalizationService/{loc:Localize} 마크업/4개 resw) + LanguageService(영속·적용·재시작). 마크업 PoC 빌드 게이트 통과(직접+부착 속성). PRIResource는 SDK 자동 포함(명시 불필요). 빌드 0/0, 테스트 115/115. BASE for reviews 진행: 각 task 직전 커밋.
+- T3-T4 완료 (커밋 9c79388, +T4): 설정 언어 변경 UI(ConfirmRestartAsync 콜백/재시작 다이얼로그) + XAML 배치 A(MainShell/SettingsPage/AboutPage 전수 치환). resw 누적 29키, 4개 언어 키 집합 완전 일치(자체 diff 검증). 빌드 0/0, 테스트 115/115.
 
 ## Next Steps
 <!-- 세션 종료/체크포인트 시 갱신 -->
