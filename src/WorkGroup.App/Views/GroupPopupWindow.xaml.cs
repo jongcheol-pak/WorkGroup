@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Graphics;
+using WinUIEx;
 using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Groups;
@@ -33,8 +34,8 @@ public sealed partial class GroupPopupWindow : Window
     // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
     private const int OffScreen = -32000;
     // 세로 1열 아이템 영역 폭(px). 모든 아이템이 48px 고정 박스(AppItemTemplate/AddButtonTemplate)라
-    // 콘텐츠 폭이 일정하므로, 가용 폭을 그대로 반환하는 GridView measure 대신 이 고정값을 쓴다(48 + 좌우 여백).
-    private const int VerticalIconColumnWidth = 64;
+    // 콘텐츠 폭이 일정하므로, 가용 폭을 그대로 반환하는 GridView measure 대신 이 고정값을 쓴다.
+    private const int VerticalIconColumnWidth = 48;
     // 세로 1열 콘텐츠 폭 좌우에 더하는 루트 Grid 가로 패딩 합(Padding="12,12,12,0" → 좌 12 + 우 12).
     private const int VerticalContentSidePadding = 24;
     // 세로 스크롤바가 생길 때 콘텐츠 폭에 더해 잘림을 막는 근사 스크롤바 폭(px).
@@ -373,6 +374,15 @@ public sealed partial class GroupPopupWindow : Window
 
         // 팝업 창을 작업 표시줄 버튼·Alt+Tab 스위처에 노출하지 않는다(핀 클릭 시 별도 앱 아이콘/미리보기 방지).
         AppWindow.IsShownInSwitchers = false;
+
+        // 표준 테두리 창(SetBorderAndTitleBar)은 OS가 최소 창 너비(~150px)를 강제해, 세로 1열 팝업을
+        // 콘텐츠 폭(약 72px)으로 Resize해도 그 아래로 줄지 않는다. WinUIEx WindowManager로 WM_GETMINMAXINFO를
+        // 가로채 최소 크기 제약을 푼다(메인 창과 달리 팝업은 콘텐츠 크기대로 표시).
+        // 0이 아니라 1을 준다: WindowManager는 MinWidth가 양수일 때만 WM_GETMINMAXINFO를 override하므로,
+        // OS 기본 최소보다 작은 1을 설정해야 콘텐츠 폭(약 72px)대로 줄어든다.
+        var manager = WindowManager.Get(this);
+        manager.MinWidth = 1;
+        manager.MinHeight = 1;
     }
 
     /// <summary>콘텐츠 측정이 끝난 뒤 작업 표시줄 정위치로 이동해 처음으로 화면에 표시한다(점프·깜빡임 방지).</summary>
