@@ -1,366 +1,332 @@
-# Plan — 폴더 바로가기(트레이 좌클릭 폴더 팝업) 기능 추가
+# Plan: 전체 다국어화(i18n) + 설정 언어 변경 기능
 
-AppGroup(`D:\Personal Project\Windows\AppGroup`)의 "시작 메뉴 폴더" 기능을 WorkGroup에 **별개 기능으로 신규 이식**한다.
-디스크 폴더 경로를 등록해 두고, 트레이 아이콘 **좌클릭** 시 등록 폴더 목록 팝업을 띄우고,
-폴더에 마우스를 올리면 그 안의 파일/하위폴더를 2차 팝업으로 보여준다. 관리 화면은 기존 "트레이 메뉴" 탭(`TrayMenuPage`)에 구현한다.
+## Goal
+앱의 모든 하드코딩된 사용자 표시 문구를 리소스(.resw)로 추출해 한국어/영어/일본어/중국어(간체) 4개 언어로 제공하고, 설정 화면에서 언어를 바꿀 수 있게 한다(기본값 "시스템 언어").
 
-## 목표
-1. **트레이 메뉴 탭(시작 화면)**: `TrayMenuPage`(현재 placeholder)를 폴더 관리 화면으로 구현 — 안내문 + 검색창 + "N개 폴더" 카운트 + 폴더 카드 목록 + 추가(+) + 설정(톱니) + 각 항목 편집(연필)/⋯(위치 열기·삭제) (이미지 1).
-2. **트레이 좌클릭 폴더 팝업**: 좌클릭 시 등록 폴더 목록 팝업(`FolderListPopupWindow`), 폴더 호버 시 그 안의 파일/하위폴더 2차 팝업(`FolderContentsPopupWindow`, 재귀 깊이 설정) (이미지 2).
-3. **팝업 설정**: 폴더 팝업 열 개수(1~5), 하위폴더 탐색 깊이(1~5), 숨김 파일/폴더 표시 여부.
+## Out of Scope
+- **개발자 전용 문구**: `ArgumentException`/`throw` 생성자 가드 메시지("그룹 디렉터리가 비어 있습니다." 등), `ILogger` 로그 메시지 — 사용자 UI 노출 안 됨, 번역 불필요.
+- **고유명사·수치**: `LicenseCatalog`의 라이브러리명/라이선스 종류명("MIT License" 등)/URL, 앱 버전 문자열.
+- 한국어 외 언어 번역의 원어민 감수(모델 번역으로 1차 제공, 추후 개선 가능).
+- 언어별 폰트/RTL 레이아웃 조정(대상 4개 언어 모두 LTR, 기존 폰트로 충분).
 
-## 범위
-- **In scope**:
-  - Domain: `Folders/FolderShortcut`, `Folders/FolderPopupSettings` 신규.
-  - Application: `Folders/IFolderShortcutRepository`, `Folders/IDirectoryBrowser`, `Folders/IShellOpener` 신규.
-  - Infrastructure: `Persistence/JsonFolderShortcutRepository`(folders.json), `Folders/DirectoryBrowser`, `Folders/ShellOpener` 신규. 폴더/파일 아이콘은 기존 `Icons/ShellIcon` 재사용.
-  - App: `Services/FolderPopupSettingsService`(LocalSettings, ThemeService 패턴), `ViewModels/FolderShortcutsViewModel`·`FolderShortcutItem`, `Views/TrayMenuPage`(개조)·`FolderEditDialog`·`FolderListPopupWindow`·`FolderContentsPopupWindow`, `Services/TrayIconService`(좌클릭 이벤트 분리), `App.xaml.cs`(트레이 동작), `ServiceConfiguration`(DI), `WorkGroupPaths`(folders.json 경로).
-  - 테스트: Domain(검증/클램프), Application/Infrastructure(저장소 라운드트립, DirectoryBrowser 숨김 필터).
-- **Out of scope**:
-  - 기존 "작업 그룹"(앱 묶음→작업표시줄 핀, `WorkGroupsPage`/`GroupPopupWindow`/`AppGroup` 도메인) 기능 — **그대로 유지, 손대지 않음**.
-  - 폴더 항목 커스텀 아이콘 선택(셸 기본 폴더 아이콘만 사용 — 이미지에도 기본 폴더 아이콘만 노출). 향후 확장.
-  - 폴더 목록 드래그 재정렬(AppGroup엔 있으나 1차 범위 제외).
-  - 다국어 리소스(.resw) — 기존 프로젝트가 코드 내 한글 문자열을 쓰므로 동일하게 한글 직접 기입.
+## Investigation Log
+- `README.md`/`AGENTS.md` 읽음 → DDD 4레이어(App→Infrastructure→Application→Domain), 빌드 `dotnet build WorkGroup.slnx`, 테스트 `dotnet test WorkGroup.slnx`, 헤드리스에서 GUI 관찰 불가.
+- `Glob src/WorkGroup.App/Strings/**` → **결과 없음**: 기존 로컬라이제이션 인프라(.resw/Strings 폴더) 전무. 모든 문구가 한국어 하드코딩.
+- `ThemeService.cs` 읽음 → 설정 영속 패턴 확인(LocalSettings "AppTheme" 키, Read/Set/Save). LanguageService의 참고 모델.
+- `App.xaml.cs` 읽음 → 진입점 `App()` 생성자에서 `ServiceConfiguration.Build()`. `OnLaunched`에서 창 생성. 언어 적용은 창 생성 이전(생성자)에 해야 함. `AppInstance` 재시작/리다이렉트 패턴 존재.
+- `ServiceConfiguration.cs` 읽음 → 모든 인프라/서비스/ViewModel DI 등록 위치 확인. 6개 인프라 서비스 생성자에 ILocalizer 주입 시 여기 갱신.
+- `WorkGroup.App.csproj` 읽음 → WinUI3/MSIX. `.resw` 자동 포함 보장 위해 `PRIResource` 명시 + 기본 언어 지정 필요.
+- `Package.appxmanifest` 읽음 → `DisplayName`/`uap:VisualElements DisplayName·Description`/`uap5:StartupTask DisplayName` 모두 "작업 관리" 하드코딩. `<Resources><Resource Language="x-generate"/></Resources>` 존재.
+- Explore 에이전트 전수조사 → App 레이어 사용자 표시 문구 약 95개(XAML 8파일 + C# 5파일). 동적 포맷 문자열 별도 식별.
+- `grep "[가-힣]" src/WorkGroup.Infrastructure` → **인벤토리 누락분 발견**: 사용자에게 반환되는 `Result.Fail` 한국어 문구가 6개 서비스에 분포(ShortcutService, AppLauncher, InstalledAppInventory, IconService, JsonGroupRepository, JsonFolderShortcutRepository). 생성자 가드 `throw`는 개발자용으로 제외.
+- `grep "[가-힣]" src/WorkGroup.Application` → 사용자 표시 `Result.Fail` 문구 **없음**(GroupAppService는 `throw`(가드)와 로그만). Application 레이어 번역 대상 0.
+- 인프라 생성자 시그니처 실측: `AppLauncher(ILogger<AppLauncher>? logger = null)`, `ShortcutService(string groupsDirectory, string aliasExePath, IShortcutWriter? writer = null, ILogger? logger = null)`, `IconService()`/`InstalledAppInventory()`/`JsonGroupRepository(dir, logger?)`/`JsonFolderShortcutRepository(path, logger?)` — **모두 선택 인자+폴백 패턴**(`ILogger? = null`, `IShortcutWriter? = null`, `NullLogger`/기본 구현). → ILocalizer도 동일하게 **선택 인자(`ILocalizer? = null`, 마지막 위치)+폴백**으로 추가하면 기존 호출부 무수정(D5).
+- **인프라 단위 테스트 존재(실측)**: `IconServiceTests`(`new IconService()` ×5), `InstalledAppInventoryTests`(`new InstalledAppInventory()` ×5), `ShortcutServiceTests`(`new ShortcutService(_dir,_alias,...)`), `JsonGroupRepositoryTests`(`new(_dir)`), `JsonFolderShortcutRepositoryTests`, `GroupAppServiceTests`, `AppLauncherTests`(`new AppLauncher()`). 선택 인자 방식이면 **컴파일 무영향**.
+- 에러 **문구 텍스트**를 단언하는 테스트는 `JsonFolderShortcutRepositoryTests` **L72/L96 두 곳뿐**(`Assert.Equal("이미 등록된 폴더입니다.", dup.Error)`, `Assert.Equal("수정할 폴더를 찾을 수 없습니다.", result.Error)`). 나머지 인프라 테스트는 `IsFailure`/`IsSuccess`만 단언(에러 텍스트 비검증) → 로컬라이즈해도 불변. `AppLauncherTests` 무수정(`new AppLauncher()` 유효).
+- `tests/WorkGroup.Application.Tests.csproj` 읽음 → TFM `net10.0-windows10.0.19041.0`, Infrastructure 참조.
+- `GroupPopupWindow.xaml` 읽음 → 우클릭 컨텍스트 MenuFlyout("열기"/"관리자 권한으로 실행"/"그룹 수정") 확인.
+- 마크업 메커니즘(D1) PoC 미수행 → T1에서 단일 속성+ToolTip에 `{loc:Localize}` 적용 후 빌드 성공을 **선행 게이트**로 검증(실패 시 x:Bind 정적 메서드 폴백).
 
-## 결정사항 (사용자 확정)
-- **Q1(B)**: 트레이 **좌클릭 = 폴더 목록 팝업**. 메인 관리 창은 **우클릭 메뉴 "열기"로만** 연다(더블클릭으로 메인 창 열기 제거).
-- **Q2(A)**: 2차 폴더 내용 팝업(호버 시 파일/하위폴더) **구현**, 관련 **설정 기능**(열 개수/하위폴더 깊이/숨김 표시) 포함.
-- **Q3**: 기존 "작업 그룹" 기능 **유지**, 본 기능은 **별개**.
-- **화면 위치**: 새 탭 추가가 아니라 **기존 "트레이 메뉴" 탭(`TrayMenuPage`)**에 폴더 관리 화면 구현. NavigationView 메뉴 항목은 현행 유지(탭 이름 "트레이 메뉴", 아이콘 List).
-
-## 핵심 재사용 인프라 (확인 완료)
-- `Infrastructure/Interop/TaskbarPopupPositioner.cs`(L35-62) + `ScreenMetricsProvider.cs` — 작업표시줄 변 판정 + 좌표 계산. 두 팝업 창에 그대로 재사용.
-- `Views/GroupPopupWindow.xaml.cs`(전체) — Mica 배경 + `SetBorderAndTitleBar(true,false)` + `IsAlwaysOnTop` + `IsShownInSwitchers=false` + 화면 밖 측정 후 표시 + `AdjustToContent`(콘텐츠 높이 측정) + `OnActivated` Deactivated 시 Close. **두 새 팝업 창의 베이스 패턴**.
-- `Services/ThemeService.cs`(L25-68) — `ApplicationData.Current.LocalSettings` 읽기/쓰기. `FolderPopupSettingsService`가 동일 패턴.
-- `Persistence/JsonGroupRepository.cs` — 원자적 쓰기는 `WriteUnlockedAsync`(L116-137, temp→`File.Move(overwrite)`), 손상 백업은 `BackupCorruptFile`(L139-151), `SemaphoreSlim` 직렬화. `JsonFolderShortcutRepository`가 동일 패턴.
-- `Icons/ShellIcon.cs` — **현재 public은 `OpenForAppAsync(AppEntry app, uint size, ...)` 단 하나**(L32)이고 경로 기반 `OpenStreamAsync(parsingName, size, ...)`는 **private**(L41). `AppIconLoader`(L19)도 `AppEntry` 전용이라 **임의 경로 아이콘 로드는 현재 불가**. → **T4에서 `public static Task<IRandomAccessStream?> OpenForPathAsync(string parsingName, uint size, CancellationToken)` 오버로드를 추가**(내부에서 기존 private `OpenStreamAsync` 그대로 호출). 폴더 경로도 `SHCreateItemFromParsingName`이 셸 폴더 아이콘을 반환하므로 파일·폴더 공통 사용 가능. App 레이어 변환은 **T5의 신규 `FolderIconLoader`**(AppIconLoader 패턴: 스트림→`BitmapImage`)가 담당.
-- `ViewModels/SettingsViewModel.cs`(L24-81) — `[ObservableProperty]` TwoWay + `_suppress` 가드 + 변경 핸들러. 설정 UI 패턴.
-- `ViewModels/WorkGroupsViewModel.cs` + `Views/WorkGroupsPage.xaml` — 목록/카운트/카드/검색 없는 버전. `FolderShortcutsViewModel`/`TrayMenuPage`가 검색 추가해 참고.
-
-## 위험
-- **트레이 동작 변경(회귀 위험)**: 현재 `TrayIconService.WindowProc`(L108-109)에서 `WM_LBUTTONUP or WM_LBUTTONDBLCLK → OpenRequested`(메인 창). 좌클릭을 폴더 팝업으로 바꾸면 **기존 "좌클릭=메인 창" 동작이 사라진다**(사용자 Q1=B로 의도된 변경). 메인 창 접근 경로가 우클릭 "열기"로만 남으므로, 우클릭 메뉴 "열기"(`CMD_OPEN → OpenRequested`)는 반드시 유지.
-- **팝업 창 생성 비용/재사용**: AppGroup은 팝업 창을 미리 1개 생성해 숨겨두고 재사용(`startMenuPopupWindow?.ShowPopup()`). WorkGroup `GroupPopupWindow`는 매 클릭 새 창 생성 후 닫힘. 좌클릭은 빈번하므로 **매번 새 창 생성 방식**을 따르되(패턴 일관성), 생성 비용이 문제되면 재사용으로 전환(Decision D-팝업수명).
-- **파일시스템 접근 예외**: 등록 폴더가 삭제/이동/권한없음일 수 있음 → `DirectoryBrowser`에서 `UnauthorizedAccessException`/`DirectoryNotFoundException` 처리 후 빈 상태/안내.
-- **DDD 레이어 경계**: 파일시스템 열거/셸 실행은 Infrastructure. UI(팝업)는 Application 인터페이스(`IDirectoryBrowser`/`IShellOpener`)만 의존. 도메인은 파일시스템 무의존.
-- **설정 저장 위치 이원화**: 폴더 목록 = `folders.json`(파일, Infrastructure). 팝업 설정 3개 = `LocalSettings`(App, ThemeService 패턴). 혼동 방지를 위해 명확히 분리.
-- **포커스 전환 닫힘 vs 2차 팝업**: 1차 팝업이 Deactivated 시 닫히는데, 2차 내용 팝업으로 포커스가 가면 1차가 닫혀버릴 수 있음 → AppGroup은 2차 팝업을 별 창으로 띄우되 1차 위에 표시. **2차 팝업 표시 중에는 1차를 닫지 않도록** 처리 필요(Decision D-팝업포커스).
-
-## DDD 레이어 배치 (확정)
-| 레이어 | 신규 요소 | 파일 |
+## Risks & Unknowns
+| 위험 | 영향 | 완화책 |
 |---|---|---|
-| Domain | `FolderShortcut`(엔티티), `FolderPopupSettings`(값 객체) | `WorkGroup.Domain/Folders/` |
-| Application | `IFolderShortcutRepository`, `IDirectoryBrowser`+`DirectoryListing`/`DirectoryEntryInfo`, `IShellOpener` | `WorkGroup.Application/Folders/` |
-| Infrastructure | `JsonFolderShortcutRepository`, `DirectoryBrowser`, `ShellOpener`, `ShellIcon`(public `OpenForPathAsync` 오버로드 추가) | `WorkGroup.Infrastructure/Persistence/`, `WorkGroup.Infrastructure/Folders/`, `WorkGroup.Infrastructure/Icons/ShellIcon.cs` |
-| App | `FolderPopupSettingsService`, `FolderIconLoader`, `FolderShortcutsViewModel`, `FolderShortcutItem`, `TrayMenuPage`(개조), `FolderEditDialog`, `FolderListPopupWindow`, `FolderContentsPopupWindow` | `WorkGroup.App/Services/`, `ViewModels/`, `Views/` |
+| WinUI3 `x:Uid`의 `PrimaryLanguageOverride` 반영 여부가 헤드리스로 검증 불가 | 언어 전환이 XAML에 미반영 가능 | **x:Uid 미사용**. 자체 `LocalizationService`(MRT Core `ResourceManager`+직접 구성한 `ResourceContext`)로 언어 한정자 명시 제어(D1). XAML 내부 컨텍스트 의존 제거. |
+| 커스텀 MarkupExtension는 런타임 평가라 누락 키가 빌드로 안 잡힘 | 일부 문구 공백(런타임), 헤드리스 검증 곤란 | (1) ko-KR 소스 언어 폴백. (2) `Common_*` 공통 키로 중복 축소. (3) **resw 4개 언어 키 패리티+빈 값 검사 단위 테스트**(T10, 순수 XML)로 누락/미번역 자동 검출. |
+| 인프라 6개 서비스 생성자에 ILocalizer 추가 | 회귀·테스트 영향 | **선택 인자(`ILocalizer? = null`)+폴백**으로 기존 컨벤션(`ILogger?`) 답습 → 기존 호출부 무수정. 텍스트 단언 테스트는 JsonFolderShortcutRepositoryTests 2곳뿐(키로 갱신). 변경 후 `dotnet build`/`test` 통과 의무. |
+| MSIX 매니페스트 `ms-resource`의 `resources.pri` 맵 경로 오류 | 시작 메뉴 표시 이름이 공백/패키지명으로 표시 | `ms-resource:///Resources/App_DisplayName` 전체 경로 형식 사용. 빌드/패키지 성공으로 1차 검증(런타임 셸 표시는 수동 배포 확인 — Verification 명시). |
+| 재시작(AppInstance.Restart)과 트레이/시작작업 경로 상호작용 | 재시작 시 예기치 않은 창 표시 | `Restart("")` 무인자=일반 실행 경로(메인 창 표시). 일반 실행과 동일 동작 → 회귀 위험 낮음. |
+| 번역 품질(en/ja/zh) | 어색한 번역 | 용어집(Glossary) 고정으로 일관성. ko는 기존 문구(소스 진실). |
 
----
+## Impact Analysis
 
-## Phase A — 데이터 + 관리 화면 (폴더 등록/관리 가능까지)
+### 4-A. 심볼/타입 추적 결과
+| 심볼/대상 | 영향 받는 파일 | 영향 종류 |
+|---|---|---|
+| (신규) `LocalizationService` | `src/WorkGroup.App/Services/LocalizationService.cs` | 신규. MRT Core 래퍼 + static `Current` 접근자, `ILocalizer` 구현 |
+| (신규) `LocalizeExtension` 마크업 | `src/WorkGroup.App/Markup/LocalizeExtension.cs` | 신규. XAML `{loc:Localize Key=...}` |
+| (신규) `LanguageService` | `src/WorkGroup.App/Services/LanguageService.cs` | 신규. 언어 영속/적용/재시작 |
+| (신규) `ILocalizer` | `src/WorkGroup.Application/Localization/ILocalizer.cs` | 신규. Application 추상화 |
+| DI 등록 | `src/WorkGroup.App/ServiceConfiguration.cs` | `LocalizationService`(+`ILocalizer`)·`LanguageService` 등록 / 6개 인프라 서비스 생성자에 `ILocalizer` 인자 추가 |
+| 앱 시작 언어 적용 | `src/WorkGroup.App/App.xaml.cs` | 생성자에서 `LanguageService.ApplyOnStartup()` 호출(창 생성 이전) |
+| `ShortcutService(groupsDir, aliasExePath, writer?, logger?)` | `src/WorkGroup.Infrastructure/Shortcuts/ShortcutService.cs`, `ServiceConfiguration.cs` | 생성자 **마지막에 `ILocalizer? = null`** 추가(기존 `writer?`/`logger?` 뒤). `Result.Fail` 3 + `.lnk` 설명 접미사 로컬라이즈 |
+| `AppLauncher(logger?)` | `src/WorkGroup.Infrastructure/Launch/AppLauncher.cs`, `ServiceConfiguration.cs` | 생성자 마지막에 `ILocalizer? = null` 추가. `Result.Fail` 3 로컬라이즈. **테스트 무수정**(`new AppLauncher()` 유효) |
+| `InstalledAppInventory()` | `src/WorkGroup.Infrastructure/Inventory/InstalledAppInventory.cs`, `ServiceConfiguration.cs` | 생성자에 `ILocalizer? = null` 추가. `AddByPath` `Result.Fail` 3 로컬라이즈. 테스트 무수정 |
+| `IconService()` | `src/WorkGroup.Infrastructure/Icons/IconService.cs`, `ServiceConfiguration.cs` | 생성자에 `ILocalizer? = null` 추가. `Result.Fail` 2 로컬라이즈. 테스트 무수정 |
+| `JsonGroupRepository(dir, logger?)` | `src/WorkGroup.Infrastructure/Persistence/JsonGroupRepository.cs`, `ServiceConfiguration.cs` | 생성자 마지막에 `ILocalizer? = null` 추가. 저장 실패 `Result.Fail` 1 로컬라이즈. 테스트 무수정 |
+| `JsonFolderShortcutRepository(path, logger?)` | `src/WorkGroup.Infrastructure/Persistence/JsonFolderShortcutRepository.cs`, `ServiceConfiguration.cs`, `tests/.../JsonFolderShortcutRepositoryTests.cs` | 생성자 마지막에 `ILocalizer? = null` 추가. `Result.Fail` 3 로컬라이즈. **테스트 L72/L96 단언을 키 기반으로 갱신** |
+| `AboutViewModel.AppName` | `src/WorkGroup.App/ViewModels/AboutViewModel.cs` | `"작업 관리"`→`LocalizationService.Current.Get("App_DisplayName")` |
+| `SettingsViewModel` | `src/WorkGroup.App/ViewModels/SettingsViewModel.cs`, `ServiceConfiguration.cs` | 생성자에 `LanguageService`+`LocalizationService` 주입(현재 `(StartupService, ThemeService)` → 확장). VM은 DI로만 생성(`App.Services.GetRequiredService`)되어 외부 직접 `new` 없음 → 안전 |
+| 기타 ViewModel(`GroupEditViewModel`/`WorkGroupsViewModel`/`FolderShortcutsViewModel`/`AboutViewModel`) | 각 `ViewModels/*.cs`, `ServiceConfiguration.cs` | 생성자에 `LocalizationService` 주입(DI 등록 transient). AboutViewModel은 현재 무인자 → 인자 추가 |
+| XAML 11개 파일 | (T4~T6 Files) | 하드코딩→`{loc:Localize}`, `xmlns:loc` 추가 |
+| C# 코드비하인드/VM | (T3/T7 Files) | 하드코딩→`LocalizationService`/`ILocalizer` 호출 |
+| 매니페스트 | `src/WorkGroup.App/Package.appxmanifest` | `ms-resource:///Resources/App_DisplayName`·`App_Description` 참조 |
+| csproj | `src/WorkGroup.App/WorkGroup.App.csproj` | `PRIResource` 포함, 기본 언어 `ko-KR` |
 
-### T1 — Domain: FolderShortcut 엔티티 + FolderPopupSettings 값 객체 (Type D)
-- **Files**:
-  - `src/WorkGroup.Domain/Folders/FolderShortcut.cs` (신규)
-  - `src/WorkGroup.Domain/Folders/FolderPopupSettings.cs` (신규)
-  - `tests/WorkGroup.Domain.Tests/FolderShortcutTests.cs` (신규)
-  - `tests/WorkGroup.Domain.Tests/FolderPopupSettingsTests.cs` (신규)
-- **변경**:
-  - `FolderShortcut`: 식별자 `int Id`, `string Name`, `string Path`. `Result<FolderShortcut> Create(int id, string name, string path)` 팩토리 — Name/Path 공백 불가 검증(`Result` 패턴, 기존 `WorkGroup.Domain/Common/Result.cs` 사용). `Rename`/`ChangePath`는 1차 범위에선 불요(편집은 새 인스턴스 생성으로 충분) — 단순 불변 record 형태로.
-  - `FolderPopupSettings`: `int ColumnCount`, `int SubfolderDepth`, `bool ShowHiddenItems`. 기본값 `Default`(ColumnCount=1, SubfolderDepth=2, ShowHiddenItems=false — AppGroup 기본값과 일치). 생성 시 ColumnCount/SubfolderDepth를 **1~5로 클램프**하는 팩토리 `Create(int columnCount, int subfolderDepth, bool showHiddenItems)`.
-- **Decision points**:
-  - 식별자: AppGroup과 동일하게 **int 단조 증가**(folders.json 키). 기존 그룹은 GUID지만 폴더는 별개 저장소이므로 int로 단순화(드래그/핀 대상 아님 → GUID 불필요).
-  - FolderShortcut는 가변 동작 없음 → record(불변). 편집은 같은 Id로 새 인스턴스 저장.
-  - 클램프 범위 1~5는 도메인 불변식(설정 UI도 1~5만 제공).
-- **Edge cases**: Name/Path 빈 문자열·공백 → `Result.Fail`. ColumnCount=0 또는 99 → 1 또는 5로 클램프. SubfolderDepth 동일.
-- **Acceptance**:
-  - `FolderShortcut.Create(1,"Module","D:\\Module").IsSuccess == true`.
-  - `Create(1,"","D:\\x").IsSuccess == false`, `Create(1,"x","  ").IsSuccess == false`.
-  - `FolderPopupSettings.Create(0,9,false)` → ColumnCount==1, SubfolderDepth==5.
-  - `FolderPopupSettings.Default` → (1,2,false).
-  - `dotnet build` + Domain 테스트 통과.
-- **Halt Forecast**: `Result`/`Result<T>` API 형태가 불명확하면 → `src/WorkGroup.Domain/Common/Result.cs`와 `AppGroup.Create`(L30-37) 사용례를 그대로 따른다.
+### 4-B. 계약·직렬화 변경
+- **인프라 6개 서비스 생성자에 `ILocalizer? = null` 선택 인자 추가**(맨 뒤). 기존 `ILogger?`/`IShortcutWriter?` 선택 인자 컨벤션과 동일 → 기존 호출부/테스트 컴파일 무영향. DI는 실제 `ILocalizer` 주입, null이면 키 폴백.
+- **ViewModel 생성자 확장**: SettingsViewModel(+LanguageService/LocalizationService), 기타 VM(+LocalizationService). 모두 DI 전용 생성 → 외부 직접 `new` 없음(코드 확인). AboutViewModel 무인자→인자 추가.
+- 신규 LocalSettings 키 `"AppLanguage"`(기존 키와 충돌 없음, 마이그레이션 불필요 — 키 없으면 "System" 폴백).
+- `Result<T>`/`Result` 형식 불변(에러 문자열 값만 로컬라이즈).
 
-### T2 — Application: 인터페이스 정의 (Type D)
-- **Files**:
-  - `src/WorkGroup.Application/Folders/IFolderShortcutRepository.cs` (신규)
-  - `src/WorkGroup.Application/Folders/IDirectoryBrowser.cs` (신규)
-  - `src/WorkGroup.Application/Folders/IShellOpener.cs` (신규)
-- **변경**:
-  - `IFolderShortcutRepository`: `Task<IReadOnlyList<FolderShortcut>> LoadAllAsync(CancellationToken)`, `Task<Result<FolderShortcut>> AddAsync(string name, string path, CancellationToken)`(다음 Id 부여+저장), `Task<Result> UpdateAsync(int id, string name, string path, CancellationToken)`, `Task<Result> DeleteAsync(int id, CancellationToken)`. (기존 `IGroupRepository` 시그니처 스타일 참고.)
-  - `IDirectoryBrowser`: `DirectoryListing Browse(string path, bool showHidden)`. `DirectoryListing`(record): `IReadOnlyList<DirectoryEntryInfo> Files`, `IReadOnlyList<DirectoryEntryInfo> Folders`, `DirectoryBrowseStatus Status`(Ok/NotFound/AccessDenied/Empty). `DirectoryEntryInfo`(record): `string Name`, `string FullPath`, `bool IsDirectory`.
-  - `IShellOpener`: `void Open(string path)` — 폴더/파일을 셸 기본 동작으로 연다.
-- **Decision points**:
-  - 폴더 열거를 Application 인터페이스로 추상화 → 팝업(App)이 파일시스템 직접 의존하지 않음(테스트 가능). 동기 메서드(폴더 한 단계 열거는 빠름, AppGroup도 동기).
-  - 중복 경로 검증은 repository `AddAsync`/`UpdateAsync` 내부(대소문자 무시) → `Result.Fail("이미 등록된 폴더입니다")`.
-- **Edge cases**: N/A(인터페이스 정의). 계약상 `Browse`는 예외를 던지지 않고 Status로 표현.
-- **Acceptance**: `dotnet build`(Application) 통과. 인터페이스만 — 구현은 T3/T4.
-- **Halt Forecast**: `Result`/`Result<T>` 네임스페이스 import 경로는 `WorkGroup.Domain.Common` 확인 후 사용.
+### 4-C. 테스트 파일
+- `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs` — L72/L96이 에러 **문구 텍스트**를 단언 → ILocalizer 키 기반 변경에 맞춰 **단언을 키(`Infra_Folder_Duplicate`/`Infra_Folder_NotFound`)로 갱신**(null 폴백이 키 반환). 또는 stub ILocalizer 주입해 텍스트 단언 유지.
+- 그 외 인프라 테스트(`IconServiceTests`/`InstalledAppInventoryTests`/`ShortcutServiceTests`/`JsonGroupRepositoryTests`/`GroupAppServiceTests`/`AppLauncherTests`) — `IsFailure`/`IsSuccess`/`ArgumentException`만 단언, 선택 인자 추가로 **무영향**(실측).
+- (신규) `tests/WorkGroup.Application.Tests/ResourceParityTests.cs` — 4개 resw 키 패리티/빈 값 검사(순수 XML, 리포지토리 루트 상대 탐색).
 
-### T3 — Infrastructure: JsonFolderShortcutRepository (folders.json) (Type D)
-- **Files**:
-  - `src/WorkGroup.Infrastructure/Persistence/JsonFolderShortcutRepository.cs` (신규)
-  - `src/WorkGroup.Infrastructure/WorkGroupPaths.cs` (수정 — folders.json 경로 추가)
-  - `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs` (신규)
-- **변경**:
-  - `WorkGroupPaths`: `public static string FoldersConfigPath => Path.Combine(RootDirectory, "folders.json");` 추가(기존 `ConfigDirectory`=RootDirectory와 동일 폴더).
-  - `JsonFolderShortcutRepository`: 생성자 `(string filePath, ILogger)`. `JsonGroupRepository` 패턴 그대로 — `SemaphoreSlim` 직렬화, 원자적 쓰기(temp→`File.Move(overwrite)`), 손상 시 `.corrupt.bak` 백업 후 빈 목록 복구. DTO: `FoldersFileDto(int SchemaVersion, List<FolderDto> Folders)`, `FolderDto(int Id, string Name, string Path)`. `LoadAllAsync`/`AddAsync`(다음 Id=Max+1, 중복 경로 검사)/`UpdateAsync`/`DeleteAsync`(멱등).
-  - DI는 T11에서 등록.
-- **Decision points**:
-  - 저장 위치: `%USERPROFILE%\WorkGroup\folders.json`(groups.json과 같은 폴더, 비가상화). 그룹과 파일 분리 → 상호 영향 없음.
-  - 스키마 버전 1 시작(향후 마이그레이션 대비).
-  - Id 부여: 최대 Id+1(삭제해도 재사용 안 함), 빈 파일이면 1.
-- **Edge cases**: 파일 없음 → 빈 목록. 손상 JSON → 백업 후 빈 목록(그룹 저장소와 동일 정책). 중복 경로 Add → Fail. 없는 Id Update/Delete → Delete는 멱등 Ok, Update는 Fail(KeyNotFound 의미).
-- **Acceptance**:
-  - Add→Load 라운드트립: 추가한 폴더가 로드됨, Id 1부터.
-  - 같은 경로 중복 Add → `Result.Fail`.
-  - Update로 이름/경로 변경 후 Load 반영.
-  - Delete 후 Load에서 제외, 없는 Id Delete는 Ok.
-  - 손상 파일 로드 시 예외 없이 빈 목록 + .corrupt.bak 생성.
-  - `dotnet test`(Application.Tests) 통과.
-- **Halt Forecast**: `JsonGroupRepository`의 정확한 원자적 쓰기/백업 코드(L116-151)를 직접 열어 동일 구조로 복제. JsonSerializer 옵션도 동일하게.
+### Verified by
+- `grep "[가-힣]" src/WorkGroup.Infrastructure` → 사용자 표시 `Result.Fail`(리터럴 7 + 보간 2) + `.lnk` 설명 접미사 1건 식별. 서비스별 분포는 4-A 표 참조(모두 반영). 가드 `throw`/로그 제외 분류.
+- `grep "[가-힣]" src/WorkGroup.Application` → 사용자 표시 문구 0건 확인.
+- `grep "new (ShortcutService|InstalledAppInventory|IconService|JsonGroupRepository|JsonFolderShortcutRepository|AppLauncher|GroupAppService)\(" tests/` → 인프라 직접 `new` 호출처 전수 식별(IconService ×5, InstalledAppInventory ×5, ShortcutService, JsonGroupRepository, AppLauncher). 모두 선택 인자 방식이라 무영향, 에러 텍스트 단언은 JsonFolderShortcutRepositoryTests 2곳뿐.
+- 인프라 생성자 시그니처 4개 파일 직접 Read로 선택 인자 패턴 확인.
 
-### T4 — Infrastructure: DirectoryBrowser + ShellOpener + ShellIcon 경로 오버로드 (Type D)
-- **Files**:
-  - `src/WorkGroup.Infrastructure/Folders/DirectoryBrowser.cs` (신규)
-  - `src/WorkGroup.Infrastructure/Folders/ShellOpener.cs` (신규)
-  - `src/WorkGroup.Infrastructure/Icons/ShellIcon.cs` (수정 — public 경로 오버로드 추가)
-  - `tests/WorkGroup.Application.Tests/DirectoryBrowserTests.cs` (신규)
-- **변경**:
-  - `DirectoryBrowser : IDirectoryBrowser`: `Browse(path, showHidden)` — `Directory.Exists` 확인(없으면 Status=NotFound). `Directory.GetFiles`/`GetDirectories` → `FileInfo`/`DirectoryInfo`로 숨김 속성 필터(`showHidden || (attr & Hidden)==0`), 이름 정렬(`OrderBy(Name)`). 파일/폴더 0개면 Status=Empty. `UnauthorizedAccessException` → Status=AccessDenied. (AppGroup `LoadFolderContents` L314-406 로직 이식, UI 비의존 순수 버전.)
-  - `ShellOpener : IShellOpener`: `Open(path)` — `Process.Start(new ProcessStartInfo{ FileName = path, UseShellExecute = true })`. 예외는 로깅 후 무시(없는 경로 등).
-  - **`ShellIcon.cs`(B1 해소)**: `public static Task<IRandomAccessStream?> OpenForPathAsync(string parsingName, uint size, CancellationToken cancellationToken = default)` 추가 — 본문은 `OpenStreamAsync(parsingName, size, cancellationToken)` 한 줄 호출(기존 private 메서드 L41 재사용, **기존 `OpenForAppAsync`/private 메서드는 무변경**). 폴더/파일 경로 모두 그대로 전달(`SHCreateItemFromParsingName`이 폴더면 셸 폴더 아이콘 반환).
-- **Decision points**:
-  - 숨김 필터/정렬을 Infrastructure에 둬 팝업 UI는 결과만 렌더.
-  - `ShellOpener`는 폴더(탐색기)·파일(기본앱) 모두 `UseShellExecute=true`로 통일.
-  - `ShellIcon`는 **public 표면만 확장**(기존 `OpenForAppAsync` 소비자 `AppIconLoader.cs:19`·`IconService.cs:100` 영향 없음 — 새 오버로드 추가일 뿐).
-- **Edge cases**: 경로 없음 → NotFound. 권한 없음 → AccessDenied. 빈 폴더 → Empty. 숨김 항목 토글. 시스템/정션 폴더 접근 예외 → AccessDenied로 흡수. `OpenForPathAsync` 빈/없는 경로 → null(기존 `OpenStreamAsync` L43·L56-60이 흡수).
-- **Acceptance**:
-  - 임시 디렉터리에 파일/폴더/숨김파일 생성 → `Browse(dir,false)`는 숨김 제외, `Browse(dir,true)`는 포함.
-  - 없는 경로 → Status==NotFound. 빈 디렉터리 → Status==Empty. 정렬: 이름 오름차순.
-  - `ShellIcon.OpenForPathAsync(<유효 폴더 경로>, 48)`가 non-null 스트림 반환(수동/통합 — COM 호출이라 단위테스트 제외 명시), 없는 경로는 null.
-  - `dotnet build` + `dotnet test`(DirectoryBrowser) 통과. ShellOpener/ShellIcon은 셸 호출이라 단위테스트 제외(수동 확인).
-- **Halt Forecast**:
-  - 숨김 속성 비트 연산은 `(f.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden` 형태(AppGroup과 동일).
-  - `OpenForPathAsync` 추가 시 기존 `OpenForAppAsync`/`OpenStreamAsync` 시그니처를 건드리면 컴파일 깨짐 → **신규 public 메서드만 추가**(L39와 L41 사이에 삽입), 기존 본문 무변경.
+## Decisions
 
-### T5 — App: FolderPopupSettingsService + FolderIconLoader (Type C)
-- **Files**:
-  - `src/WorkGroup.App/Services/FolderPopupSettingsService.cs` (신규)
-  - `src/WorkGroup.App/Services/FolderIconLoader.cs` (신규)
-- **변경**:
-  - `FolderPopupSettingsService`: `ThemeService` 패턴(L25-68) 그대로 — `ApplicationData.Current.LocalSettings.Values["FolderPopupSettings"]`에 JSON 직렬화 문자열로 저장. `FolderPopupSettings Read()`(없거나 예외 시 `FolderPopupSettings.Default`), `void Save(FolderPopupSettings)`(try/catch 흡수). 도메인 `FolderPopupSettings`를 그대로 직렬화(System.Text.Json).
-  - `FolderIconLoader`(B1 App측): `AppIconLoader`(L11-53) 패턴 — `public static async Task<ImageSource?> LoadAsync(string path, uint size = 48)`. `ShellIcon.OpenForPathAsync(path, size)`로 스트림→`BitmapImage.SetSourceAsync`. 실패/null → null(호출자 플레이스홀더). 폴더·파일 경로 공통.
-- **Decision points**:
-  - 인터페이스 없이 App 서비스로 둔다(ThemeService·StartupService·AppIconLoader와 동일 — UI 전용 정적 클래스, 테스트 대상 아님). 설정값 검증(클램프)은 도메인 `FolderPopupSettings.Create`가 담당.
-  - 키 1개에 JSON 묶음 저장(개별 키 분산 대신) → 원자적이고 단순.
-  - `FolderIconLoader`는 정적 클래스(AppIconLoader와 동일) → DI 등록 불필요.
-- **Edge cases**: 비패키지/접근 실패 → Default 반환(앱 동작 유지). 손상 JSON → Default. `FolderIconLoader` 없는/빈 경로 → null(셸 기본 폴더 아이콘 폴백은 ShellIcon이 처리, 그래도 null이면 호출자가 플레이스홀더).
-- **Acceptance**:
-  - `Read()` 후 `Save(new(3,4,true))` → 재 `Read()` 시 (3,4,true). 미저장 상태 `Read()` → Default.
-  - `FolderIconLoader.LoadAsync(<유효 폴더 경로>)`가 non-null ImageSource(수동/GUI 확인 — 셸 호출).
-  - `dotnet build` 통과.
-- **Halt Forecast**: `LocalSettings` 접근이 비패키지 디버그에서 throw하면 → ThemeService처럼 try/catch로 Default 폴백(이미 설계 반영). `FolderIconLoader`는 T4의 `ShellIcon.OpenForPathAsync`에 의존 → **T4 완료가 선행 조건**(의존 관계에 반영).
+### D1. XAML 로컬라이즈 메커니즘
+- **Options**: A) `x:Uid`+.resw(MS 표준) / B) 커스텀 `{loc:Localize}` 마크업 익스텐션 + MRT Core `ResourceManager`(자체 `ResourceContext`) / C) x:Bind 헬퍼
+- **Chosen**: B
+- **Rationale**: 언어 한정자를 우리가 명시 설정한 `ResourceContext`로 제어 → XAML 내부 컨텍스트가 `PrimaryLanguageOverride`를 반영하는지에 의존하지 않음(헤드리스 검증 불가 리스크 제거). ToolTip/Header/Description/Content 등 모든 문자열 속성에 균일 적용. 재시작 전환(D2)이라 마크업 1회 평가가 정합.
+- **Fallback (검증 실패 시)**: T1 PoC(단일 속성+ToolTip에 마크업 적용 후 빌드)에서 `Microsoft.UI.Xaml.Markup.MarkupExtension` 방식이 문제면 **x:Bind 정적 메서드 바인딩**(`Text="{x:Bind loc:L.Get('Settings_Title')}"`, 문자열 리터럴 인자)으로 전환 — 컴파일 타임 검증 가능. 둘 다 재시작 모델과 호환.
+- **Source**: 사용자 결정(재시작) + WinUI3 MRT Core 문서 API. **단, 마크업 익스텐션의 WinUI3 동작은 T1 PoC 게이트에서 빌드로 1차 확인(미검증 전제이므로 PoC 선행 의무).**
 
-### T6 — App: TrayMenuPage 폴더 관리 화면 + ViewModel + 편집 다이얼로그 (Type D)
-- **현재 구조(확인 완료, 개조 전제)**: `TrayMenuPage.xaml`은 placeholder — `<ScrollViewer Padding="{StaticResource PageContentPadding}">` > `<StackPanel MaxWidth="{StaticResource ContentMaxWidth}">` 안에 제목 헤더("트레이 메뉴" + 부제) + `InfoBar`("추후 추가 예정")만 있음(L10-22). code-behind(`TrayMenuPage.xaml.cs`)는 `InitializeComponent`만(L8-11, ViewModel/DataContext 없음). `MainShell.xaml`의 탭은 `<NavigationViewItem Content="트레이 메뉴" Tag="TrayMenu">`(L60-64), 라우팅은 `MainShell.xaml.cs`의 `"TrayMenu" => typeof(TrayMenuPage)`. **개조는 이 placeholder 본문(StackPanel 내부)을 교체**하고 탭/라우팅은 손대지 않는다.
-- **Files**:
-  - `src/WorkGroup.App/ViewModels/FolderShortcutItem.cs` (신규 — 목록 항목)
-  - `src/WorkGroup.App/ViewModels/FolderShortcutsViewModel.cs` (신규)
-  - `src/WorkGroup.App/Views/TrayMenuPage.xaml` (개조 — placeholder 본문 교체)
-  - `src/WorkGroup.App/Views/TrayMenuPage.xaml.cs` (개조 — VM 주입 + 추가/편집/삭제/위치열기 핸들러, FolderPicker)
-  - `src/WorkGroup.App/Views/FolderEditDialog.xaml` (신규 — 추가/편집 다이얼로그)
-  - `src/WorkGroup.App/Views/FolderEditDialog.xaml.cs` (신규)
-- **변경**:
-  - `FolderShortcutItem`: `int Id`, `string Name`, `string Path`, `[ObservableProperty] ImageSource? Icon`. `Task LoadIconAsync()` — **`FolderIconLoader.LoadAsync(Path)`**(T5)로 폴더 경로 아이콘 로드, null이면 플레이스홀더 유지. (`PopupAppItem.LoadIconAsync` 패턴.)
-  - `FolderShortcutsViewModel`: `ObservableCollection<FolderShortcutItem> Folders`(전체), `FilteredFolders`(검색 적용), `[ObservableProperty] string SearchText`, `string FolderCountText`(예 "3개 폴더" — **전체 개수 기준**, 검색과 무관), `bool IsEmpty`. `LoadAsync()`(repository LoadAll→Item 생성→아이콘 로드), `DeleteAsync(id)`, 검색 필터(`OnSearchTextChanged`에서 `FilteredFolders` 재구성, 대소문자 무시 Name/Path contains). (`WorkGroupsViewModel` + AppGroup `ApplyFilter` 패턴.)
-  - `TrayMenuPage.xaml`: 기존 placeholder 레이아웃(`ScrollViewer Padding=PageContentPadding` > `StackPanel MaxWidth=ContentMaxWidth`)을 **유지**하고 내부 본문만 교체. 상단 안내문("트레이 아이콘을 클릭하면 등록된 폴더가 표시됩니다."), 검색 `TextBox`(placeholder "폴더 검색...", `Text` TwoWay 바인딩), "N개 폴더" + 추가(+, `SymbolIcon Add`)·설정(톱니, `SymbolIcon Setting`) 버튼 행, 폴더 카드 `ListView`(`FilteredFolders` 바인딩, 카드별 아이콘 35~50px + 이름 + 경로 + 편집 연필 + ⋯ MenuFlyout[위치 열기/삭제]), 빈 상태 안내. **목록은 `ListView`(자체 가상 스크롤)이므로 바깥 `ScrollViewer`와 중첩되지 않게 ListView에 높이/`MaxHeight` 또는 `ItemsControl` 택1** — `WorkGroupsPage.xaml`(L11-13, Grid 행* + ListView)을 참고해 충돌 없는 구조로.
-  - `TrayMenuPage.xaml.cs`: `FolderShortcutsViewModel` 주입(`App.Services`), `Loaded`에서 `LoadAsync`. 추가(+) → `FolderEditDialog`(신규 모드) → 저장 시 `repository.AddAsync` → 재로드. 편집(연필) → `FolderEditDialog`(편집 모드, 기존 값) → `UpdateAsync`. ⋯ "위치 열기" → `IShellOpener.Open(path)`. ⋯ "삭제" → 확인 `ContentDialog` → `DeleteAsync`. 톱니 → 설정 UI(T10).
-  - `FolderEditDialog`: `ContentDialog`. 이름 `TextBox`(필수), 경로 표시 `TextBlock` + "찾아보기" 버튼(`FolderPicker` + `InitializeWithWindow`로 HWND 연결 — `App.MainWindow`). 추가 모드는 경로 선택 시 이름 비었으면 폴더명 자동 채움(AppGroup L1709-1713). 중복/빈값 검증 메시지 표시. 결과(이름/경로)를 page가 받아 repository 호출.
-- **Decision points**:
-  - 검색 필터는 ViewModel에서 `FilteredFolders` 컬렉션 재구성(WinUI는 ICollectionView 제약 → AppGroup·기존 패턴대로 별도 컬렉션).
-  - 폴더 아이콘은 셸 폴더 아이콘(커스텀 미지원).
-  - FolderPicker HWND는 `App.MainWindow`(트레이 메뉴 탭은 메인 창 안에서만 열림 → MainWindow 항상 존재).
-  - 편집은 같은 Id로 `UpdateAsync`(도메인 record 새 인스턴스).
-- **Edge cases**: 폴더 0개 → 빈 상태 + "0개 폴더". 검색 결과 0 → 빈 목록(카운트는 전체 기준 또는 검색 결과 기준 — **전체 기준 "N개 폴더" 유지**, 이미지1과 동일). 등록 폴더가 실제로 삭제됨 → 목록엔 남고 아이콘은 기본 폴더 아이콘(열기 시 ShellOpener가 실패 흡수). 이름 중복은 허용(경로만 유일).
-- **Acceptance**:
-  - 트레이 메뉴 탭에 안내문/검색/카운트/카드/추가/톱니가 이미지1처럼 표시(F5 수동).
-  - 폴더 추가(찾아보기로 경로 선택→이름 자동) 후 목록·카운트 갱신.
-  - 편집으로 이름/경로 변경 반영, ⋯ 위치 열기로 탐색기 열림, 삭제 확인 후 제거.
-  - 검색어로 목록 필터링.
-  - `dotnet build`(x64) 통과.
-- **Halt Forecast**:
-  - FolderPicker가 패키지 앱에서 HWND 미초기화로 throw → `WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd)` 필수(AppGroup L1700-1702).
-  - 공통 레이아웃 토큰(`PageContentPadding` 등) 키 이름은 `Resources/Spacing.xaml`·기존 `WorkGroupsPage.xaml` 확인 후 동일 적용.
+### D2. 언어 전환 적용 방식
+- **Chosen**: 앱 재시작(`Microsoft.Windows.AppLifecycle.AppInstance.Restart("")`).
+- **Rationale**: 헤드리스 GUI 검증 불가 환경에서 가장 확실(시작 시 언어 적용 후 전체 UI 재구성). 타이틀바/트레이/팝업 일괄 반영.
+- **Source**: 사용자 결정.
 
----
+### D3. 영속/적용
+- **Chosen**: `LanguageService` — LocalSettings `"AppLanguage"`에 선택값("System"|"ko-KR"|"en-US"|"ja-JP"|"zh-Hans") 저장. 시작 시 `ApplyOnStartup()`이 (1) `Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride`(System이면 `""`), (2) `LocalizationService`의 `ResourceContext` Language 한정자 설정.
+- **Rationale**: `ThemeService`와 동일 패턴(일관성). PrimaryLanguageOverride는 매니페스트/셸 표시(ms-resource)용, LocalizationService 컨텍스트는 인앱 문구용으로 역할 분리.
+- **Source**: 코드 확인(ThemeService.cs).
 
-## Phase B — 트레이 좌클릭 팝업 (등록 폴더 표시)
+### D4. 지원 언어
+- **Chosen**: ko-KR(기본/소스), en-US, ja-JP, zh-Hans(간체).
+- **Source**: 사용자 결정(중국어=간체).
 
-### T7 — TrayIconService 좌클릭 이벤트 분리 + App.xaml.cs 트레이 동작 변경 (Type D)
-- **Files**:
-  - `src/WorkGroup.App/Services/TrayIconService.cs` (수정)
-  - `src/WorkGroup.App/App.xaml.cs` (수정)
-- **변경**:
-  - `TrayIconService`: `public event Action? LeftClickRequested;` 추가(L42 근처). `WindowProc`(L106-112)에서 `WM_APP_TRAY` 시 **`WM_LBUTTONUP → LeftClickRequested?.Invoke()`만 트리거**하고 **`WM_LBUTTONDBLCLK`는 무시**(현재 L108의 `is WM_LBUTTONUP or WM_LBUTTONDBLCLK`에서 DBLCLK를 분리 — 더블클릭 시 팝업 깜빡임 방지). 기존 `OpenRequested` 호출을 좌클릭 분기에서 제거. 우클릭 메뉴 `CMD_OPEN → OpenRequested`(L116)는 **유지**(메인 창 진입). `ShowContextMenu`(L125-136) "열기"/"종료" 유지.
-  - `App.xaml.cs EnsureTray`(L66-83): `_tray.OpenRequested += ShowMainWindow`(유지, 우클릭 열기용). `_tray.LeftClickRequested += ShowFolderListPopup`(신규) 추가. `ExitRequested` 유지.
-  - `App.xaml.cs`: `private void ShowFolderListPopup()` 추가 — `new FolderListPopupWindow().Activate()`(T8). 좌클릭은 빈번하므로 기존 팝업이 떠 있으면 닫고 새로(또는 토글) — **기존 인스턴스 추적 필드 `_folderPopup`** 두고 열려있으면 Close 후 재생성(중복 창 방지).
-- **Decision points**:
-  - **D-팝업수명**: 매 좌클릭마다 새 `FolderListPopupWindow` 생성(GroupPopupWindow와 동일 패턴). 단, 직전 팝업이 살아있으면 닫는다(`_folderPopup?.Close()`). AppGroup식 사전생성+재사용은 도입하지 않음(WinUI 패턴 일관성·복잡도↓).
-  - **D-더블클릭(확정)**: `WM_LBUTTONUP`만 폴더 팝업 트리거, `WM_LBUTTONDBLCLK`는 무시. 더블클릭으로 메인 창 열기는 제거(Q1=B — 메인 창은 우클릭 "열기"만).
-  - 좌클릭=폴더 팝업, 메인 창은 우클릭 "열기"만(Q1=B).
-- **Edge cases**: 폴더 미등록 상태 좌클릭 → 빈 목록 팝업("등록된 폴더가 없습니다") 표시. 연속 좌클릭 → 이전 팝업 닫고 새로. 더블클릭 → 첫 LBUTTONUP로 팝업 1회만(DBLCLK 무시). 메인 창이 떠 있는 상태에서 좌클릭 → 폴더 팝업만 별도 표시(독립).
-- **Acceptance**:
-  - 트레이 좌클릭 → 폴더 목록 팝업(메인 창 안 열림).
-  - 트레이 우클릭 "열기" → 메인 창 표시(기존 유지).
-  - 트레이 우클릭 "종료" → 앱 종료(기존 유지).
-  - 빌드 0/0. (실제 클릭 동작은 F5 수동.)
-- **Halt Forecast**: `WM_LBUTTONDBLCLK`를 좌클릭과 동일 처리하면 더블클릭 시 팝업이 한 번 더 뜰 수 있음 → 직전 팝업 닫기 로직으로 흡수(중복 창 안 생김). 문제 지속 시 더블클릭은 무시(LBUTTONUP만 처리).
+### D5. Infrastructure 에러 메시지 로컬라이즈
+- **Chosen**: Application에 `ILocalizer` 인터페이스(`string Get(string key)`, `string Get(string key, params object[] args)`) 정의, App의 `LocalizationService`가 구현, 6개 인프라 서비스 생성자 **맨 뒤에 `ILocalizer? localizer = null` 선택 인자** 추가.
+- **null 폴백**: 인자 null이면 내부 `NullLocalizer`(키 문자열을 그대로 반환) 사용 — 기존 `ILogger? → NullLogger` 패턴과 동형. 프로덕션은 DI가 항상 실제 구현 주입하므로 사용자에게 키 노출 없음. 테스트(null 경로)에서는 `.Error == 키`.
+- **Rationale**: DDD 준수(Infra→Application 인터페이스 의존, 허용 방향). 선택 인자라 기존 호출부/테스트 컴파일 무영향(4-B/4-C). 에러 텍스트 단언 테스트(JsonFolderShortcutRepositoryTests 2곳)만 키로 갱신.
+- **Source**: 사용자 결정 + 코드 컨벤션 실측(ILogger?/IShortcutWriter? 선택 인자).
 
-### T8 — FolderListPopupWindow (좌클릭 폴더 목록 팝업) (Type D)
-- **Files**:
-  - `src/WorkGroup.App/Views/FolderListPopupWindow.xaml` (신규)
-  - `src/WorkGroup.App/Views/FolderListPopupWindow.xaml.cs` (신규)
-- **변경**:
-  - `GroupPopupWindow` 베이스 패턴 복제: Mica 배경, `ConfigurePresenter`(IsAlwaysOnTop, SetBorderAndTitleBar(true,false), IsShownInSwitchers=false), `ScreenMetricsProvider.Capture()`로 클릭 좌표 캡처, 화면 밖 측정 후 `RevealAtTaskbar`→`TaskbarPopupPositioner.Compute`로 작업표시줄 변 배치, `AdjustToContent` 높이 측정, `OnActivated` Deactivated 시 Close.
-  - XAML: 헤더("폴더" + 톱니 버튼 → 메인 창 트레이 메뉴 탭 열기), 폴더 목록(`ListView`/`ItemsControl`). 설정 `FolderPopupSettings.ColumnCount==1`이면 가로 레이아웃(아이콘+이름), 2~5면 그리드 레이아웃(아이콘 위/이름 아래) — **1차 구현은 세로 목록(ColumnCount는 표시 폭에 반영)**; 그리드 분기는 D-레이아웃 참조.
-  - 폴더 항목: 아이콘(셸 폴더 아이콘) + 이름. 클릭 → `IShellOpener.Open(path)` + Close. 마우스 호버(PointerEntered) → 200ms 타이머 후 `FolderContentsPopupWindow` 표시(T9).
-  - 데이터: `IFolderShortcutRepository.LoadAllAsync` + `FolderPopupSettingsService.Read()`.
-- **Decision points**:
-  - **D-레이아웃(확정)**: 세로 목록(1열) + 그리드(2~5열) 둘 다 구현. `FolderPopupSettings.ColumnCount==1`이면 세로 목록(아이콘+이름 가로 배치), 2~5면 그리드(아이콘 위/이름 아래). AppGroup `BuildFolderUI`(L504-533) 분기 이식.
-  - **D-팝업포커스(코드 수준 확정, B2 해소)**: GroupPopupWindow 베이스의 `OnActivated`는 Deactivated 시 **무조건 `Close()`**(GroupPopupWindow.xaml.cs:217)이므로, **두 새 팝업 창은 이 가드를 포함한 자체 `OnActivated`를 구현**한다(베이스 복제 + 가드 추가). 구체 메커니즘:
-    1. 1차에 `private bool _childOpen;` 필드.
-    2. 폴더 호버 타이머 Tick → 2차 팝업 **생성·`Activate()` 호출 직전에 `_childOpen = true`** set(자식 Activate가 부모 Deactivated를 유발하기 전에 플래그가 먼저 켜짐 — 동기 순서 보장).
-    3. 1차 `OnActivated`: `if (e.WindowActivationState == Deactivated) { if (_childOpen) return; Close(); }` — 자식이 떠 있으면 닫지 않음.
-    4. 2차(자식) `Closed` 이벤트 → 부모 콜백으로 `_childOpen = false`. 그 콜백에서 부모가 여전히 비활성(포그라운드 아님)이면 부모도 `Close()`(사용자가 팝업 밖을 클릭해 자식이 닫힌 경우 체인 전체 종료). 부모가 활성으로 돌아왔으면 유지(사용자가 부모로 마우스 복귀).
-    5. 1차 `Closed` 시 살아있는 자식도 `Close()`(역방향 정리).
-  - 호버 딜레이 200ms(AppGroup `HOVER_DELAY_MS`), `DispatcherTimer` one-shot.
-- **Edge cases**: 폴더 0개 → "등록된 폴더가 없습니다" 텍스트. 화면 경계 → Positioner 클램프. 호버 중 빠르게 다른 폴더로 이동 → 타이머 재시작, 직전 2차 팝업 닫고(`_childOpen` 잠깐 false→재생성 시 true) 새 폴더로. 팝업 밖 클릭 → 1차·2차 모두 닫힘.
-- **Acceptance**:
-  - 좌클릭 시 등록 폴더가 작업표시줄 근처 팝업으로 표시(이미지2 좌측). ColumnCount 설정에 따라 세로/그리드.
-  - 폴더 클릭 → 탐색기로 열림 + 팝업 닫힘. 톱니 → 메인 창 트레이 메뉴 탭 표시.
-  - 폴더 호버 200ms 후 2차 팝업 표시 시 **1차가 닫히지 않음**, 팝업 밖 클릭 시 체인 전체 닫힘.
-  - 빌드 0/0. (시각/동작 F5 수동.)
-- **Halt Forecast**:
-  - 2차 표시 시 1차가 닫히면 → `_childOpen` set이 자식 `Activate()` **이전**에 실행되는지 순서 확인(가드의 핵심). 여전히 닫히면 자식 표시를 부모가 `Activate()` 유지하도록 자식에 `IsAlwaysOnTop`만 두고 부모를 Activate 상태로 유지하는 방식 검토(단, 1차 안에서 처리).
-  - 콘텐츠 높이 측정 타이밍은 GroupPopupWindow `AdjustToContent`/`RevealAtTaskbar`(L118-205) 그대로.
+### D5b. 로컬라이즈 접근 경로(컨텍스트별)
+- **ViewModel**(DI 생성): `LocalizationService` 생성자 주입(SettingsViewModel은 +`LanguageService`). DDD-clean, 테스트 가능.
+- **코드비하인드 View / TrayIconService / 마크업 익스텐션**(DI 비대상): static `LocalizationService.Current`(App 생성자에서 DI 인스턴스로 설정). 코드비하인드는 기존에도 `App.Services.GetRequiredService` 사용 → static `Current`도 동일 인스턴스.
+- **Infrastructure**: `ILocalizer` 선택 인자(D5).
+- **Rationale**: 마크업/static-접근 불가피한 곳만 static, 나머지는 주입으로 일관. 혼용 기준 명시(리뷰 M3 해소).
+- **Source**: 코드 확인(SettingsPage.xaml.cs의 GetRequiredService 패턴).
 
-### T9 — FolderContentsPopupWindow (2차 폴더 내용 재귀 팝업) (Type D)
-- **Files**:
-  - `src/WorkGroup.App/Views/FolderContentsPopupWindow.xaml` (신규)
-  - `src/WorkGroup.App/Views/FolderContentsPopupWindow.xaml.cs` (신규)
-- **변경**:
-  - 팝업 창 베이스 패턴 동일(Mica/presenter/측정). **포커스 닫힘은 T8 D-팝업포커스 가드를 재귀 적용** — 각 `FolderContentsPopupWindow`도 `_childOpen` 필드 + 부모 콜백을 가져, 자식(더 깊은 내용 팝업)이 열리면 자신을 닫지 않고, 자식 Closed 시 자신·조상으로 종료 전파. 즉 1차(`FolderListPopupWindow`)→2차→3차…가 하나의 체인으로 함께 닫힌다. 헤더(폴더 이름), 파일 섹션 + 폴더 섹션(`ItemsControl`). `IDirectoryBrowser.Browse(path, settings.ShowHiddenItems)`로 채움. 파일/폴더 아이콘은 `FolderIconLoader.LoadAsync(path)`(T5, 내부 `ShellIcon.OpenForPathAsync`) — 파일은 파일 아이콘, 폴더는 폴더 아이콘.
-  - 파일 클릭 → `IShellOpener.Open(file)` + 전체 팝업 체인 닫기. 폴더 클릭/호버 → `_currentDepth < SubfolderDepth`면 자식 `FolderContentsPopupWindow` 재귀 표시(부모 왼쪽/오른쪽 배치, AppGroup `ShowChildFolderPopup` L777-845 이식), 최대 깊이 도달 시 클릭하면 탐색기로 열기.
-  - 위치: 부모 팝업 기준 좌측 우선, 공간 없으면 우측. 모니터 경계 클램프(상단 100px 여백).
-  - 깊이: `FolderPopupSettings.SubfolderDepth`(1~5). depth 1이면 2차 팝업 자체를 띄우지 않음(1차 폴더 클릭=탐색기 열기). depth≥2부터 내용 팝업.
-- **Decision points**:
-  - depth 처리: 1차 폴더 목록=depth 1. 그 폴더 호버 시 내용 팝업=depth 2. 설정 `SubfolderDepth`가 2 이상일 때만 내용 팝업, 그 안에서 또 폴더 호버는 depth 증가하며 `SubfolderDepth`까지.
-  - 부모-자식 팝업 체인을 리스트/참조로 관리해 한 번에 닫기.
-- **Edge cases**: 빈 폴더 → "폴더가 비어있습니다". 권한 없음 → "접근할 수 없습니다". 경로 없음(삭제됨) → "폴더를 찾을 수 없습니다". 깊은 중첩 → SubfolderDepth에서 멈춤(클릭 시 탐색기). 파일 많은 폴더 → 스크롤(최대 높이 제한, AppGroup MAX_HEIGHT).
-- **Acceptance**:
-  - 1차 팝업에서 폴더 호버 → 그 안의 파일/하위폴더가 2차 팝업으로 표시(이미지2 우측).
-  - 파일 클릭 → 실행, 폴더 재귀(설정 깊이까지), 최대 깊이 폴더 클릭 → 탐색기.
-  - 숨김 표시 설정 반영.
-  - 포커스 체인 닫힘 정상.
-  - 빌드 0/0. (F5 수동.)
-- **Halt Forecast**:
-  - 자식 팝업 위치가 부모와 겹치거나 화면 밖 → AppGroup `POPUP_OVERLAP=20`/`TOP_MARGIN=100` 상수와 클램프 로직 이식.
-  - 포커스 전환 시 체인 전체가 깜빡이며 닫히면 → 부모/자식이 같은 "팝업 그룹"으로 동작하도록 Deactivated 시 "체인 내 다른 창이 활성"인지 확인 후에만 닫기.
+### D6. 앱 표시 이름 번역값
+- **Chosen**: ko=작업 관리 / en=WorkGroup / ja=ワークグループ / zh=工作组.
+- **Source**: 사용자 결정.
 
-### T10 — 폴더 팝업 설정 UI (Type C)
-- **Files**:
-  - `src/WorkGroup.App/Views/FolderPopupSettingsDialog.xaml` (신규) + `.xaml.cs`
-  - (또는 `TrayMenuPage` 내 인라인 설정 영역 — **다이얼로그 방식으로 확정**)
-- **변경**:
-  - `ContentDialog`: 열 개수 `ComboBox`(1~5), 하위폴더 깊이 `ComboBox`(1~5), 숨김 파일/폴더 표시 `ToggleSwitch`. `FolderPopupSettingsService.Read()`로 초기화, 저장 시 `FolderPopupSettings.Create(...)`로 클램프 후 `Save`.
-  - `TrayMenuPage`의 톱니 버튼(T6) → 이 다이얼로그 표시. `FolderListPopupWindow` 헤더 톱니(T8)는 메인 창 트레이 메뉴 탭으로 이동(설정은 거기서).
-- **Decision points**:
-  - 설정은 다이얼로그(AppGroup `StartMenuSettingsDialog`와 동일). `SettingsViewModel`의 `_suppress` 가드 패턴은 불요(다이얼로그는 열 때 1회 로드→저장 버튼). 단순 code-behind.
-  - 값 검증/클램프는 도메인 `FolderPopupSettings.Create`.
-- **Edge cases**: ComboBox 인덱스↔값(1~5) 매핑 주의(SelectedIndex 0=값1). 저장 후 다음 팝업부터 반영(이미 열린 팝업엔 영향 없음).
-- **Acceptance**:
-  - 톱니 → 설정 다이얼로그, 3개 항목 표시·현재값 로드.
-  - 변경·저장 후 `FolderPopupSettingsService.Read()` 반영, 다음 좌클릭 팝업에 적용.
-  - 빌드 0/0.
-- **Halt Forecast**: ComboBox `SelectedIndex` 오프바이원 → 값 = index+1로 명시 변환.
+### D7. 매니페스트 다국어화
+- **Chosen**: `DisplayName`/`VisualElements DisplayName`·`Description`/`StartupTask DisplayName`을 `ms-resource:///Resources/App_DisplayName`·`App_Description`로. 키는 4개 resw에 정의.
+- **Source**: 사용자 결정.
 
-### T11 — ServiceConfiguration DI 등록 + 통합 (Type C)
-- **Files**:
-  - `src/WorkGroup.App/ServiceConfiguration.cs` (수정)
-- **변경**(L26-66 사이에 추가):
-  - `services.AddSingleton<IFolderShortcutRepository>(sp => new JsonFolderShortcutRepository(WorkGroupPaths.FoldersConfigPath, sp.GetRequiredService<ILogger<JsonFolderShortcutRepository>>()));`
-  - `services.AddSingleton<IDirectoryBrowser, DirectoryBrowser>();`
-  - `services.AddSingleton<IShellOpener, ShellOpener>();`
-  - `services.AddSingleton<Services.FolderPopupSettingsService>();`
-  - `services.AddTransient<ViewModels.FolderShortcutsViewModel>();`
-  - using 추가(`WorkGroup.Application.Folders`, `WorkGroup.Infrastructure.Folders`).
-- **Decision points**: 저장소/브라우저/오프너/설정서비스 Singleton(상태 적고 공유 안전), ViewModel Transient(기존 VM과 동일).
-- **Edge cases**: N/A.
-- **Acceptance**: 앱 시작 시 DI 해석 성공(트레이 메뉴 탭 진입·좌클릭 팝업 동작). `dotnet build`(x64) + 전체 `dotnet test` 통과.
-- **Halt Forecast**: 인터페이스/구현 네임스페이스 불일치 시 using 확인. 순환 의존 없음(단방향).
+### D8. 리소스 키 네이밍
+- **Chosen**: `Screen_Element` PascalCase+underscore. 예: `Settings_Title`, `WorkGroups_AddTooltip`, `App_DisplayName`, `Infra_Folder_Duplicate`. 공통 반복 문구(확인/취소/삭제/저장)는 `Common_*`로 단일화.
+- **Rationale**: 마크업 익스텐션 키는 자유 문자열. 화면 prefix로 가독성·충돌 방지, Common으로 중복 축소(YAGNI — 3회+ 반복만 공통).
+- **Source**: 코드 컨벤션.
 
-### T12 — 문서 갱신 (Type A)
-- **Files**: `README.md`, `notes.md`
-- **변경**:
-  - `README.md`: 핵심 기능에 "폴더 바로가기(트레이 좌클릭 폴더 팝업)" 섹션 추가 — 트레이 메뉴 탭 폴더 관리, 좌클릭 폴더 목록/2차 내용 팝업, 설정(열 개수/깊이/숨김). 트레이 동작 변경(좌클릭=폴더 팝업, 메인 창=우클릭 "열기") 반영.
-  - `notes.md`: `## 최근 변경` 최상단에 본 작업 내역 추가. 1개월 경과 항목 정리.
-- **Acceptance**: 문서가 현재 기능과 일치, 존재하지 않는 기능 미기재.
+### D9. 동적/포맷 문자열
+- **Chosen**: resw 값에 `{0}` 자리표시자 포함, C#에서 `string.Format(loc.Get(key), args)`. 예: `WorkGroups_DeleteConfirm`="'{0}' 그룹을 삭제할까요? 작업 표시줄 핀(.lnk)도 제거됩니다.".
+- **Source**: 표준 .NET 패턴.
 
-## 의존 관계
-- T1 → T2 → T3 → T4 (도메인 → 인터페이스 → 저장소 → 브라우저/ShellIcon 오버로드)
-- T1·T4 → T5 (FolderPopupSettingsService는 도메인 값객체, FolderIconLoader는 T4의 `ShellIcon.OpenForPathAsync` 의존)
-- T1~T5 → T6 (관리 화면은 저장소/설정/아이콘로더/도메인 필요)
-- T6 → T7 (트레이 동작; 팝업은 등록된 폴더 표시)
-- T7 → T8 → T9 (트레이 좌클릭 → 1차 팝업 → 2차 팝업)
-- T5 → T8/T9/T10 (설정값 사용/편집)
-- T1~T10 → T11 (DI 통합) → T12 (문서)
-- **Phase A(T1~T6)**: 폴더 등록/관리 가능. **Phase B(T7~T11)**: 좌클릭 팝업 표시. T12 문서.
+### D10. 언어 선택 ComboBox 표시
+- **Chosen**: "시스템 언어" 항목만 로컬라이즈(`Settings_Language_System`), 나머지 4개는 고정 endonym("한국어"/"English"/"日本語"/"中文(简体)").
+- **Rationale**: 언어명은 자기 언어 표기가 국제 관례.
+- **Source**: i18n 관례.
 
-## 검증 방법
-- 각 task: `dotnet build WorkGroup.slnx`(경고/에러 0). UI task는 `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64`.
-- 도메인/저장소/브라우저: `dotnet test WorkGroup.slnx`(Domain.Tests, Application.Tests).
-- 트레이 좌/우클릭 동작, 팝업 표시/위치/호버/2차 팝업, 관리 화면 추가·편집·삭제·검색, 설정 반영 → **F5 MSIX GUI 수동 검증**(헤드리스 불가 항목 명시).
+### D11. 검증용 키 패리티 테스트
+- **Chosen**: `Application.Tests`(net10.0-windows)에 순수 XML 파싱 테스트 — 4개 resw 키 집합 동일성 + 값 비어있지 않음 검사. resw 경로는 실행 디렉터리에서 상위로 올라가 `src/WorkGroup.App/Strings` 탐색.
+- **Rationale**: 마크업 런타임 평가의 누락/미번역을 헤드리스 자동 검출.
+- **Source**: Risks 완화.
 
-## 문서 갱신 (구현 완료 시)
-- T12에서 `README.md`/`notes.md` 갱신.
+## Tasks
 
-## 진행 체크리스트
-- [x] T1 Domain: FolderShortcut + FolderPopupSettings
-- [x] T2 Application: 인터페이스(Repository/DirectoryBrowser/ShellOpener)
-- [x] T3 Infrastructure: JsonFolderShortcutRepository + 경로
-- [x] T4 Infrastructure: DirectoryBrowser + ShellOpener
-- [x] T5 App: FolderPopupSettingsService + FolderIconLoader
-- [x] T6 App: TrayMenuPage 관리 화면 + VM + FolderEditDialog
-- [x] T7 TrayIconService 좌클릭 분리 + App.xaml.cs
-- [x] T8 FolderListPopupWindow
-- [x] T9 FolderContentsPopupWindow
-- [x] T10 폴더 팝업 설정 UI
-- [x] T11 ServiceConfiguration DI 통합
-- [x] T12 문서 갱신
+- [ ] T1. 리소스 인프라 골격 + 마크업 PoC 게이트(LocalizationService + 마크업 + ILocalizer + resw 4개 + csproj)
+  - **Type**: D
+  - **Acceptance**: `dotnet build WorkGroup.slnx` 성공. **PoC 게이트**: SettingsPage 등 1개 요소의 `Text`와 1개 `ToolTipService.ToolTip`에 `{loc:Localize Key=...}` 적용 후 빌드 그린(마크업 익스텐션이 XAML 컴파일러에 인식됨 확인). 빌드 실패 시 D1 Fallback(x:Bind 정적 메서드)으로 전환. `LocalizationService.Current.Get("App_DisplayName")`가 기본 언어 값 반환. 4개 resw가 `App_DisplayName`/`App_Description`/`Settings_Language_*` + PoC 키 포함.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Services/LocalizationService.cs`(신규, `ILocalizer` 구현 + static `Current`), `src/WorkGroup.App/Markup/LocalizeExtension.cs`(신규)
+    - 주: `src/WorkGroup.Application/Localization/ILocalizer.cs`(신규), `src/WorkGroup.Application/Localization/NullLocalizer.cs`(신규, 키 반환 폴백)
+    - 주: `src/WorkGroup.App/Strings/ko-KR/Resources.resw`·`en-US/`·`ja-JP/`·`zh-Hans/Resources.resw`(신규 4개)
+    - 동반: `src/WorkGroup.App/WorkGroup.App.csproj`(PRIResource include, `<DefaultLanguage>ko-KR</DefaultLanguage>`), `src/WorkGroup.App/ServiceConfiguration.cs`(LocalizationService를 자신+`ILocalizer`로 등록), `src/WorkGroup.App/App.xaml.cs`(생성자에서 `LocalizationService.Current` 설정)
+  - **Edge Cases**:
+    - 키 없음/조회 실패 → `Get`은 키 문자열 자체 반환(크래시 금지). 빈/null 키 → 빈 문자열.
+    - 비패키지 실행으로 ResourceManager 초기화 실패 → try/catch로 키 자체 반환(폴백).
+  - **Halt Forecast**:
+    - "마크업 익스텐션이 WinUI3에서 동작?" → **PoC 게이트(Acceptance)**가 빌드로 1차 판정, 실패 시 x:Bind 폴백(D1).
+    - "MRT Core API 시그니처?" → `Microsoft.Windows.ApplicationModel.Resources.ResourceManager` + `MainResourceMap.TryGetValue`/`GetValue(key, context)`; 실패 시 `ResourceLoader` 기본 맵 폴백(D1).
+    - ".resw 자동 포함?" → csproj `PRIResource` 명시(Files).
+  - **Depends on**: -
 
-## 자율 실행 준비도 자문
-- 다른 사람이 추가 질문 없이 끝낼 수 있는가? → 예(레이어/파일/시그니처/엣지/Halt 명시, 재사용 인프라 파일·라인 인용).
-- 구현 중 결정 분기가 남아있는가? → 아니오(팝업 수명/포커스/레이아웃/설정 저장 위치 모두 확정).
-- 검증 가능한 acceptance가 각 task에 있는가? → 예.
+- [ ] T2. LanguageService(영속/적용/재시작) + 앱 시작 시 언어 적용
+  - **Type**: D
+  - **Acceptance**: 빌드 성공. 저장값↔태그 매핑("System"→`""`, 기타→BCP-47) 코드 검토 확인. App 생성자에서 창 생성 이전에 `ApplyOnStartup()` 호출.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Services/LanguageService.cs`(신규)
+    - 동반: `src/WorkGroup.App/App.xaml.cs`(생성자 적용), `src/WorkGroup.App/ServiceConfiguration.cs`(등록)
+  - **Edge Cases**:
+    - LocalSettings 접근 실패(비패키지) → "System" 폴백, 예외 삼킴(ThemeService 패턴).
+    - 저장된 태그가 미지원 값 → "System" 정규화.
+    - 재시작 호출 실패(비패키지) → 예외 삼키고 저장만(다음 실행 반영).
+  - **Halt Forecast**:
+    - "재시작 API?" → `AppInstance.Restart("")`(D2).
+    - "적용 시점?" → App 생성자, `Build()` 직후·`OnLaunched` 이전(Investigation).
+  - **Depends on**: T1
 
-## Next Steps
-- 권장 다음 액션: **F5(Visual Studio MSIX 배포)로 GUI 수동 검증** 후 사용자 승인 시 머지/PR. 헤드리스 불가 항목이라 자동 검증 완료(빌드 0/0, 테스트 106/106) 뒤 남은 단계는 수동.
-- GUI 수동 검증 체크리스트:
-  1. 트레이 **좌클릭** → 등록 폴더 목록 팝업(작업 표시줄 변), **더블클릭 시 팝업 1회만**(깜빡임 없음).
-  2. 트레이 **우클릭 메뉴 "열기"** → 메인 창, "종료" → 앱 종료.
-  3. "트레이 메뉴" 탭: 폴더 추가(찾아보기)/검색/수정/위치 열기/삭제, "N개 폴더" 카운트.
-  4. 폴더 호버 → 2차 내용 팝업(파일/하위폴더), 파일 클릭 실행, 하위 폴더 재귀(설정 깊이), **팝업 밖 클릭 시 체인 즉시 전체 닫힘**(m1).
-  5. 톱니 → 설정 다이얼로그(열/깊이/숨김) 저장 후 다음 좌클릭 팝업 반영. 톱니(팝업 헤더) → 메인 트레이 메뉴 탭.
-- Suggested skills: 공식 /code-review(머지 전 diff 리뷰), 공식 /security-review(해당 시).
+- [ ] T3. 설정 화면 언어 변경 UI + ViewModel 전환 로직
+  - **Type**: C
+  - **Acceptance**: 빌드 성공. 설정 페이지에 "언어" `SettingsCard`+ComboBox(시스템 언어/한국어/English/日本語/中文(简体)) 추가. 항목 선택 시 확인 다이얼로그 후 저장+재시작 경로 호출(코드 검토). 진입 시 현재 선택값 로드.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/SettingsPage.xaml`, `src/WorkGroup.App/ViewModels/SettingsViewModel.cs`(생성자에 `LanguageService`+`LocalizationService` 주입)
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`(언어 카드 키), `src/WorkGroup.App/Views/SettingsPage.xaml.cs`(필요 시 다이얼로그 호스팅), `src/WorkGroup.App/ServiceConfiguration.cs`(SettingsViewModel 등록은 기존 transient 유지 — DI가 신규 의존성 자동 해석)
+  - **Edge Cases**:
+    - 초기 로드 중 SelectedIndex 오발동 → 기존 `_suppress` 패턴 재사용(SettingsViewModel M3).
+    - 현재값과 동일 언어 재선택 → 재시작 생략.
+    - 재시작 확인 취소 → 선택을 이전 값으로 되돌림(`_suppress` 가드로 핸들러 재진입 차단).
+  - **Halt Forecast**:
+    - "재시작 확인 UX?" → ContentDialog "변경하려면 앱을 다시 시작합니다" 확인/취소(Edge Cases).
+    - "테마/자동시작 핸들러 간섭?" → 동일 `_suppress` 게이트 공유.
+  - **Depends on**: T2
 
-## Follow-ups (plan-completion-reviewer MINOR)
-- m1: 2차+ 팝업 체인 종료 시 드문 깜빡임 여지(WinUI Activated 순서 의존) — GUI 수동 검증으로 확인. 문제 시 자식 Closed에서 부모 재-Activate 보정 검토.
-- m2: 트레이 아이콘 파일 로드(LoadTrayIcon) 변경은 이전 세션 잔재 — notes 2026-06-03 "트레이 아이콘 AppIcon.ico 적용" 항목에 이미 기록됨(추가 조치 불필요).
-- m3(선택): FolderEditDialog 편집 모드 "이름만 변경" 저장소 단위 테스트 추가.
+- [ ] T4. XAML 로컬라이즈 배치 A — MainShell / SettingsPage(잔여) / AboutPage
+  - **Type**: C
+  - **Acceptance**: 빌드 성공. 세 파일 하드코딩 표시 문구 모두 `{loc:Localize Key=...}` 치환, `xmlns:loc` 선언. 키 4개 resw 존재(T10 검증).
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/MainShell.xaml`(앱 타이틀/네비 4), `Views/SettingsPage.xaml`(헤더/섹션/카드/토글/테마 ComboBoxItem), `Views/AboutPage.xaml`(헤더/섹션)
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`
+  - **Edge Cases**:
+    - 테마 ComboBox `<x:String>`→`<ComboBoxItem Content="{loc:Localize ...}"/>` 변환 시 `SelectedIndex` 바인딩 유지(인덱스 순서 불변).
+  - **Halt Forecast**:
+    - "ComboBoxItem 변환이 SelectedIndex 깨뜨림?" → 항목 순서/개수 보존으로 인덱스 동일.
+  - **Depends on**: T1
+
+- [ ] T5. XAML 배치 B — WorkGroupsPage / TrayMenuPage / GroupEditDialog
+  - **Type**: C
+  - **Acceptance**: 빌드 성공. 세 파일 표시 문구(헤더/부제/플레이스홀더/툴팁/빈상태/버튼/레이블/InfoBar/MenuFlyout) 전부 `{loc:Localize}` 치환. 키 4개 언어 존재.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/WorkGroupsPage.xaml`, `Views/TrayMenuPage.xaml`, `Views/GroupEditDialog.xaml`
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`
+  - **Edge Cases**:
+    - ToolTipService.ToolTip에 마크업 직접 적용 가능 여부 → D1 균일 처리(불가 시 `<ToolTip Content="{loc:Localize ...}"/>` 중첩 폴백, 1차는 직접 시도).
+  - **Halt Forecast**:
+    - "GroupEditDialog Title 동적(추가/수정)" → C#은 T7 처리(여기선 XAML만).
+  - **Depends on**: T1
+
+- [ ] T6. XAML 배치 C — FolderEditDialog / FolderPopupSettingsDialog / FolderListPopupWindow / GroupPopupWindow
+  - **Type**: C
+  - **Acceptance**: 빌드 성공. 네 파일 표시 문구(레이블/버튼/플레이스홀더/툴팁/헤더/열·깊이 ComboBoxItem/컨텍스트 MenuFlyout 3항목) 전부 치환. 키 4개 언어 존재.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Views/FolderEditDialog.xaml`, `Views/FolderPopupSettingsDialog.xaml`, `Views/FolderListPopupWindow.xaml`, `Views/GroupPopupWindow.xaml`
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`
+  - **Edge Cases**:
+    - 열 개수/깊이 ComboBoxItem(`1열`~`5열`, `1단계`~`5단계`) → resw 5개씩 개별 키. 인덱스 바인딩 보존.
+  - **Halt Forecast**:
+    - "FolderEditDialog/GroupPopup Title 동적 텍스트" → C# T7 처리(XAML 기본값만 키화).
+  - **Depends on**: T1
+
+- [ ] T7. C# 문자열 로컬라이즈 — App 레이어 ViewModel/코드비하인드/TrayIconService
+  - **Type**: C
+  - **Acceptance**: 빌드 성공. 아래 파일 사용자 표시 문구(상태/검증/다이얼로그 제목·본문·버튼/트레이 메뉴·툴팁/동적 포맷)가 `LocalizationService`/`ILocalizer` 호출로 치환. 동적 포맷은 `string.Format`+자리표시자 키.
+  - **Files**:
+    - 주: `src/WorkGroup.App/ViewModels/GroupEditViewModel.cs`, `ViewModels/WorkGroupsViewModel.cs`, `ViewModels/FolderShortcutsViewModel.cs`, `ViewModels/AboutViewModel.cs`(AppName)
+    - 주: `src/WorkGroup.App/Views/WorkGroupsPage.xaml.cs`, `Views/TrayMenuPage.xaml.cs`, `Views/FolderEditDialog.xaml.cs`, `Views/FolderListPopupWindow.xaml.cs`, `Views/FolderContentsPopupWindow.xaml.cs`, `Views/GroupPopupWindow.xaml.cs`
+    - 주: `src/WorkGroup.App/Services/TrayIconService.cs`(트레이 "열기"/"종료" + 툴팁 "작업 관리")
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`
+  - **Edge Cases**:
+    - 동적 메시지 `{ex.Message}`(예: "불러오기 실패: {0}") → 자리표시자 1개 포맷.
+    - `GroupPopupWindow` "{group.Name} (멤버 없음)" → 포맷 키.
+    - 접근 경로(D5b): **ViewModel은 `LocalizationService` 생성자 주입**(ServiceConfiguration의 transient 등록은 DI가 신규 의존성 자동 해석), **코드비하인드 View/TrayIconService는 static `LocalizationService.Current`**(DI 비대상). AboutViewModel은 무인자→주입 인자 추가.
+  - **Halt Forecast**:
+    - "VM 의존성 주입 vs static?" → D5b 확정: VM 주입, 코드비하인드/Tray static.
+    - "TrayIconService(Win32, `new`로 생성) 접근?" → `LocalizationService.Current.Get`(static, App 생성자에서 설정 완료).
+  - **Depends on**: T1, T2
+
+- [ ] T8. Infrastructure ILocalizer 주입 + 에러 메시지 로컬라이즈
+  - **Type**: D
+  - **Acceptance**: 빌드 성공. `dotnet test WorkGroup.slnx` 통과. 6개 서비스 생성자 **맨 뒤에 `ILocalizer? = null` 선택 인자** 추가(null→`NullLocalizer`), 사용자 표시 `Result.Fail`/`.lnk` 설명이 키 기반 치환. `ServiceConfiguration`이 등록 시 ILocalizer 전달(또는 DI 자동 해석). `JsonFolderShortcutRepositoryTests` L72/L96 단언이 키 기반으로 갱신되어 통과.
+  - **Files**:
+    - 주: `src/WorkGroup.Infrastructure/Shortcuts/ShortcutService.cs`(Fail 3 + `.lnk` 설명 접미사 "작업 관리"), `Launch/AppLauncher.cs`(Fail 3), `Inventory/InstalledAppInventory.cs`(Fail 3), `Icons/IconService.cs`(Fail 2), `Persistence/JsonGroupRepository.cs`(Fail 1), `Persistence/JsonFolderShortcutRepository.cs`(Fail 3)
+    - 동반: `src/WorkGroup.App/ServiceConfiguration.cs`(6개 등록에 ILocalizer 전달), `src/WorkGroup.App/Strings/*/Resources.resw`(Infra 키)
+    - 테스트: `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs`(L72/L96 단언 → `Infra_Folder_Duplicate`/`Infra_Folder_NotFound` 키로 갱신). 그 외 인프라 테스트 무수정(선택 인자).
+  - **Edge Cases**:
+    - `ILocalizer` null → `NullLocalizer`(키 반환). DI 경로는 항상 실제 주입.
+    - `LaunchAsAdmin`/IconService/InstalledAppInventory/ShortcutService 테스트는 `IsFailure`/`IsSuccess`/`ArgumentException`만 단언 → 키화해도 통과(실측, 4-C).
+    - 생성자 가드 `throw`(개발자용)는 **변경 안 함**(Out of Scope).
+  - **Halt Forecast**:
+    - "인프라 직접 `new` 사용처?" → 착수 시 전수 grep 재확인(4-C에 식별 완료: 모두 선택 인자라 무영향, 텍스트 단언은 JsonFolderShortcutRepositoryTests 2곳).
+    - "DI 등록 방식?" → type-based 등록(`AddSingleton<IAppInventory, InstalledAppInventory>`)은 ILocalizer를 DI가 자동 해석; factory 등록(repos/ShortcutService)은 `sp.GetRequiredService<ILocalizer>()` 명시 전달.
+  - **Depends on**: T1
+
+- [ ] T9. 매니페스트 ms-resource 다국어화
+  - **Type**: D
+  - **Acceptance**: `dotnet build WorkGroup.slnx` 및 패키지 빌드 성공(resources.pri 생성). `DisplayName`/`VisualElements DisplayName`·`Description`/`StartupTask DisplayName`이 `ms-resource:///Resources/App_DisplayName`·`App_Description` 치환. 키 4개 언어 존재.
+  - **Files**:
+    - 주: `src/WorkGroup.App/Package.appxmanifest`
+    - 동반: `src/WorkGroup.App/Strings/*/Resources.resw`(App_DisplayName/App_Description 값 확정 — T1 시드)
+  - **Edge Cases**:
+    - ms-resource 맵 경로 오류 시 셸이 패키지명 표시 → 전체 경로 `ms-resource:///Resources/...` 사용(Risks).
+    - 비패키지 실행에는 매니페스트 무관.
+  - **Halt Forecast**:
+    - "런타임 셸 표시 검증?" → 헤드리스 불가. 빌드/패키지 성공으로 1차 검증, 수동 배포 확인은 Verification 명시.
+  - **Depends on**: T1
+
+- [ ] T10. resw 키 패리티/빈 값 검증 테스트
+  - **Type**: C
+  - **Acceptance**: `dotnet test WorkGroup.slnx` 통과. 4개 resw 키 집합 동일·모든 값 비어있지 않음 단언. 누락/미번역 시 실패로 검출.
+  - **Files**:
+    - 주: `tests/WorkGroup.Application.Tests/ResourceParityTests.cs`(신규)
+  - **Edge Cases**:
+    - resw 경로 탐색 실패 → AppContext.BaseDirectory에서 상위로 올라가며 `src/WorkGroup.App/Strings` 탐색, 못 찾으면 명확한 실패 메시지.
+    - resw XML `<data name><value>` 구조 파싱(주석/메타 무시).
+  - **Halt Forecast**:
+    - "테스트 실행 시 resw 위치?" → 리포지토리 루트 상대 탐색(Edge Cases).
+  - **Depends on**: T4, T5, T6, T7, T8, T9
+
+- [ ] T11. 문서 갱신(README/notes)
+  - **Type**: A
+  - **Acceptance**: README에 다국어 지원(4개 언어)·설정 "언어" 항목(기본 시스템 언어, 변경 시 재시작) 반영. notes.md 최상단 변경 항목 추가, 1개월 초과 항목 정리.
+  - **Files**:
+    - 주: `README.md`, `notes.md`
+  - **Depends on**: T1~T10
+
+## Glossary (번역 일관성 — 핵심 용어)
+| 한국어 | English | 日本語 | 中文(简体) |
+|---|---|---|---|
+| 작업 그룹 | Work Group | ワークグループ | 工作组 |
+| 그룹 | Group | グループ | 组 |
+| 폴더 | Folder | フォルダー | 文件夹 |
+| 앱 | App | アプリ | 应用 |
+| 작업 표시줄 | taskbar | タスクバー | 任务栏 |
+| 트레이 | tray | トレイ | 托盘 |
+| 핀(고정) | pin | ピン留め | 固定 |
+| 설정 | Settings | 設定 | 设置 |
+| 정보 | About | バージョン情報 | 关于 |
+| 테마 | Theme | テーマ | 主题 |
+| 추가/수정/삭제/저장/확인/취소 | Add/Edit/Delete/Save/OK/Cancel | 追加/編集/削除/保存/OK/キャンセル | 添加/编辑/删除/保存/确定/取消 |
+| 시스템 언어 | System language | システム言語 | 系统语言 |
+| 관리자 권한으로 실행 | Run as administrator | 管理者として実行 | 以管理员身份运行 |
+- 톤: 한국어 존댓말("~합니다") 기준에 맞춰 각 언어 정중체. ko 값은 기존 문구 그대로(소스 진실).
+
+## 분할 권고 (task 11개 — 8개 초과)
+이 plan은 11개 task로 큼. i18n은 응집적(부분 추출 시 혼재 상태)이라 단일 plan 진행을 권장하되, 컨텍스트 누적 대비:
+- **권장 A) 단일 plan 진행** + implement-task가 2 task마다 Progress Log 갱신(후반 품질 보존).
+- **B) 2개로 분할**: Plan-1(T1~T6: 인프라+XAML), Plan-2(T7~T11: C#+Infra+매니페스트+테스트+문서). T1(인프라)이 모든 후속의 선행이라 경계가 깨끗함.
+- 사용자가 승인 시 A/B 택일. 미지정 시 A로 진행.
+
+## Verification Strategy
+- 빌드: `dotnet build WorkGroup.slnx` — 경고/에러 0 목표(마크업 익스텐션/생성자 변경 컴파일 검증).
+- 단위 테스트: `dotnet test WorkGroup.slnx` — 기존 + `AppLauncherTests`(갱신) + `ResourceParityTests`(신규) 통과.
+- resw 키 패리티: T10이 4개 언어 키 동일성·빈 값 자동 검출.
+- 수동 검증(헤드리스 불가, 사용자/VS): (1) 설정 언어 변경→재시작 후 UI 언어 반영, (2) "시스템 언어"→OS 언어 따름, (3) 시작 메뉴/매니페스트 표시 이름 언어 반영(MSIX 배포 후).
 
 ## Progress Log
-- T1-T2 완료: Domain(FolderShortcut/FolderPopupSettings) + Application 인터페이스(IFolderShortcutRepository/IDirectoryBrowser/IShellOpener). 빌드 OK, Domain 테스트 23/23. 신규 파일만(호출자 0).
-- T3-T4 완료: JsonFolderShortcutRepository(folders.json, 원자적 쓰기/백업) + WorkGroupPaths.FoldersConfigPath + DirectoryBrowser + ShellOpener + ShellIcon.OpenForPathAsync(경로 오버로드, 기존 OpenForAppAsync 무변경). 솔루션 빌드 0/0, Application 테스트 83/83. ShellIcon 기존 소비자 영향 0(빌드 확인).
-- T5-T6 완료: FolderPopupSettingsService(LocalSettings) + FolderIconLoader + FolderShortcutsViewModel/Item + TrayMenuPage(폴더 관리 화면) + FolderEditDialog. App 빌드 x64 OK. OnSettingsClick은 T10 stub.
-- T7 완료: TrayIconService LeftClickRequested 이벤트 분리(좌클릭=폴더팝업, DBLCLK 무시) + App.xaml.cs ShowFolderListPopup(T8 stub) 연결. OpenRequested는 우클릭 "열기"만 유지. 빌드 OK, caller 전수 확인.
-- T8-T9 완료(함께 구현 — B2 포커스 가드 양방향 의존): FolderListPopupWindow(1차 폴더 목록, 세로/그리드 분기, 톱니→트레이메뉴 탭) + FolderContentsPopupWindow(2차 파일/하위폴더, 재귀 depth) + App.ShowFolderListPopup 본문/ShowTrayMenuFromPopup + MainShell.SelectTrayMenu + ChildPopupAnchor/CloseChainRequested. B2 가드: 자식 Activate 직전 _childOpen=true, OnActivated _isActive 추적+가드, 자식 Closed 콜백, OnClosed 체인 정리. 전체 빌드 0/0, 테스트 106/106. (팝업 실제 표시/위치/호버/포커스는 F5 GUI 수동.)
-- T10-T11 완료: FolderPopupSettingsDialog(열/깊이/숨김, Create 클램프) + TrayMenuPage 톱니 연결 + ServiceConfiguration DI 등록(IFolderShortcutRepository/IDirectoryBrowser/IShellOpener/FolderPopupSettingsService/FolderShortcutsViewModel). 전체 빌드 0/0, 테스트 106/106. (DI 런타임 해석·설정 반영은 F5 GUI 수동.)
+<!-- implement-task가 2 task마다 갱신 -->
+
+## Next Steps
+<!-- 세션 종료/체크포인트 시 갱신 -->
+
+## Open Questions
+- (없음 — 모든 결정 해결됨. T8 인프라 직접 `new` 사용처는 구현 시 grep 재확인으로 처리, 결정 분기 아님.)
