@@ -8,7 +8,6 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Graphics;
-using WinUIEx;
 using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Groups;
@@ -117,9 +116,11 @@ public sealed partial class GroupPopupWindow : Window
                 return;
             }
 
-            // 그룹 설정에 따라 이름 헤더 표시/숨김(숨김 시 텍스트 설정 불필요).
-            TitleText.Visibility = group.ShowPopupHeader ? Visibility.Visible : Visibility.Collapsed;
-            if (group.ShowPopupHeader)
+            // 그룹 설정에 따라 이름 헤더 표시/숨김. 단 세로 1열(좌/우 작업 표시줄)에서는 헤더를 항상 숨긴다
+            // — 긴 그룹 이름이 세로 팝업 너비를 아이콘 폭 이상으로 넓혀 어색해지므로(숨김 시 텍스트 설정 불필요).
+            bool showHeader = group.ShowPopupHeader && !_isVertical;
+            TitleText.Visibility = showHeader ? Visibility.Visible : Visibility.Collapsed;
+            if (showHeader)
                 TitleText.Text = group.Apps.Count == 0
                     ? LocalizationService.Current?.Get("GroupPopup_MemberlessFormat", group.Name) ?? group.Name
                     : group.Name;
@@ -374,15 +375,6 @@ public sealed partial class GroupPopupWindow : Window
 
         // 팝업 창을 작업 표시줄 버튼·Alt+Tab 스위처에 노출하지 않는다(핀 클릭 시 별도 앱 아이콘/미리보기 방지).
         AppWindow.IsShownInSwitchers = false;
-
-        // 표준 테두리 창(SetBorderAndTitleBar)은 OS가 최소 창 너비(~150px)를 강제해, 세로 1열 팝업을
-        // 콘텐츠 폭(약 72px)으로 Resize해도 그 아래로 줄지 않는다. WinUIEx WindowManager로 WM_GETMINMAXINFO를
-        // 가로채 최소 크기 제약을 푼다(메인 창과 달리 팝업은 콘텐츠 크기대로 표시).
-        // 0이 아니라 1을 준다: WindowManager는 MinWidth가 양수일 때만 WM_GETMINMAXINFO를 override하므로,
-        // OS 기본 최소보다 작은 1을 설정해야 콘텐츠 폭(약 72px)대로 줄어든다.
-        var manager = WindowManager.Get(this);
-        manager.MinWidth = 1;
-        manager.MinHeight = 1;
     }
 
     /// <summary>콘텐츠 측정이 끝난 뒤 작업 표시줄 정위치로 이동해 처음으로 화면에 표시한다(점프·깜빡임 방지).</summary>
