@@ -15,6 +15,70 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <!-- 템플릿/선택기는 부모 스코프에 둔다: GridView 자신의 Resources에 두면 GridView의
+             ItemTemplateSelector 속성 설정 시점에 아직 그 Resources가 등록되지 않아 런타임에서 해석 실패한다. -->
+        <Grid.Resources>
+            <!-- 앱 아이콘 항목 템플릿 -->
+            <DataTemplate x:Key="AppItemTemplate" x:DataType="vm:PopupAppItem">
+                <!-- 마우스 오버 시 아이콘이 살짝 커지는 호버 애니메이션(중앙 기준 스케일) -->
+                <StackPanel Width="48" Height="48"  Spacing="4" Padding="4"
+                            HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                            ToolTipService.ToolTip="{x:Bind DisplayName}"
+                            PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
+                    <StackPanel.RenderTransform>
+                        <ScaleTransform />
+                    </StackPanel.RenderTransform>
+                    <!-- 우클릭 컨텍스트 메뉴: 열기 / 관리자 권한으로 실행(Packaged는 비활성) / 그룹 수정 -->
+                    <StackPanel.ContextFlyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="{loc:Localize Key=Common_Open}" Tag="{x:Bind}" Click="OnOpenClick">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE8A7;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutItem Text="{loc:Localize Key=GroupPopup_RunAsAdmin}" Tag="{x:Bind}"
+                                            IsEnabled="{x:Bind CanRunAsAdmin}" Click="OnRunAsAdminClick">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE7EF;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                            <MenuFlyoutSeparator />
+                            <MenuFlyoutItem Text="{loc:Localize Key=GroupPopup_EditGroup}" Click="OnEditGroupClick">
+                                <MenuFlyoutItem.Icon>
+                                    <FontIcon Glyph="&#xE70F;" />
+                                </MenuFlyoutItem.Icon>
+                            </MenuFlyoutItem>
+                        </MenuFlyout>
+                    </StackPanel.ContextFlyout>
+                    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
+                        <Image HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Stretch="Uniform" Source="{x:Bind Icon, Mode=OneWay}" />
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- "+" 추가(그룹 편집) 버튼 항목 템플릿: 앱 항목과 동일 박스 구조 + 호버 확대, 클릭 시 그룹 편집 -->
+            <DataTemplate x:Key="AddButtonTemplate" x:DataType="vm:PopupAddButtonItem">
+                <StackPanel Width="48" Height="48" Spacing="4" Padding="4"
+                            HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                            ToolTipService.ToolTip="{loc:Localize Key=GroupPopup_EditGroup}"
+                            PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
+                    <StackPanel.RenderTransform>
+                        <ScaleTransform />
+                    </StackPanel.RenderTransform>
+                    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                          Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
+                        <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" Glyph="&#xE710;" />
+                    </Grid>
+                </StackPanel>
+            </DataTemplate>
+
+            <!-- 항목 타입(앱/추가버튼)에 따라 템플릿 선택 -->
+            <views:PopupGridItemTemplateSelector x:Key="GridItemSelector"
+                                                 AppTemplate="{StaticResource AppItemTemplate}"
+                                                 AddButtonTemplate="{StaticResource AddButtonTemplate}" />
+        </Grid.Resources>
+
         <TextBlock x:Name="TitleText" Margin="0,0,0,4" Style="{ThemeResource SubtitleTextBlockStyle}" />
 
         <GridView Grid.Row="1" x:Name="AppsGrid"
@@ -39,66 +103,6 @@
                 <!-- 마우스 오버/누름 시 항목 배경(GridViewItem 기본 강조)이 보이지 않도록 투명 처리 -->
                 <SolidColorBrush x:Key="GridViewItemBackgroundPointerOver" Color="Transparent" />
                 <SolidColorBrush x:Key="GridViewItemBackgroundPressed" Color="Transparent" />
-
-                <!-- 앱 아이콘 항목 템플릿 -->
-                <DataTemplate x:Key="AppItemTemplate" x:DataType="vm:PopupAppItem">
-                    <!-- 마우스 오버 시 아이콘이 살짝 커지는 호버 애니메이션(중앙 기준 스케일) -->
-                    <StackPanel Width="48" Height="48"  Spacing="4" Padding="4"
-                                HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
-                                ToolTipService.ToolTip="{x:Bind DisplayName}"
-                                PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
-                        <StackPanel.RenderTransform>
-                            <ScaleTransform />
-                        </StackPanel.RenderTransform>
-                        <!-- 우클릭 컨텍스트 메뉴: 열기 / 관리자 권한으로 실행(Packaged는 비활성) / 그룹 수정 -->
-                        <StackPanel.ContextFlyout>
-                            <MenuFlyout>
-                                <MenuFlyoutItem Text="{loc:Localize Key=Common_Open}" Tag="{x:Bind}" Click="OnOpenClick">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE8A7;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutItem Text="{loc:Localize Key=GroupPopup_RunAsAdmin}" Tag="{x:Bind}"
-                                                IsEnabled="{x:Bind CanRunAsAdmin}" Click="OnRunAsAdminClick">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE7EF;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                                <MenuFlyoutSeparator />
-                                <MenuFlyoutItem Text="{loc:Localize Key=GroupPopup_EditGroup}" Click="OnEditGroupClick">
-                                    <MenuFlyoutItem.Icon>
-                                        <FontIcon Glyph="&#xE70F;" />
-                                    </MenuFlyoutItem.Icon>
-                                </MenuFlyoutItem>
-                            </MenuFlyout>
-                        </StackPanel.ContextFlyout>
-                        <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
-                              Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
-                            <Image HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Stretch="Uniform" Source="{x:Bind Icon, Mode=OneWay}" />
-                        </Grid>
-                    </StackPanel>
-                </DataTemplate>
-
-                <!-- "+" 추가(그룹 편집) 버튼 항목 템플릿: 앱 항목과 동일 박스 구조 + 호버 확대, 클릭 시 그룹 편집 -->
-                <DataTemplate x:Key="AddButtonTemplate" x:DataType="vm:PopupAddButtonItem">
-                    <StackPanel Width="48" Height="48" Spacing="4" Padding="4"
-                                HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
-                                ToolTipService.ToolTip="{loc:Localize Key=GroupPopup_EditGroup}"
-                                PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
-                        <StackPanel.RenderTransform>
-                            <ScaleTransform />
-                        </StackPanel.RenderTransform>
-                        <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
-                              Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
-                            <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" Glyph="&#xE710;" />
-                        </Grid>
-                    </StackPanel>
-                </DataTemplate>
-
-                <!-- 항목 타입(앱/추가버튼)에 따라 템플릿 선택 -->
-                <views:PopupGridItemTemplateSelector x:Key="GridItemSelector"
-                                                     AppTemplate="{StaticResource AppItemTemplate}"
-                                                     AddButtonTemplate="{StaticResource AddButtonTemplate}" />
             </GridView.Resources>
         </GridView>
     </Grid>
