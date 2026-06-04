@@ -93,7 +93,7 @@ public sealed partial class FolderListPopupWindow : Window
         }
         catch
         {
-            ShowEmpty("폴더를 불러오지 못했습니다.");
+            ShowEmpty(LocalizationService.Current?.Get("FolderPopup_LoadFailed") ?? string.Empty);
         }
         finally
         {
@@ -107,7 +107,7 @@ public sealed partial class FolderListPopupWindow : Window
         FolderPanel.Children.Clear();
         if (folders.Count == 0)
         {
-            ShowEmpty("등록된 폴더가 없습니다.");
+            ShowEmpty(LocalizationService.Current?.Get("FolderPopup_Empty") ?? string.Empty);
             return;
         }
 

@@ -23,6 +23,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
     private readonly IAppInventory _inventory;
     private readonly IGroupAppService _groupService;
     private readonly ResourceIconCatalog _resourceIcons;
+    private readonly LocalizationService _loc;
 
     // 설치 앱 항목(아이콘 1회 로드 후 선택/후보 목록에서 재사용).
     private readonly List<PopupAppItem> _installedItems = new();
@@ -36,13 +37,14 @@ public sealed partial class GroupEditViewModel : ObservableObject
     private bool _resourceLoaded;
     private bool _pickerLoaded;
 
-    public GroupEditViewModel(IAppInventory inventory, IGroupAppService groupService, ResourceIconCatalog resourceIcons)
+    public GroupEditViewModel(IAppInventory inventory, IGroupAppService groupService, ResourceIconCatalog resourceIcons, LocalizationService loc)
     {
         _inventory = inventory;
         _groupService = groupService;
         _resourceIcons = resourceIcons;
+        _loc = loc;
 
-        Title = "그룹 추가";
+        Title = _loc.Get("GroupEdit_AddTitle");
         EditingName = string.Empty;
         PickerSearch = string.Empty;
         StatusMessage = string.Empty;
@@ -127,7 +129,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
     public partial bool ShowPopupHeader { get; set; }
 
     /// <summary>선택한 앱 개수 표시 텍스트(목록 위 카운트).</summary>
-    public string AppCountText => $"앱 {SelectedApps.Count}개";
+    public string AppCountText => _loc.Get("GroupEdit_AppCountFormat", SelectedApps.Count);
 
     /// <summary>
     /// 신규/편집 모드로 초기화. 무거운 설치앱 인벤토리·리소스 그리드는 여기서 로드하지 않고
@@ -146,7 +148,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
             IsEditMode = group is not null;
             _originalName = group?.Name ?? string.Empty;
             IsNameEditing = group is null; // 신규는 즉시 입력, 수정은 읽기전용부터
-            Title = group is null ? "그룹 추가" : "그룹 수정";
+            Title = _loc.Get(group is null ? "GroupEdit_AddTitle" : "GroupEdit_EditTitle");
             EditingName = group?.Name ?? string.Empty;
             ShowPopupHeader = group?.ShowPopupHeader ?? true; // 편집은 그룹 값, 신규는 표시(true)
             OnPropertyChanged(nameof(ShowRenameWarning)); // 초기 상태 보정
@@ -175,7 +177,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"불러오기 실패: {ex.Message}";
+            StatusMessage = _loc.Get("GroupEdit_LoadFailedFormat", ex.Message);
         }
     }
 
@@ -193,7 +195,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"리소스 아이콘을 불러오지 못했습니다: {ex.Message}";
+            StatusMessage = _loc.Get("GroupEdit_ResourceIconFailedFormat", ex.Message);
         }
     }
 
@@ -216,7 +218,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusMessage = $"앱 목록을 불러오지 못했습니다: {ex.Message}";
+            StatusMessage = _loc.Get("GroupEdit_AppListFailedFormat", ex.Message);
         }
         finally
         {
@@ -278,17 +280,17 @@ public sealed partial class GroupEditViewModel : ObservableObject
         var name = EditingName.Trim();
         if (SelectedApps.Count == 0)
         {
-            StatusMessage = "앱을 1개 이상 추가하세요.";
+            StatusMessage = _loc.Get("GroupEdit_ValidationNoApps");
             return false;
         }
         if (string.IsNullOrWhiteSpace(name))
         {
-            StatusMessage = "그룹 이름을 입력하세요.";
+            StatusMessage = _loc.Get("GroupEdit_ValidationNoName");
             return false;
         }
         if (_existingNames.Contains(name))
         {
-            StatusMessage = "이미 같은 이름의 그룹이 있습니다.";
+            StatusMessage = _loc.Get("GroupEdit_ValidationDuplicateName");
             return false;
         }
 
@@ -299,7 +301,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
             var created = AppGroup.Create(name, SelectedIcon, ShowPopupHeader);
             if (created.IsFailure)
             {
-                StatusMessage = created.Error ?? "그룹 생성 실패";
+                StatusMessage = created.Error ?? _loc.Get("GroupEdit_CreateFailed");
                 return false;
             }
             group = created.Value;
@@ -314,7 +316,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         var result = await _groupService.SaveAsync(group);
         if (result.IsFailure)
         {
-            StatusMessage = result.Error ?? "저장 실패";
+            StatusMessage = result.Error ?? _loc.Get("GroupEdit_SaveFailed");
             return false;
         }
         return true;

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using WorkGroup.App.Services;
 using WorkGroup.Application.Groups;
 using WorkGroup.Domain.Groups;
 
@@ -12,10 +13,12 @@ namespace WorkGroup.App.ViewModels;
 public sealed partial class WorkGroupsViewModel : ObservableObject
 {
     private readonly IGroupAppService _groupService;
+    private readonly LocalizationService _loc;
 
-    public WorkGroupsViewModel(IGroupAppService groupService)
+    public WorkGroupsViewModel(IGroupAppService groupService, LocalizationService loc)
     {
         _groupService = groupService;
+        _loc = loc;
         StatusMessage = string.Empty;
     }
 
@@ -36,7 +39,7 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
     public Visibility StatusVisibility => HasStatus ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>등록된 그룹 수 표시(예: "3 그룹"). 목록 변경 후 LoadAsync에서 갱신 통지한다.</summary>
-    public string GroupCountText => $"{Groups.Count} 그룹";
+    public string GroupCountText => _loc.Get("WorkGroups_CountFormat", Groups.Count);
 
     /// <summary>빈 상태 안내 표시 여부(Visibility 바인딩용 — x:Bind는 bool→Visibility 자동변환 없음).</summary>
     public Visibility EmptyVisibility => IsEmpty ? Visibility.Visible : Visibility.Collapsed;

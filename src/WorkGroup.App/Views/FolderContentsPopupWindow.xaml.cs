@@ -93,13 +93,13 @@ public sealed partial class FolderContentsPopupWindow : Window
         switch (listing.Status)
         {
             case DirectoryBrowseStatus.NotFound:
-                ShowMessage("폴더를 찾을 수 없습니다.");
+                ShowMessage(LocalizationService.Current?.Get("FolderContents_NotFound") ?? string.Empty);
                 return;
             case DirectoryBrowseStatus.AccessDenied:
-                ShowMessage("접근할 수 없습니다.");
+                ShowMessage(LocalizationService.Current?.Get("FolderContents_AccessDenied") ?? string.Empty);
                 return;
             case DirectoryBrowseStatus.Empty:
-                ShowMessage("폴더가 비어있습니다.");
+                ShowMessage(LocalizationService.Current?.Get("FolderContents_Empty") ?? string.Empty);
                 return;
         }
 

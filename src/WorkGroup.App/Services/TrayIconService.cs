@@ -65,7 +65,7 @@ public sealed class TrayIconService : IDisposable
         data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         data.uCallbackMessage = WM_APP_TRAY;
         data.hIcon = LoadTrayIcon();
-        data.szTip = "작업 관리";
+        data.szTip = LocalizationService.Current?.Get("App_DisplayName") ?? "WorkGroup";
         _added = Shell_NotifyIcon(NIM_ADD, ref data);
     }
 
@@ -127,8 +127,9 @@ public sealed class TrayIconService : IDisposable
     private void ShowContextMenu()
     {
         var menu = CreatePopupMenu();
-        AppendMenu(menu, 0, CMD_OPEN, "열기");
-        AppendMenu(menu, 0, CMD_EXIT, "종료");
+        var loc = LocalizationService.Current;
+        AppendMenu(menu, 0, CMD_OPEN, loc?.Get("Common_Open") ?? "Open");
+        AppendMenu(menu, 0, CMD_EXIT, loc?.Get("Tray_Exit") ?? "Exit");
 
         GetCursorPos(out var pt);
         // TrackPopupMenu 전에 포그라운드로 만들어야 메뉴가 정상적으로 닫힌다.

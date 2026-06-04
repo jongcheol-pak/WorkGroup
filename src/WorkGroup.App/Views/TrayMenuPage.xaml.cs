@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Folders;
 
@@ -49,13 +50,14 @@ public sealed partial class TrayMenuPage : Page
         if ((sender as FrameworkElement)?.Tag is not FolderShortcutItem item)
             return;
 
+        var loc = LocalizationService.Current;
         var confirm = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "폴더 삭제",
-            Content = $"'{item.Name}' 폴더를 목록에서 삭제할까요?",
-            PrimaryButtonText = "삭제",
-            CloseButtonText = "취소",
+            Title = loc?.Get("TrayMenu_DeleteTitle") ?? string.Empty,
+            Content = loc?.Get("TrayMenu_DeleteConfirmFormat", item.Name) ?? string.Empty,
+            PrimaryButtonText = loc?.Get("Common_Delete") ?? string.Empty,
+            CloseButtonText = loc?.Get("Common_Cancel") ?? string.Empty,
             DefaultButton = ContentDialogButton.Close
         };
         if (await confirm.ShowAsync() == ContentDialogResult.Primary)

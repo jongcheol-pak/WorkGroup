@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.Graphics;
+using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Groups;
 using WorkGroup.Application.Launch;
@@ -92,14 +93,16 @@ public sealed partial class GroupPopupWindow : Window
             if (group is null)
             {
                 TitleText.Visibility = Visibility.Visible; // 에러 메시지는 헤더 설정과 무관하게 항상 표시
-                TitleText.Text = "그룹을 찾을 수 없습니다.";
+                TitleText.Text = LocalizationService.Current?.Get("GroupPopup_NotFound") ?? string.Empty;
                 return;
             }
 
             // 그룹 설정에 따라 이름 헤더 표시/숨김(숨김 시 텍스트 설정 불필요).
             TitleText.Visibility = group.ShowPopupHeader ? Visibility.Visible : Visibility.Collapsed;
             if (group.ShowPopupHeader)
-                TitleText.Text = group.Apps.Count == 0 ? $"{group.Name} (멤버 없음)" : group.Name;
+                TitleText.Text = group.Apps.Count == 0
+                    ? LocalizationService.Current?.Get("GroupPopup_MemberlessFormat", group.Name) ?? group.Name
+                    : group.Name;
 
             foreach (var app in group.Apps)
             {
@@ -114,7 +117,7 @@ public sealed partial class GroupPopupWindow : Window
         catch (Exception)
         {
             TitleText.Visibility = Visibility.Visible; // 에러 메시지는 항상 표시
-            TitleText.Text = "그룹을 불러오지 못했습니다.";
+            TitleText.Text = LocalizationService.Current?.Get("GroupPopup_LoadFailed") ?? string.Empty;
         }
         finally
         {

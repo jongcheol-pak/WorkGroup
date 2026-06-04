@@ -7,9 +7,15 @@ namespace WorkGroup.App.ViewModels;
 /// <summary>정보 화면 ViewModel(plan.md T4). 앱 이름·버전과 오픈소스 라이선스 목록을 제공한다.</summary>
 public sealed class AboutViewModel
 {
-    public AboutViewModel() => Version = ReadVersion();
+    private readonly LocalizationService _loc;
 
-    public string AppName => "작업 관리";
+    public AboutViewModel(LocalizationService loc)
+    {
+        _loc = loc;
+        Version = ReadVersion();
+    }
+
+    public string AppName => _loc.Get("App_DisplayName");
 
     /// <summary>패키지 버전(Major.Minor.Build.Revision). 비패키지 실행 시 어셈블리 버전 폴백.</summary>
     public string Version { get; }

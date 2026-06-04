@@ -80,13 +80,14 @@ public sealed partial class WorkGroupsPage : Page
             return;
 
         // 파괴적 작업(.lnk/.ico 영구 삭제)이므로 확인을 받는다.
+        var loc = LocalizationService.Current;
         var confirm = new ContentDialog
         {
             XamlRoot = XamlRoot,
-            Title = "그룹 삭제",
-            Content = $"'{item.Group.Name}' 그룹을 삭제할까요? 작업 표시줄 핀(.lnk)도 제거됩니다.",
-            PrimaryButtonText = "삭제",
-            CloseButtonText = "취소",
+            Title = loc?.Get("WorkGroups_DeleteTitle") ?? string.Empty,
+            Content = loc?.Get("WorkGroups_DeleteConfirmFormat", item.Group.Name) ?? string.Empty,
+            PrimaryButtonText = loc?.Get("Common_Delete") ?? string.Empty,
+            CloseButtonText = loc?.Get("Common_Cancel") ?? string.Empty,
             DefaultButton = ContentDialogButton.Close
         };
         if (await confirm.ShowAsync() == ContentDialogResult.Primary)
@@ -116,7 +117,7 @@ public sealed partial class WorkGroupsPage : Page
         if (!File.Exists(lnkPath))
         {
             // DragStarting은 취소 불가 → 데이터를 넣지 않으면 드롭해도 받을 페이로드가 없어 무해(no-op).
-            ViewModel.StatusMessage = "그룹을 먼저 저장하세요(.lnk 없음).";
+            ViewModel.StatusMessage = LocalizationService.Current?.Get("WorkGroups_SaveFirst") ?? string.Empty;
             return;
         }
 
@@ -165,7 +166,7 @@ public sealed partial class WorkGroupsPage : Page
         }
         catch (Exception ex)
         {
-            ViewModel.StatusMessage = $"드래그 준비 실패: {ex.Message}";
+            ViewModel.StatusMessage = LocalizationService.Current?.Get("WorkGroups_DragFailedFormat", ex.Message) ?? string.Empty;
         }
     }
 

@@ -292,4 +292,91 @@
   <data name="GroupPopup_EditGroup" xml:space="preserve">
     <value>グループを編集</value>
   </data>
+  <data name="GroupEdit_AddTitle" xml:space="preserve">
+    <value>グループを追加</value>
+  </data>
+  <data name="GroupEdit_EditTitle" xml:space="preserve">
+    <value>グループを編集</value>
+  </data>
+  <data name="GroupEdit_AppCountFormat" xml:space="preserve">
+    <value>アプリ {0}個</value>
+  </data>
+  <data name="GroupEdit_LoadFailedFormat" xml:space="preserve">
+    <value>読み込みに失敗しました: {0}</value>
+  </data>
+  <data name="GroupEdit_ResourceIconFailedFormat" xml:space="preserve">
+    <value>リソースアイコンを読み込めませんでした: {0}</value>
+  </data>
+  <data name="GroupEdit_AppListFailedFormat" xml:space="preserve">
+    <value>アプリ一覧を読み込めませんでした: {0}</value>
+  </data>
+  <data name="GroupEdit_ValidationNoApps" xml:space="preserve">
+    <value>アプリを1つ以上追加してください。</value>
+  </data>
+  <data name="GroupEdit_ValidationNoName" xml:space="preserve">
+    <value>グループ名を入力してください。</value>
+  </data>
+  <data name="GroupEdit_ValidationDuplicateName" xml:space="preserve">
+    <value>同じ名前のグループが既にあります。</value>
+  </data>
+  <data name="GroupEdit_CreateFailed" xml:space="preserve">
+    <value>グループの作成に失敗しました</value>
+  </data>
+  <data name="GroupEdit_SaveFailed" xml:space="preserve">
+    <value>保存に失敗しました</value>
+  </data>
+  <data name="WorkGroups_CountFormat" xml:space="preserve">
+    <value>{0} グループ</value>
+  </data>
+  <data name="WorkGroups_DeleteTitle" xml:space="preserve">
+    <value>グループを削除</value>
+  </data>
+  <data name="WorkGroups_DeleteConfirmFormat" xml:space="preserve">
+    <value>「{0}」グループを削除しますか？タスクバーのピン(.lnk)も削除されます。</value>
+  </data>
+  <data name="WorkGroups_SaveFirst" xml:space="preserve">
+    <value>先にグループを保存してください(.lnk がありません)。</value>
+  </data>
+  <data name="WorkGroups_DragFailedFormat" xml:space="preserve">
+    <value>ドラッグの準備に失敗しました: {0}</value>
+  </data>
+  <data name="TrayMenu_FolderCountFormat" xml:space="preserve">
+    <value>{0} フォルダー</value>
+  </data>
+  <data name="TrayMenu_DeleteTitle" xml:space="preserve">
+    <value>フォルダーを削除</value>
+  </data>
+  <data name="TrayMenu_DeleteConfirmFormat" xml:space="preserve">
+    <value>「{0}」フォルダーを一覧から削除しますか？</value>
+  </data>
+  <data name="FolderEdit_ValidationRequired" xml:space="preserve">
+    <value>名前とフォルダーのパスを両方入力してください。</value>
+  </data>
+  <data name="FolderPopup_LoadFailed" xml:space="preserve">
+    <value>フォルダーを読み込めませんでした。</value>
+  </data>
+  <data name="FolderPopup_Empty" xml:space="preserve">
+    <value>登録されたフォルダーがありません。</value>
+  </data>
+  <data name="FolderContents_NotFound" xml:space="preserve">
+    <value>フォルダーが見つかりません。</value>
+  </data>
+  <data name="FolderContents_AccessDenied" xml:space="preserve">
+    <value>アクセスできません。</value>
+  </data>
+  <data name="FolderContents_Empty" xml:space="preserve">
+    <value>フォルダーは空です。</value>
+  </data>
+  <data name="GroupPopup_NotFound" xml:space="preserve">
+    <value>グループが見つかりません。</value>
+  </data>
+  <data name="GroupPopup_MemberlessFormat" xml:space="preserve">
+    <value>{0} (メンバーなし)</value>
+  </data>
+  <data name="GroupPopup_LoadFailed" xml:space="preserve">
+    <value>グループを読み込めませんでした。</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>終了</value>
+  </data>
 </root>

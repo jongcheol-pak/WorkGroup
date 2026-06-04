@@ -292,4 +292,91 @@
   <data name="GroupPopup_EditGroup" xml:space="preserve">
     <value>Edit group</value>
   </data>
+  <data name="GroupEdit_AddTitle" xml:space="preserve">
+    <value>Add group</value>
+  </data>
+  <data name="GroupEdit_EditTitle" xml:space="preserve">
+    <value>Edit group</value>
+  </data>
+  <data name="GroupEdit_AppCountFormat" xml:space="preserve">
+    <value>{0} apps</value>
+  </data>
+  <data name="GroupEdit_LoadFailedFormat" xml:space="preserve">
+    <value>Failed to load: {0}</value>
+  </data>
+  <data name="GroupEdit_ResourceIconFailedFormat" xml:space="preserve">
+    <value>Failed to load built-in icons: {0}</value>
+  </data>
+  <data name="GroupEdit_AppListFailedFormat" xml:space="preserve">
+    <value>Failed to load the app list: {0}</value>
+  </data>
+  <data name="GroupEdit_ValidationNoApps" xml:space="preserve">
+    <value>Add at least one app.</value>
+  </data>
+  <data name="GroupEdit_ValidationNoName" xml:space="preserve">
+    <value>Enter a group name.</value>
+  </data>
+  <data name="GroupEdit_ValidationDuplicateName" xml:space="preserve">
+    <value>A group with the same name already exists.</value>
+  </data>
+  <data name="GroupEdit_CreateFailed" xml:space="preserve">
+    <value>Failed to create group</value>
+  </data>
+  <data name="GroupEdit_SaveFailed" xml:space="preserve">
+    <value>Failed to save</value>
+  </data>
+  <data name="WorkGroups_CountFormat" xml:space="preserve">
+    <value>{0} groups</value>
+  </data>
+  <data name="WorkGroups_DeleteTitle" xml:space="preserve">
+    <value>Delete group</value>
+  </data>
+  <data name="WorkGroups_DeleteConfirmFormat" xml:space="preserve">
+    <value>Delete the "{0}" group? Its taskbar pin (.lnk) will also be removed.</value>
+  </data>
+  <data name="WorkGroups_SaveFirst" xml:space="preserve">
+    <value>Save the group first (no .lnk).</value>
+  </data>
+  <data name="WorkGroups_DragFailedFormat" xml:space="preserve">
+    <value>Failed to prepare drag: {0}</value>
+  </data>
+  <data name="TrayMenu_FolderCountFormat" xml:space="preserve">
+    <value>{0} folders</value>
+  </data>
+  <data name="TrayMenu_DeleteTitle" xml:space="preserve">
+    <value>Delete folder</value>
+  </data>
+  <data name="TrayMenu_DeleteConfirmFormat" xml:space="preserve">
+    <value>Remove the "{0}" folder from the list?</value>
+  </data>
+  <data name="FolderEdit_ValidationRequired" xml:space="preserve">
+    <value>Enter both the name and the folder path.</value>
+  </data>
+  <data name="FolderPopup_LoadFailed" xml:space="preserve">
+    <value>Failed to load folders.</value>
+  </data>
+  <data name="FolderPopup_Empty" xml:space="preserve">
+    <value>No folders registered.</value>
+  </data>
+  <data name="FolderContents_NotFound" xml:space="preserve">
+    <value>Folder not found.</value>
+  </data>
+  <data name="FolderContents_AccessDenied" xml:space="preserve">
+    <value>Access denied.</value>
+  </data>
+  <data name="FolderContents_Empty" xml:space="preserve">
+    <value>The folder is empty.</value>
+  </data>
+  <data name="GroupPopup_NotFound" xml:space="preserve">
+    <value>Group not found.</value>
+  </data>
+  <data name="GroupPopup_MemberlessFormat" xml:space="preserve">
+    <value>{0} (no members)</value>
+  </data>
+  <data name="GroupPopup_LoadFailed" xml:space="preserve">
+    <value>Failed to load the group.</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
 </root>

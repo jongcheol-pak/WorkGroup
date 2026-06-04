@@ -227,7 +227,7 @@
     - "FolderEditDialog/GroupPopup Title 동적 텍스트" → C# T7 처리(XAML 기본값만 키화).
   - **Depends on**: T1
 
-- [ ] T7. C# 문자열 로컬라이즈 — App 레이어 ViewModel/코드비하인드/TrayIconService
+- [x] T7. C# 문자열 로컬라이즈 — App 레이어 ViewModel/코드비하인드/TrayIconService
   - **Type**: C
   - **Acceptance**: 빌드 성공. 아래 파일 사용자 표시 문구(상태/검증/다이얼로그 제목·본문·버튼/트레이 메뉴·툴팁/동적 포맷)가 `LocalizationService`/`ILocalizer` 호출로 치환. 동적 포맷은 `string.Format`+자리표시자 키.
   - **Files**:
@@ -315,6 +315,9 @@
 - **권장 A) 단일 plan 진행** + implement-task가 2 task마다 Progress Log 갱신(후반 품질 보존).
 - **B) 2개로 분할**: Plan-1(T1~T6: 인프라+XAML), Plan-2(T7~T11: C#+Infra+매니페스트+테스트+문서). T1(인프라)이 모든 후속의 선행이라 경계가 깨끗함.
 - 사용자가 승인 시 A/B 택일. 미지정 시 A로 진행.
+
+## Known Workarounds / Follow-ups
+- **Domain 레이어 Result.Fail 한국어 문구(범위 외)**: 구현 중 발견 — `AppGroup.Create`("그룹 이름은 필수입니다."), `AppGroup.AddApp/RemoveApp`("이미 추가된 앱입니다: {앱}", "그룹에 없는 앱입니다."), `FolderShortcut.Create`("폴더 이름은 필수입니다.", "폴더 경로는 필수입니다.")가 `Result.Fail`로 한국어를 반환한다. 이들은 UI에 도달 가능하나 **App 레이어 검증(GroupEditViewModel/FolderEditDialog)이 먼저 같은 조건을 잡아 로컬라이즈된 메시지를 표시**하므로 실사용에서 거의 가려진다. AGENTS.md "Domain 외부 의존 0" 원칙상 Domain에 ILocalizer 주입은 부적절 → 근본 해결은 Domain이 **에러 코드/키**를 반환하고 App이 매핑하는 방식(계약 변경, 별도 승인 필요). **승인된 본 plan 범위 밖**이라 follow-up으로 남긴다.
 
 ## Verification Strategy
 - 빌드: `dotnet build WorkGroup.slnx` — 경고/에러 0 목표(마크업 익스텐션/생성자 변경 컴파일 검증).

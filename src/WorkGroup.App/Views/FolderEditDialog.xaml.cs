@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.Storage.Pickers;
+using WorkGroup.App.Services;
 using WorkGroup.Application.Folders;
 
 namespace WorkGroup.App.Views;
@@ -25,7 +26,7 @@ public sealed partial class FolderEditDialog : ContentDialog
     public void Configure(int? id, string? name, string? path)
     {
         _editingId = id;
-        Title = id is null ? "폴더 추가" : "폴더 편집";
+        Title = LocalizationService.Current?.Get(id is null ? "FolderEdit_AddTitle" : "FolderEdit_EditTitle") ?? string.Empty;
         NameTextBox.Text = name ?? string.Empty;
         PathTextBlock.Text = path ?? string.Empty;
         ErrorText.Visibility = Visibility.Collapsed;
@@ -64,7 +65,7 @@ public sealed partial class FolderEditDialog : ContentDialog
 
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(path))
             {
-                ShowError("이름과 폴더 경로를 모두 입력하세요.");
+                ShowError(LocalizationService.Current?.Get("FolderEdit_ValidationRequired") ?? string.Empty);
                 args.Cancel = true;
                 return;
             }

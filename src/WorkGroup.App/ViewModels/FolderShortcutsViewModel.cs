@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using WorkGroup.App.Services;
 using WorkGroup.Application.Folders;
 
 namespace WorkGroup.App.ViewModels;
@@ -11,13 +12,15 @@ namespace WorkGroup.App.ViewModels;
 public sealed partial class FolderShortcutsViewModel : ObservableObject
 {
     private readonly IFolderShortcutRepository _repository;
+    private readonly LocalizationService _loc;
 
     // 전체 폴더(검색 필터의 원본). 아이콘은 로드 시 1회만 받아 둔다.
     private readonly List<FolderShortcutItem> _all = new();
 
-    public FolderShortcutsViewModel(IFolderShortcutRepository repository)
+    public FolderShortcutsViewModel(IFolderShortcutRepository repository, LocalizationService loc)
     {
         _repository = repository;
+        _loc = loc;
         SearchText = string.Empty;
     }
 
@@ -32,7 +35,7 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
     public partial bool IsEmpty { get; set; }
 
     /// <summary>등록된 폴더 수 표시(예: "3개 폴더"). 전체 개수 기준(검색과 무관).</summary>
-    public string FolderCountText => $"{_all.Count}개 폴더";
+    public string FolderCountText => _loc.Get("TrayMenu_FolderCountFormat", _all.Count);
 
     /// <summary>빈 상태 안내 표시 여부(전체 0개일 때).</summary>
     public Visibility EmptyVisibility => IsEmpty ? Visibility.Visible : Visibility.Collapsed;

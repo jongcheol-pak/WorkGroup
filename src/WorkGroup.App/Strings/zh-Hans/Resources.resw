@@ -292,4 +292,91 @@
   <data name="GroupPopup_EditGroup" xml:space="preserve">
     <value>编辑组</value>
   </data>
+  <data name="GroupEdit_AddTitle" xml:space="preserve">
+    <value>添加组</value>
+  </data>
+  <data name="GroupEdit_EditTitle" xml:space="preserve">
+    <value>编辑组</value>
+  </data>
+  <data name="GroupEdit_AppCountFormat" xml:space="preserve">
+    <value>{0} 个应用</value>
+  </data>
+  <data name="GroupEdit_LoadFailedFormat" xml:space="preserve">
+    <value>加载失败：{0}</value>
+  </data>
+  <data name="GroupEdit_ResourceIconFailedFormat" xml:space="preserve">
+    <value>无法加载内置图标：{0}</value>
+  </data>
+  <data name="GroupEdit_AppListFailedFormat" xml:space="preserve">
+    <value>无法加载应用列表：{0}</value>
+  </data>
+  <data name="GroupEdit_ValidationNoApps" xml:space="preserve">
+    <value>请至少添加一个应用。</value>
+  </data>
+  <data name="GroupEdit_ValidationNoName" xml:space="preserve">
+    <value>请输入组名称。</value>
+  </data>
+  <data name="GroupEdit_ValidationDuplicateName" xml:space="preserve">
+    <value>已存在同名的组。</value>
+  </data>
+  <data name="GroupEdit_CreateFailed" xml:space="preserve">
+    <value>创建组失败</value>
+  </data>
+  <data name="GroupEdit_SaveFailed" xml:space="preserve">
+    <value>保存失败</value>
+  </data>
+  <data name="WorkGroups_CountFormat" xml:space="preserve">
+    <value>{0} 个组</value>
+  </data>
+  <data name="WorkGroups_DeleteTitle" xml:space="preserve">
+    <value>删除组</value>
+  </data>
+  <data name="WorkGroups_DeleteConfirmFormat" xml:space="preserve">
+    <value>删除"{0}"组吗？任务栏固定项(.lnk)也将被移除。</value>
+  </data>
+  <data name="WorkGroups_SaveFirst" xml:space="preserve">
+    <value>请先保存组(无 .lnk)。</value>
+  </data>
+  <data name="WorkGroups_DragFailedFormat" xml:space="preserve">
+    <value>拖动准备失败：{0}</value>
+  </data>
+  <data name="TrayMenu_FolderCountFormat" xml:space="preserve">
+    <value>{0} 个文件夹</value>
+  </data>
+  <data name="TrayMenu_DeleteTitle" xml:space="preserve">
+    <value>删除文件夹</value>
+  </data>
+  <data name="TrayMenu_DeleteConfirmFormat" xml:space="preserve">
+    <value>从列表中删除"{0}"文件夹吗？</value>
+  </data>
+  <data name="FolderEdit_ValidationRequired" xml:space="preserve">
+    <value>请输入名称和文件夹路径。</value>
+  </data>
+  <data name="FolderPopup_LoadFailed" xml:space="preserve">
+    <value>无法加载文件夹。</value>
+  </data>
+  <data name="FolderPopup_Empty" xml:space="preserve">
+    <value>没有已注册的文件夹。</value>
+  </data>
+  <data name="FolderContents_NotFound" xml:space="preserve">
+    <value>找不到文件夹。</value>
+  </data>
+  <data name="FolderContents_AccessDenied" xml:space="preserve">
+    <value>无法访问。</value>
+  </data>
+  <data name="FolderContents_Empty" xml:space="preserve">
+    <value>文件夹为空。</value>
+  </data>
+  <data name="GroupPopup_NotFound" xml:space="preserve">
+    <value>找不到组。</value>
+  </data>
+  <data name="GroupPopup_MemberlessFormat" xml:space="preserve">
+    <value>{0}（无成员）</value>
+  </data>
+  <data name="GroupPopup_LoadFailed" xml:space="preserve">
+    <value>无法加载组。</value>
+  </data>
+  <data name="Tray_Exit" xml:space="preserve">
+    <value>退出</value>
+  </data>
 </root>
