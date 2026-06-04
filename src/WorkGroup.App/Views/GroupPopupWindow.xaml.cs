@@ -32,9 +32,9 @@ public sealed partial class GroupPopupWindow : Window
     private const int InitialPopupHeight = 200;
     // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
     private const int OffScreen = -32000;
-    // 세로 1열 아이템 영역 폭(px). GridViewItem 컨테이너 여백을 ItemContainerStyle로 0으로 없앴으므로
-    // 아이템 폭은 아이콘 박스(48px)와 동일하다 → 팝업이 아이콘에 딱 맞도록 48을 쓴다(측정 신뢰 불가해 고정값).
-    private const int VerticalIconColumnWidth = 48;
+    // 세로 1열 아이템 영역 폭(px). 아이콘 박스는 48px(ItemContainerStyle로 컨테이너 여백 0)지만, 아이콘에 딱
+    // 붙으면 답답하므로 가로 모드처럼 좌우에 여백을 두도록 키운 값(80 → 아이콘 48 + 좌우 16씩, 측정 신뢰 불가해 고정).
+    private const int VerticalIconColumnWidth = 80;
     // 세로 1열 콘텐츠 폭 좌우에 더하는 루트 Grid 가로 패딩 합(Padding="12,12,12,0" → 좌 12 + 우 12).
     private const int VerticalContentSidePadding = 24;
     // 세로 스크롤바가 생길 때 콘텐츠 폭에 더해 잘림을 막는 근사 스크롤바 폭(px).
