@@ -95,6 +95,11 @@ public sealed partial class GroupPopupWindow : Window
             AppsGrid.ItemsPanel = (ItemsPanelTemplate)contentRoot.Resources[
                 _isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];
 
+        // 세로 1열 팝업은 콘텐츠 폭(약 72px)이 OS 기본 최소 창 너비(약 198px)보다 작아 그대로면 못 줄어든다.
+        // WM_GETMINMAXINFO를 가로채 최소 추적 크기를 낮춰 콘텐츠 크기대로 표시한다(가로는 충분히 넓어 불필요).
+        if (_isVertical)
+            RemoveMinimumTrackSize();
+
         // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
         AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
         AppWindow.Move(new PointInt32(OffScreen, OffScreen));
@@ -249,6 +254,8 @@ public sealed partial class GroupPopupWindow : Window
         // 세로 1열 아이템은 모두 48px 고정 박스라 폭이 일정하므로 아이템 폭은 고정값으로 잡고,
         // 가변인 헤더(그룹 이름)만 측정해 둘 중 큰 값을 콘텐츠 폭으로 한다(헤더는 TextBlock이라 measure 정확).
         int contentWidth = VerticalIconColumnWidth;
+        // 정상 그룹의 이름 헤더는 세로에서 숨기므로 보통 측정 대상이 아니지만, 에러 메시지(NotFound 등)는
+        // 세로에서도 TitleText에 표시되므로 Visible일 때만 그 폭을 반영한다.
         if (TitleText.Visibility == Visibility.Visible)
         {
             TitleText.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -392,6 +399,50 @@ public sealed partial class GroupPopupWindow : Window
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    // WM_GETMINMAXINFO 구독 델리게이트를 필드로 보관해 GC 수집을 막는다(네이티브가 콜백을 계속 호출).
+    private SUBCLASSPROC? _minSizeSubclass;
+    private const uint WM_GETMINMAXINFO = 0x0024;
+
+    /// <summary>창에 서브클래스를 걸어 OS가 강제하는 최소 추적 크기를 1px로 낮춘다(세로 1열 팝업이 콘텐츠 폭대로 줄도록).</summary>
+    private void RemoveMinimumTrackSize()
+    {
+        IntPtr hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        _minSizeSubclass = MinSizeSubclassProc;
+        SetWindowSubclass(hwnd, _minSizeSubclass, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    private IntPtr MinSizeSubclassProc(
+        IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, IntPtr uIdSubclass, IntPtr dwRefData)
+    {
+        if (uMsg == WM_GETMINMAXINFO && lParam != IntPtr.Zero)
+        {
+            var info = System.Runtime.InteropServices.Marshal.PtrToStructure<MINMAXINFO>(lParam);
+            info.ptMinTrackSize.X = 1;
+            info.ptMinTrackSize.Y = 1;
+            System.Runtime.InteropServices.Marshal.StructureToPtr(info, lParam, false);
+            return IntPtr.Zero;
+        }
+        return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct POINT { public int X; public int Y; }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct MINMAXINFO
+    {
+        public POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize;
+    }
+
+    private delegate IntPtr SUBCLASSPROC(
+        IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, IntPtr uIdSubclass, IntPtr dwRefData);
+
+    [System.Runtime.InteropServices.DllImport("comctl32.dll", SetLastError = true)]
+    private static extern bool SetWindowSubclass(IntPtr hWnd, SUBCLASSPROC pfnSubclass, IntPtr uIdSubclass, IntPtr dwRefData);
+
+    [System.Runtime.InteropServices.DllImport("comctl32.dll")]
+    private static extern IntPtr DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
 
     /// <summary>캡처해 둔 클릭 시점 좌표로 작업 표시줄 변에 창을 이동한다(크기는 AdjustToContent가 담당).</summary>
     private void MoveToTaskbar(int height)
