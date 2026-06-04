@@ -95,6 +95,15 @@
 ## 승인 필요 사항
 - 신규 파일 2개(`PopupAddButtonItem.cs`, `PopupGridItemTemplateSelector.cs`) 추가 및 `GroupPopupWindow.Items` 공개 프로퍼티 타입 변경(`<PopupAppItem>`→`<object>`, 외부 사용처 없음). → 본 plan 승인으로 갈음.
 
+## Progress Log
+- T1 완료 (커밋 6136fc2): PopupAddButtonItem 마커 + PopupGridItemTemplateSelector 신규. 빌드 OK.
+- T2-T3 완료 (커밋 직후): XAML 템플릿 분리 + selector + "+" 템플릿, code-behind Items object화·추가버튼 주입·클릭 분기·EditGroup 추출. 빌드 0/0, 테스트 117/117. 리뷰 spec OK, quality B1(불필요 partial) 수정.
+- T4 완료: README "그룹 팝업 런처"에 "+" 버튼 동작 보강, notes.md 최신 항목 추가.
+
+## Next Steps
+- 권장 다음 액션: F5 MSIX 배포로 "+" 버튼 표시·호버·클릭→편집 다이얼로그 GUI 수동 검증 후 PR 생성.
+- Suggested skills: 공식 /code-review, 공식 /security-review
+
 ## 자율 실행 준비도
 - 구현 중 사용자 결정 분기 남음? **없음**(D1~D5 확정).
 - 다른 사람이 이 plan만으로 끝낼 수 있는가? **예**.
