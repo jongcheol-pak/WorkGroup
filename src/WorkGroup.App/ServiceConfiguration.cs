@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WorkGroup.Application.Folders;
 using WorkGroup.Application.Groups;
+using WorkGroup.Application.Localization;
 using WorkGroup.Application.Icons;
 using WorkGroup.Application.Inventory;
 using WorkGroup.Application.Launch;
@@ -31,23 +32,36 @@ public static class ServiceConfiguration
         services.AddSingleton<IGroupRepository>(sp =>
             new JsonGroupRepository(
                 WorkGroupPaths.ConfigDirectory,
-                sp.GetRequiredService<ILogger<JsonGroupRepository>>()));
+                sp.GetRequiredService<ILogger<JsonGroupRepository>>(),
+                sp.GetRequiredService<ILocalizer>()));
 
-        services.AddSingleton<IAppInventory, InstalledAppInventory>();
-        services.AddSingleton<IIconService, IconService>();
-        services.AddSingleton<IAppLauncher, AppLauncher>();
+        // ILocalizer를 명시 전달한다(선택 인자의 DI 자동 해석에 의존하지 않음 — 운영 경로에서 키 노출 방지).
+        services.AddSingleton<IAppInventory>(sp =>
+            new InstalledAppInventory(
+                sp.GetRequiredService<ILogger<InstalledAppInventory>>(),
+                sp.GetRequiredService<ILocalizer>()));
+        services.AddSingleton<IIconService>(sp =>
+            new IconService(
+                sp.GetRequiredService<ILogger<IconService>>(),
+                sp.GetRequiredService<ILocalizer>()));
+        services.AddSingleton<IAppLauncher>(sp =>
+            new AppLauncher(
+                sp.GetRequiredService<ILogger<AppLauncher>>(),
+                sp.GetRequiredService<ILocalizer>()));
 
         services.AddSingleton<IShortcutService>(sp =>
             new ShortcutService(
                 WorkGroupPaths.GroupsDirectory,
                 WorkGroupPaths.AliasExePath,
-                logger: sp.GetRequiredService<ILogger<ShortcutService>>()));
+                logger: sp.GetRequiredService<ILogger<ShortcutService>>(),
+                localizer: sp.GetRequiredService<ILocalizer>()));
 
         // 폴더 바로가기(트레이 좌클릭 팝업) — 저장/열거/셸 열기.
         services.AddSingleton<IFolderShortcutRepository>(sp =>
             new JsonFolderShortcutRepository(
                 WorkGroupPaths.FoldersConfigPath,
-                sp.GetRequiredService<ILogger<JsonFolderShortcutRepository>>()));
+                sp.GetRequiredService<ILogger<JsonFolderShortcutRepository>>(),
+                sp.GetRequiredService<ILocalizer>()));
         services.AddSingleton<IDirectoryBrowser, DirectoryBrowser>();
         services.AddSingleton<IShellOpener, ShellOpener>();
 

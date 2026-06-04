@@ -244,7 +244,7 @@
     - "TrayIconService(Win32, `new`로 생성) 접근?" → `LocalizationService.Current.Get`(static, App 생성자에서 설정 완료).
   - **Depends on**: T1, T2
 
-- [ ] T8. Infrastructure ILocalizer 주입 + 에러 메시지 로컬라이즈
+- [x] T8. Infrastructure ILocalizer 주입 + 에러 메시지 로컬라이즈
   - **Type**: D
   - **Acceptance**: 빌드 성공. `dotnet test WorkGroup.slnx` 통과. 6개 서비스 생성자 **맨 뒤에 `ILocalizer? = null` 선택 인자** 추가(null→`NullLocalizer`), 사용자 표시 `Result.Fail`/`.lnk` 설명이 키 기반 치환. `ServiceConfiguration`이 등록 시 ILocalizer 전달(또는 DI 자동 해석). `JsonFolderShortcutRepositoryTests` L72/L96 단언이 키 기반으로 갱신되어 통과.
   - **Files**:
@@ -329,7 +329,8 @@
 <!-- implement-task가 2 task마다 갱신 -->
 - T1-T2 완료 (커밋 b4049e2, 2294f85): 리소스 인프라(ILocalizer/NullLocalizer/LocalizationService/{loc:Localize} 마크업/4개 resw) + LanguageService(영속·적용·재시작). 마크업 PoC 빌드 게이트 통과(직접+부착 속성). PRIResource는 SDK 자동 포함(명시 불필요). 빌드 0/0, 테스트 115/115. BASE for reviews 진행: 각 task 직전 커밋.
 - T3-T4 완료 (커밋 9c79388, 25ed1fd): 설정 언어 변경 UI(ConfirmRestartAsync 콜백/재시작 다이얼로그) + XAML 배치 A(MainShell/SettingsPage/AboutPage 전수 치환). resw 누적 29키, 4개 언어 키 집합 완전 일치(자체 diff 검증). 빌드 0/0, 테스트 115/115.
-- T5-T6 완료 (커밋 46b4216, +T6): XAML 배치 B(WorkGroups/TrayMenu/GroupEdit) + 배치 C(FolderEdit/FolderPopupSettings/FolderListPopup/GroupPopup). Window 루트 마크업도 빌드 검증. ComboBoxItem 변환은 SelectedIndex 기반이라 안전. resw 누적 78키, 4개 언어 동일. 빌드 0/0, 테스트 115/115. 남은 XAML 하드코딩 없음(코드비하인드/인프라 C#은 T7/T8).
+- T5-T6 완료 (커밋 46b4216, 5d90573): XAML 배치 B(WorkGroups/TrayMenu/GroupEdit) + 배치 C(FolderEdit/FolderPopupSettings/FolderListPopup/GroupPopup). Window 루트 마크업도 빌드 검증. ComboBoxItem 변환은 SelectedIndex 기반이라 안전. resw 누적 78키, 4개 언어 동일. 빌드 0/0, 테스트 115/115. 남은 XAML 하드코딩 없음(코드비하인드/인프라 C#은 T7/T8).
+- T7-T8 완료 (커밋 d3093ab, +T8): App 레이어 C#(VM 주입 + 코드비하인드/Tray static) + Infra 6개 서비스 ILocalizer 선택 인자 주입. 6개 서비스 모두 ServiceConfiguration에서 ILocalizer 명시 전달(DI 선택인자 자동해석 비의존). JsonFolderShortcutRepositoryTests 단언 키로 갱신. resw 누적 122키, 4개 언어 동일. 빌드 0/0, 테스트 115/115. Domain Result.Fail 한국어는 범위 외 follow-up(Known Workarounds).
 
 ## Next Steps
 <!-- 세션 종료/체크포인트 시 갱신 -->

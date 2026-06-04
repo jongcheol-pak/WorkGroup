@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using WorkGroup.Application.Localization;
 using WorkGroup.Application.Shortcuts;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Groups;
@@ -18,12 +19,14 @@ public sealed class ShortcutService : IShortcutService
     private readonly string _aliasExePath;
     private readonly IShortcutWriter _writer;
     private readonly ILogger<ShortcutService> _logger;
+    private readonly ILocalizer _localizer;
 
     public ShortcutService(
         string groupsDirectory,
         string aliasExePath,
         IShortcutWriter? writer = null,
-        ILogger<ShortcutService>? logger = null)
+        ILogger<ShortcutService>? logger = null,
+        ILocalizer? localizer = null)
     {
         if (string.IsNullOrWhiteSpace(groupsDirectory))
             throw new ArgumentException("그룹 디렉터리가 비어 있습니다.", nameof(groupsDirectory));
@@ -34,6 +37,7 @@ public sealed class ShortcutService : IShortcutService
         _aliasExePath = aliasExePath;
         _writer = writer ?? new ShortcutWriter();
         _logger = logger ?? NullLogger<ShortcutService>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
     }
 
     /// <summary>%LOCALAPPDATA%\Microsoft\WindowsApps\{aliasExeName} — MSIX 실행 별칭의 표준 경로.</summary>
@@ -59,14 +63,14 @@ public sealed class ShortcutService : IShortcutService
                 _aliasExePath,
                 GroupArgs.BuildCommandLineArguments(group.Id.Value),
                 iconPath,
-                $"{group.Name} - 작업 관리");
+                _localizer.Get("Infra_Shortcut_DescriptionFormat", group.Name));
 
             return Result<string>.Ok(lnkPath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "그룹 바로가기 생성 실패: {Group}", group.Name);
-            return Result<string>.Fail("바로가기를 생성하지 못했습니다.");
+            return Result<string>.Fail(_localizer.Get("Infra_Shortcut_CreateFailed"));
         }
     }
 
@@ -84,7 +88,7 @@ public sealed class ShortcutService : IShortcutService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogWarning(ex, "그룹 바로가기 삭제 실패: {Group}", group.Name);
-            return Result.Fail("바로가기를 삭제하지 못했습니다.");
+            return Result.Fail(_localizer.Get("Infra_Shortcut_DeleteFailed"));
         }
     }
 
@@ -123,7 +127,7 @@ public sealed class ShortcutService : IShortcutService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger.LogWarning(ex, "고아 바로가기 정리 실패");
-            return Result.Fail("고아 바로가기 정리에 실패했습니다.");
+            return Result.Fail(_localizer.Get("Infra_Shortcut_CleanupFailed"));
         }
     }
 

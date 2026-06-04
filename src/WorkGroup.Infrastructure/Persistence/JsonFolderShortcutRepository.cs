@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using WorkGroup.Application.Folders;
+using WorkGroup.Application.Localization;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Folders;
 
@@ -20,10 +21,11 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
 
     private readonly string _filePath;
     private readonly ILogger<JsonFolderShortcutRepository> _logger;
+    private readonly ILocalizer _localizer;
     // 같은 인스턴스의 동시 저장을 직렬화한다(단일 앱 인스턴스 전제).
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public JsonFolderShortcutRepository(string filePath, ILogger<JsonFolderShortcutRepository>? logger = null)
+    public JsonFolderShortcutRepository(string filePath, ILogger<JsonFolderShortcutRepository>? logger = null, ILocalizer? localizer = null)
     {
         if (string.IsNullOrWhiteSpace(filePath))
             throw new ArgumentException("저장 파일 경로는 비어 있을 수 없습니다.", nameof(filePath));
@@ -34,6 +36,7 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
 
         _filePath = filePath;
         _logger = logger ?? NullLogger<JsonFolderShortcutRepository>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
     }
 
     public async Task<IReadOnlyList<FolderShortcut>> LoadAllAsync(CancellationToken cancellationToken = default)
@@ -50,7 +53,7 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
         {
             var items = (await LoadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
             if (IsDuplicatePath(items, path, excludeId: null))
-                return Result<FolderShortcut>.Fail("이미 등록된 폴더입니다.");
+                return Result<FolderShortcut>.Fail(_localizer.Get("Infra_Folder_Duplicate"));
 
             var nextId = items.Count == 0 ? 1 : items.Max(f => f.Id) + 1;
             var created = FolderShortcut.Create(nextId, name, path);
@@ -72,10 +75,10 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
             var items = (await LoadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
             var index = items.FindIndex(f => f.Id == id);
             if (index < 0)
-                return Result.Fail("수정할 폴더를 찾을 수 없습니다.");
+                return Result.Fail(_localizer.Get("Infra_Folder_NotFound"));
 
             if (IsDuplicatePath(items, path, excludeId: id))
-                return Result.Fail("이미 등록된 폴더입니다.");
+                return Result.Fail(_localizer.Get("Infra_Folder_Duplicate"));
 
             var updated = FolderShortcut.Create(id, name, path);
             if (updated.IsFailure)
@@ -162,7 +165,7 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
         {
             _logger.LogError(ex, "폴더 저장 실패: {Path}", _filePath);
             TryDeleteTemp(tempPath);
-            return Result.Fail("폴더를 저장하지 못했습니다. 디스크 공간이나 권한을 확인하세요.");
+            return Result.Fail(_localizer.Get("Infra_Folder_SaveFailed"));
         }
     }
 

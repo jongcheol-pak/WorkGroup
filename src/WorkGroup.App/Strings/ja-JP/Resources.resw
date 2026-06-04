@@ -379,4 +379,49 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>終了</value>
   </data>
+  <data name="Infra_Shortcut_CreateFailed" xml:space="preserve">
+    <value>ショートカットを作成できませんでした。</value>
+  </data>
+  <data name="Infra_Shortcut_DeleteFailed" xml:space="preserve">
+    <value>ショートカットを削除できませんでした。</value>
+  </data>
+  <data name="Infra_Shortcut_CleanupFailed" xml:space="preserve">
+    <value>孤立したショートカットの整理に失敗しました。</value>
+  </data>
+  <data name="Infra_Shortcut_DescriptionFormat" xml:space="preserve">
+    <value>{0} - ワークグループ</value>
+  </data>
+  <data name="Infra_Launch_FailedFormat" xml:space="preserve">
+    <value>「{0}」の起動に失敗しました。</value>
+  </data>
+  <data name="Infra_Launch_PackagedNoAdmin" xml:space="preserve">
+    <value>パッケージアプリは管理者として実行できません。</value>
+  </data>
+  <data name="Infra_Inventory_EmptyPath" xml:space="preserve">
+    <value>ファイルパスが空です。</value>
+  </data>
+  <data name="Infra_Inventory_FileNotFound" xml:space="preserve">
+    <value>ファイルが見つかりません。</value>
+  </data>
+  <data name="Infra_Inventory_InvalidType" xml:space="preserve">
+    <value>実行ファイル(.exe)またはショートカット(.lnk)のみ追加できます。</value>
+  </data>
+  <data name="Infra_Icon_NoOutputDir" xml:space="preserve">
+    <value>出力ディレクトリが指定されていません。</value>
+  </data>
+  <data name="Infra_Icon_CreateFailed" xml:space="preserve">
+    <value>アイコンを作成できませんでした。</value>
+  </data>
+  <data name="Infra_Group_SaveFailed" xml:space="preserve">
+    <value>グループを保存できませんでした。ディスク容量や権限を確認してください。</value>
+  </data>
+  <data name="Infra_Folder_Duplicate" xml:space="preserve">
+    <value>既に登録されているフォルダーです。</value>
+  </data>
+  <data name="Infra_Folder_NotFound" xml:space="preserve">
+    <value>編集するフォルダーが見つかりません。</value>
+  </data>
+  <data name="Infra_Folder_SaveFailed" xml:space="preserve">
+    <value>フォルダーを保存できませんでした。ディスク容量や権限を確認してください。</value>
+  </data>
 </root>

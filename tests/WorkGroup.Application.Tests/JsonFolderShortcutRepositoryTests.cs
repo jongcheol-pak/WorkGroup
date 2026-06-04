@@ -69,7 +69,8 @@ public sealed class JsonFolderShortcutRepositoryTests : IDisposable
         var dup = await sut.AddAsync("다른이름", @"d:\module"); // 대소문자 무시
 
         Assert.True(dup.IsFailure);
-        Assert.Equal("이미 등록된 폴더입니다.", dup.Error);
+        // 로컬라이저 미주입(NullLocalizer)이면 리소스 키를 그대로 반환한다 — 올바른 메시지 키 사용을 검증(plan.md T8/D5).
+        Assert.Equal("Infra_Folder_Duplicate", dup.Error);
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public sealed class JsonFolderShortcutRepositoryTests : IDisposable
         var result = await sut.UpdateAsync(99, "x", @"D:\x");
 
         Assert.True(result.IsFailure);
-        Assert.Equal("수정할 폴더를 찾을 수 없습니다.", result.Error);
+        Assert.Equal("Infra_Folder_NotFound", result.Error);
     }
 
     [Fact]

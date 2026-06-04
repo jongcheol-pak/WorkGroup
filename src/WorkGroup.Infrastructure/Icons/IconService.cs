@@ -6,6 +6,7 @@ using Windows.Storage;
 using Windows.Storage.FileProperties;
 using Windows.Storage.Streams;
 using WorkGroup.Application.Icons;
+using WorkGroup.Application.Localization;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Groups;
 
@@ -22,9 +23,13 @@ public sealed class IconService : IIconService
     private const int CanvasSize = 256;
 
     private readonly ILogger<IconService> _logger;
+    private readonly ILocalizer _localizer;
 
-    public IconService(ILogger<IconService>? logger = null)
-        => _logger = logger ?? NullLogger<IconService>.Instance;
+    public IconService(ILogger<IconService>? logger = null, ILocalizer? localizer = null)
+    {
+        _logger = logger ?? NullLogger<IconService>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
+    }
 
     public async Task<Result<string>> CreateGroupIconAsync(
         GroupId groupId,
@@ -36,7 +41,7 @@ public sealed class IconService : IIconService
         ArgumentNullException.ThrowIfNull(groupId);
         ArgumentNullException.ThrowIfNull(source);
         if (string.IsNullOrWhiteSpace(outputDirectory))
-            return Result<string>.Fail("출력 디렉터리가 지정되지 않았습니다.");
+            return Result<string>.Fail(_localizer.Get("Infra_Icon_NoOutputDir"));
 
         Directory.CreateDirectory(outputDirectory);
         var outputPath = Path.Combine(outputDirectory, groupId.Value + ".ico");
@@ -68,7 +73,7 @@ public sealed class IconService : IIconService
         catch (Exception ex)
         {
             _logger.LogError(ex, "기본 아이콘 생성에 실패했습니다: {Path}", outputPath);
-            return Result<string>.Fail("아이콘을 생성하지 못했습니다.");
+            return Result<string>.Fail(_localizer.Get("Infra_Icon_CreateFailed"));
         }
     }
 

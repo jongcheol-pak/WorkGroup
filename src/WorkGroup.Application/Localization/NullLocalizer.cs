@@ -13,5 +13,6 @@ public sealed class NullLocalizer : ILocalizer
 
     public string Get(string key) => key ?? string.Empty;
 
+    // args는 의도적으로 무시한다 — NullLocalizer의 목적은 키 식별(폴백)이지 포맷 실행이 아니다.
     public string Get(string key, params object[] args) => key ?? string.Empty;
 }

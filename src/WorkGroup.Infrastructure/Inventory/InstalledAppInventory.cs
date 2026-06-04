@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Windows.ApplicationModel;
 using Windows.Management.Deployment;
 using WorkGroup.Application.Inventory;
+using WorkGroup.Application.Localization;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Groups;
 
@@ -17,9 +18,13 @@ namespace WorkGroup.Infrastructure.Inventory;
 public sealed class InstalledAppInventory : IAppInventory
 {
     private readonly ILogger<InstalledAppInventory> _logger;
+    private readonly ILocalizer _localizer;
 
-    public InstalledAppInventory(ILogger<InstalledAppInventory>? logger = null)
-        => _logger = logger ?? NullLogger<InstalledAppInventory>.Instance;
+    public InstalledAppInventory(ILogger<InstalledAppInventory>? logger = null, ILocalizer? localizer = null)
+    {
+        _logger = logger ?? NullLogger<InstalledAppInventory>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
+    }
 
     public async Task<IReadOnlyList<AppEntry>> GetInstalledAppsAsync(CancellationToken cancellationToken = default)
     {
@@ -52,15 +57,15 @@ public sealed class InstalledAppInventory : IAppInventory
     public Result<AppEntry> CreateManualEntry(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
-            return Result<AppEntry>.Fail("파일 경로가 비어 있습니다.");
+            return Result<AppEntry>.Fail(_localizer.Get("Infra_Inventory_EmptyPath"));
         if (!File.Exists(filePath))
-            return Result<AppEntry>.Fail("파일을 찾을 수 없습니다.");
+            return Result<AppEntry>.Fail(_localizer.Get("Infra_Inventory_FileNotFound"));
 
         var ext = Path.GetExtension(filePath);
         if (!ext.Equals(".exe", StringComparison.OrdinalIgnoreCase)
             && !ext.Equals(".lnk", StringComparison.OrdinalIgnoreCase))
         {
-            return Result<AppEntry>.Fail("실행 파일(.exe) 또는 바로가기(.lnk)만 추가할 수 있습니다.");
+            return Result<AppEntry>.Fail(_localizer.Get("Infra_Inventory_InvalidType"));
         }
 
         var name = Path.GetFileNameWithoutExtension(filePath);

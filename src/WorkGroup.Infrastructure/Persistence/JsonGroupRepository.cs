@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using WorkGroup.Application.Localization;
 using WorkGroup.Application.Persistence;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Groups;
@@ -23,10 +24,11 @@ public sealed class JsonGroupRepository : IGroupRepository
 
     private readonly string _filePath;
     private readonly ILogger<JsonGroupRepository> _logger;
+    private readonly ILocalizer _localizer;
     // 같은 인스턴스의 동시 저장을 직렬화한다(단일 앱 인스턴스 전제 — D11).
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public JsonGroupRepository(string storageDirectory, ILogger<JsonGroupRepository>? logger = null)
+    public JsonGroupRepository(string storageDirectory, ILogger<JsonGroupRepository>? logger = null, ILocalizer? localizer = null)
     {
         if (string.IsNullOrWhiteSpace(storageDirectory))
             throw new ArgumentException("저장 디렉터리는 비어 있을 수 없습니다.", nameof(storageDirectory));
@@ -34,6 +36,7 @@ public sealed class JsonGroupRepository : IGroupRepository
         Directory.CreateDirectory(storageDirectory);
         _filePath = Path.Combine(storageDirectory, FileName);
         _logger = logger ?? NullLogger<JsonGroupRepository>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
     }
 
     public async Task<IReadOnlyList<AppGroup>> LoadAllAsync(CancellationToken cancellationToken = default)
@@ -132,7 +135,7 @@ public sealed class JsonGroupRepository : IGroupRepository
         {
             _logger.LogError(ex, "그룹 저장 실패: {Path}", _filePath);
             TryDeleteTemp(tempPath);
-            return Result.Fail("그룹을 저장하지 못했습니다. 디스크 공간이나 권한을 확인하세요.");
+            return Result.Fail(_localizer.Get("Infra_Group_SaveFailed"));
         }
     }
 

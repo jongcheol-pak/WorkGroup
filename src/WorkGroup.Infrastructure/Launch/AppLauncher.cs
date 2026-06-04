@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using WorkGroup.Application.Launch;
+using WorkGroup.Application.Localization;
 using WorkGroup.Domain.Common;
 using WorkGroup.Domain.Groups;
 
@@ -16,9 +17,13 @@ public readonly record struct LaunchSpec(string FileName, string Arguments, bool
 public sealed class AppLauncher : IAppLauncher
 {
     private readonly ILogger<AppLauncher> _logger;
+    private readonly ILocalizer _localizer;
 
-    public AppLauncher(ILogger<AppLauncher>? logger = null)
-        => _logger = logger ?? NullLogger<AppLauncher>.Instance;
+    public AppLauncher(ILogger<AppLauncher>? logger = null, ILocalizer? localizer = null)
+    {
+        _logger = logger ?? NullLogger<AppLauncher>.Instance;
+        _localizer = localizer ?? NullLocalizer.Instance;
+    }
 
     /// <summary>실행 스펙을 계산한다(순수 — 단위 테스트 대상).</summary>
     public static LaunchSpec BuildSpec(AppEntry app)
@@ -46,7 +51,7 @@ public sealed class AppLauncher : IAppLauncher
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "앱 실행 실패: {App}", app.DisplayName);
-            return Result.Fail($"'{app.DisplayName}' 실행에 실패했습니다.");
+            return Result.Fail(_localizer.Get("Infra_Launch_FailedFormat", app.DisplayName));
         }
     }
 
@@ -56,7 +61,7 @@ public sealed class AppLauncher : IAppLauncher
 
         // Packaged 앱(AUMID)은 runas 동사로 승격 실행할 수 없다 — 호출 전에 거부한다.
         if (app.Kind != AppKind.Win32)
-            return Result.Fail("패키지 앱은 관리자 권한으로 실행할 수 없습니다.");
+            return Result.Fail(_localizer.Get("Infra_Launch_PackagedNoAdmin"));
 
         try
         {
@@ -66,7 +71,7 @@ public sealed class AppLauncher : IAppLauncher
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "앱 관리자 권한 실행 실패: {App}", app.DisplayName);
-            return Result.Fail($"'{app.DisplayName}' 실행에 실패했습니다.");
+            return Result.Fail(_localizer.Get("Infra_Launch_FailedFormat", app.DisplayName));
         }
     }
 

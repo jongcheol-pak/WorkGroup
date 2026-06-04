@@ -379,4 +379,49 @@
   <data name="Tray_Exit" xml:space="preserve">
     <value>종료</value>
   </data>
+  <data name="Infra_Shortcut_CreateFailed" xml:space="preserve">
+    <value>바로가기를 생성하지 못했습니다.</value>
+  </data>
+  <data name="Infra_Shortcut_DeleteFailed" xml:space="preserve">
+    <value>바로가기를 삭제하지 못했습니다.</value>
+  </data>
+  <data name="Infra_Shortcut_CleanupFailed" xml:space="preserve">
+    <value>고아 바로가기 정리에 실패했습니다.</value>
+  </data>
+  <data name="Infra_Shortcut_DescriptionFormat" xml:space="preserve">
+    <value>{0} - 작업 관리</value>
+  </data>
+  <data name="Infra_Launch_FailedFormat" xml:space="preserve">
+    <value>'{0}' 실행에 실패했습니다.</value>
+  </data>
+  <data name="Infra_Launch_PackagedNoAdmin" xml:space="preserve">
+    <value>패키지 앱은 관리자 권한으로 실행할 수 없습니다.</value>
+  </data>
+  <data name="Infra_Inventory_EmptyPath" xml:space="preserve">
+    <value>파일 경로가 비어 있습니다.</value>
+  </data>
+  <data name="Infra_Inventory_FileNotFound" xml:space="preserve">
+    <value>파일을 찾을 수 없습니다.</value>
+  </data>
+  <data name="Infra_Inventory_InvalidType" xml:space="preserve">
+    <value>실행 파일(.exe) 또는 바로가기(.lnk)만 추가할 수 있습니다.</value>
+  </data>
+  <data name="Infra_Icon_NoOutputDir" xml:space="preserve">
+    <value>출력 디렉터리가 지정되지 않았습니다.</value>
+  </data>
+  <data name="Infra_Icon_CreateFailed" xml:space="preserve">
+    <value>아이콘을 생성하지 못했습니다.</value>
+  </data>
+  <data name="Infra_Group_SaveFailed" xml:space="preserve">
+    <value>그룹을 저장하지 못했습니다. 디스크 공간이나 권한을 확인하세요.</value>
+  </data>
+  <data name="Infra_Folder_Duplicate" xml:space="preserve">
+    <value>이미 등록된 폴더입니다.</value>
+  </data>
+  <data name="Infra_Folder_NotFound" xml:space="preserve">
+    <value>수정할 폴더를 찾을 수 없습니다.</value>
+  </data>
+  <data name="Infra_Folder_SaveFailed" xml:space="preserve">
+    <value>폴더를 저장하지 못했습니다. 디스크 공간이나 권한을 확인하세요.</value>
+  </data>
 </root>
