@@ -273,7 +273,7 @@
     - "런타임 셸 표시 검증?" → 헤드리스 불가. 빌드/패키지 성공으로 1차 검증, 수동 배포 확인은 Verification 명시.
   - **Depends on**: T1
 
-- [ ] T10. resw 키 패리티/빈 값 검증 테스트
+- [x] T10. resw 키 패리티/빈 값 검증 테스트
   - **Type**: C
   - **Acceptance**: `dotnet test WorkGroup.slnx` 통과. 4개 resw 키 집합 동일·모든 값 비어있지 않음 단언. 누락/미번역 시 실패로 검출.
   - **Files**:
