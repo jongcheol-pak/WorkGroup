@@ -57,20 +57,21 @@
                 </StackPanel>
             </DataTemplate>
 
-            <!-- "+" 추가(그룹 편집) 버튼 항목 템플릿: 앱 항목과 동일 박스 구조 + 호버 확대, 클릭 시 그룹 편집 -->
+            <!-- "+" 추가(그룹 편집) 버튼 항목 템플릿: 앱 항목과 동일 박스 크기 + 호버 확대, 클릭 시 그룹 편집.
+                 루트를 Grid로 둔다: StackPanel(세로)에서는 박스의 VerticalAlignment=Stretch가 무시돼
+                 콘텐츠(FontIcon) 높이로 박스가 줄어든다. Grid면 단일 자식이 48×48(패딩 제외 40×40)을 채워 앱 박스와 동일. -->
             <DataTemplate x:Key="AddButtonTemplate" x:DataType="vm:PopupAddButtonItem">
-                <StackPanel Width="48" Height="48" Spacing="4" Padding="4"
-                            HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
-                            ToolTipService.ToolTip="{loc:Localize Key=GroupPopup_EditGroup}"
-                            PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
-                    <StackPanel.RenderTransform>
+                <Grid Width="48" Height="48" Padding="4"
+                      HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                      ToolTipService.ToolTip="{loc:Localize Key=GroupPopup_EditGroup}"
+                      PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
+                    <Grid.RenderTransform>
                         <ScaleTransform />
-                    </StackPanel.RenderTransform>
-                    <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
-                          Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
+                    </Grid.RenderTransform>
+                    <Grid Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
                         <FontIcon HorizontalAlignment="Center" VerticalAlignment="Center" Glyph="&#xE710;" />
                     </Grid>
-                </StackPanel>
+                </Grid>
             </DataTemplate>
 
             <!-- 항목 타입(앱/추가버튼)에 따라 템플릿 선택 -->
