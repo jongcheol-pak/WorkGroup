@@ -41,4 +41,27 @@ public class GroupArgsTests
         Assert.Equal("workgroup://group/g1", GroupArgs.BuildProtocolUri("g1"));
         Assert.Equal("g1", GroupArgs.ParseProtocol(new Uri(GroupArgs.BuildProtocolUri("g1"))));
     }
+
+    [Fact]
+    public void ParseEdit_왕복()
+    {
+        Assert.Equal("--edit-group g1", GroupArgs.BuildEditCommandLineArguments("g1"));
+        Assert.Equal("g1", GroupArgs.ParseEditCommandLine(GroupArgs.BuildEditCommandLineArguments("g1")));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("--edit-group")]
+    [InlineData("--other abc")]
+    public void ParseEditCommandLine_없으면_null(string? input)
+        => Assert.Null(GroupArgs.ParseEditCommandLine(input));
+
+    // --group과 --edit-group은 정확 일치라 서로 교차 매칭되지 않는다.
+    [Fact]
+    public void Group과_Edit_플래그는_교차_매칭되지_않는다()
+    {
+        Assert.Null(GroupArgs.ParseEditCommandLine("--group g1"));
+        Assert.Null(GroupArgs.ParseCommandLine("--edit-group g1"));
+    }
 }

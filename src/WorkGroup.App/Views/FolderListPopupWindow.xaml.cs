@@ -19,7 +19,7 @@ namespace WorkGroup.App.Views;
 /// </summary>
 public sealed partial class FolderListPopupWindow : Window
 {
-    private const int SingleColumnWidth = 360;
+    private const int SingleColumnWidth = 400;
     private const int GridCellWidth = 96;
     private const int InitialPopupHeight = 120;
     private const int OffScreen = -32000;
@@ -34,6 +34,7 @@ public sealed partial class FolderListPopupWindow : Window
     private FolderPopupSettings _settings = FolderPopupSettings.Default;
     private int _popupWidth = SingleColumnWidth;
     private int _lastAppliedHeight = -1;
+    private int _lastAppliedWidth = -1;
     private bool _positioned;
 
     // 창이 닫힌 뒤 큐에 남은 호버 타이머 Tick이 닫힌 창에 접근하는 것을 막는 가드.
@@ -81,9 +82,11 @@ public sealed partial class FolderListPopupWindow : Window
         try
         {
             _settings = _settingsService.Read();
+            // 셀 실제 너비 = content(GridCellWidth-8) + 버튼 좌우 패딩(20) = GridCellWidth+12.
+            // 거기에 바깥 Grid 좌우 패딩(24)을 더해야 우측 셀이 팝업 밖으로 밀려 짤리지 않는다.
             _popupWidth = _settings.ColumnCount <= 1
                 ? SingleColumnWidth
-                : _settings.ColumnCount * GridCellWidth + 24;
+                : _settings.ColumnCount * (GridCellWidth + 12) + 24;
 
             var folders = await _repository.LoadAllAsync();
             BuildFolderUI(folders);
@@ -300,7 +303,7 @@ public sealed partial class FolderListPopupWindow : Window
         ((App)Microsoft.UI.Xaml.Application.Current).ShowTrayMenuFromPopup();
     }
 
-    /// <summary>콘텐츠의 실제 세로 길이를 측정해 창 높이를 맞춘다(작업영역 높이로 상한 클램프).</summary>
+    /// <summary>콘텐츠의 실제 크기를 측정해 창 너비/높이를 맞춘다(작업영역 높이로 상한 클램프).</summary>
     private void AdjustToContent()
     {
         // 닫힌 뒤 SizeChanged/DispatcherQueue 콜백이 닫힌 창의 Content/AppWindow에 접근하는 것을 막는다.
@@ -309,26 +312,48 @@ public sealed partial class FolderListPopupWindow : Window
 
         double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
         root.UpdateLayout();
-        root.Measure(new Windows.Foundation.Size(_popupWidth / scale, double.PositiveInfinity));
+
+        if (_settings.ColumnCount <= 1)
+        {
+            // 세로 목록: 폭은 360 고정, 그 제약 하에서 높이만 측정한다.
+            root.Measure(new Windows.Foundation.Size(_popupWidth / scale, double.PositiveInfinity));
+        }
+        else
+        {
+            // 그리드: 콘텐츠(헤더/셀)가 원하는 자연 폭을 측정해 창 너비를 실제 폴더 수에 맞춘다.
+            // 헤더("폴더" 제목)도 측정에 포함되므로 셀이 적어도 최소 폭은 자동 보장된다.
+            root.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+            int naturalWidth = (int)Math.Ceiling(root.DesiredSize.Width * scale);
+            if (naturalWidth > 0)
+                _popupWidth = naturalWidth;
+        }
 
         int contentHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
         if (contentHeight <= 0)
             contentHeight = InitialPopupHeight;
 
+        // 창 테두리(SetBorderAndTitleBar)로 client 영역은 window보다 작다.
+        // 높이뿐 아니라 너비에도 이 차이를 더해야 콘텐츠(_popupWidth)가 client에 온전히 들어가 우측 셀이 짤리지 않는다.
         int chrome = AppWindow.Size.Height - AppWindow.ClientSize.Height;
         if (chrome < 0)
             chrome = 0;
+        int hChrome = AppWindow.Size.Width - AppWindow.ClientSize.Width;
+        if (hChrome < 0)
+            hChrome = 0;
 
         int total = contentHeight + chrome;
         // 폴더가 많아 화면을 넘으면 작업영역 높이로 제한(내부 ScrollViewer가 스크롤).
         if (total > _metrics.Work.Height)
             total = _metrics.Work.Height;
 
-        if (total == _lastAppliedHeight)
+        int windowWidth = _popupWidth + hChrome;
+
+        if (total == _lastAppliedHeight && windowWidth == _lastAppliedWidth)
             return;
         _lastAppliedHeight = total;
+        _lastAppliedWidth = windowWidth;
 
-        AppWindow.Resize(new SizeInt32(_popupWidth, total));
+        AppWindow.Resize(new SizeInt32(windowWidth, total));
         if (_positioned)
             MoveToTaskbar(total);
     }
@@ -365,8 +390,10 @@ public sealed partial class FolderListPopupWindow : Window
 
     private void MoveToTaskbar(int height)
     {
+        // 실제 창 너비(테두리 포함)로 배치해야 우측/중앙 정렬이 어긋나지 않는다.
+        int width = _lastAppliedWidth > 0 ? _lastAppliedWidth : _popupWidth;
         var placement = TaskbarPopupPositioner.Compute(
-            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, _popupWidth, height);
+            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, width, height);
         AppWindow.Move(new PointInt32(placement.X, placement.Y));
     }
 

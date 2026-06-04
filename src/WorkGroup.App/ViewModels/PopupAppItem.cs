@@ -15,6 +15,9 @@ public sealed partial class PopupAppItem : ObservableObject
 
     public string DisplayName => App.DisplayName;
 
+    /// <summary>관리자 권한 실행 가능 여부(Packaged 앱은 불가 → 메뉴 항목 비활성용).</summary>
+    public bool CanRunAsAdmin => App.Kind == AppKind.Win32;
+
     [ObservableProperty]
     public partial ImageSource? Icon { get; set; }
 

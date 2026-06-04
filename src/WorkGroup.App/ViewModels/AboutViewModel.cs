@@ -9,7 +9,7 @@ public sealed class AboutViewModel
 {
     public AboutViewModel() => Version = ReadVersion();
 
-    public string AppName => "WorkGroup";
+    public string AppName => "작업 관리";
 
     /// <summary>패키지 버전(Major.Minor.Build.Revision). 비패키지 실행 시 어셈블리 버전 폴백.</summary>
     public string Version { get; }

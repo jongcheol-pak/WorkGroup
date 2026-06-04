@@ -19,7 +19,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="WorkGroup">
+        <TitleBar Grid.Row="0" x:Name="AppTitleBar" Title="작업 관리">
             <!-- IconSource는 크기가 고정(약 16px)이라, 크게 표시하기 위해 LeftHeader에 직접 Image를 배치한다. -->
             <!-- 배치 순서상 LeftHeader는 제목 왼쪽에 온다. -->
             <TitleBar.LeftHeader>
@@ -72,7 +72,8 @@
                 </NavigationViewItem>
                 <NavigationViewItem Content="정보" Tag="About">
                     <NavigationViewItem.Icon>
-                        <SymbolIcon Symbol="Help" />
+                        <!-- Segoe Fluent Icons의 정보(ⓘ) 글리프 -->
+                        <FontIcon Glyph="&#xE946;" />
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>

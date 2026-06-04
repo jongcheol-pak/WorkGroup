@@ -7,6 +7,7 @@
     <Grid Padding="12,12,12,12" RowSpacing="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -14,8 +15,11 @@
         <TextBlock x:Name="HeaderText" Style="{ThemeResource BodyStrongTextBlockStyle}"
                    TextTrimming="CharacterEllipsis" />
 
+        <!-- 헤더와 목록 구분선 -->
+        <Border Grid.Row="1" Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
         <!-- 파일/하위폴더 목록(동적 생성) -->
-        <ScrollViewer Grid.Row="1" VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto"
+        <ScrollViewer Grid.Row="2" VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled">
             <StackPanel x:Name="ContentPanel" />
         </ScrollViewer>

@@ -11,6 +11,8 @@ using Windows.Graphics;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Groups;
 using WorkGroup.Application.Launch;
+using WorkGroup.Infrastructure;
+using WorkGroup.Infrastructure.Activation;
 using WorkGroup.Infrastructure.Interop;
 
 namespace WorkGroup.App.Views;
@@ -21,7 +23,10 @@ namespace WorkGroup.App.Views;
 /// </summary>
 public sealed partial class GroupPopupWindow : Window
 {
-    private const int PopupWidth = 360;
+    // 콘텐츠 측정 전 초기 배치/최소 너비. 로드 후 아이콘 1행 너비에 맞춰 늘리거나 폭 상한으로 줄인다.
+    private const int InitialPopupWidth = 360;
+    // 1행 너비가 작업영역을 넘지 않도록 좌우로 확보하는 여백 합(px). 초과분은 가로 스크롤.
+    private const int WorkAreaMargin = 24;
     // 콘텐츠 측정 전 초기 배치에 쓰는 기본 높이. 로드 후 아이콘 그리드 크기에 맞춰 줄인다.
     private const int InitialPopupHeight = 200;
     // 측정/콘텐츠 확정 전까지 창을 숨겨두는 화면 밖 좌표(여기서 리사이즈가 끝나 점프·깜빡임이 보이지 않음).
@@ -31,8 +36,13 @@ public sealed partial class GroupPopupWindow : Window
     private readonly IAppLauncher _launcher;
     // 핀 클릭 시점의 커서/모니터 좌표(표시를 미뤄도 클릭 위치 기준으로 배치하도록 생성자에서 1회 캡처).
     private readonly ScreenMetricsProvider.Metrics _metrics;
+    // "그룹 수정" 메뉴에서 메인 앱에 편집 활성화 인자를 넘길 때 사용하는 그룹 식별자.
+    private readonly string _groupId;
 
-    // 마지막으로 적용한 창 높이(px). 동일 값이면 재조정을 건너뛰어 SizeChanged 무한 루프를 막는다.
+    // 현재 적용된 창 너비(px). 아이콘 1행 콘텐츠 너비에 맞춰 동적으로 결정한다(폭 상한까지).
+    private int _popupWidth = InitialPopupWidth;
+    // 마지막으로 적용한 창 너비/높이(px). 동일 값이면 재조정을 건너뛰어 SizeChanged 무한 루프를 막는다.
+    private int _lastAppliedWidth = -1;
     private int _lastAppliedHeight = -1;
     // 콘텐츠 확정 후 작업 표시줄 정위치로 한 번 이동해 표시했는지. 그 전까지는 화면 밖에 머문다.
     private bool _positioned;
@@ -42,6 +52,8 @@ public sealed partial class GroupPopupWindow : Window
     public GroupPopupWindow(string groupId)
     {
         InitializeComponent();
+
+        _groupId = groupId;
 
         // 메인 창과 동일한 재질(Mica)을 팝업에도 적용해 흰 외곽선 없는 표준 창 프레임으로 만든다.
         SystemBackdrop = new MicaBackdrop();
@@ -64,7 +76,7 @@ public sealed partial class GroupPopupWindow : Window
         // 핀 클릭 위치를 즉시 캡처(표시는 콘텐츠 확정 후로 미뤄도 이 좌표 기준으로 배치).
         _metrics = new ScreenMetricsProvider().Capture();
         // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
-        AppWindow.Resize(new SizeInt32(PopupWidth, InitialPopupHeight));
+        AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
         AppWindow.Move(new PointInt32(OffScreen, OffScreen));
         Activated += OnActivated;
 
@@ -89,16 +101,15 @@ public sealed partial class GroupPopupWindow : Window
             if (group.ShowPopupHeader)
                 TitleText.Text = group.Apps.Count == 0 ? $"{group.Name} (멤버 없음)" : group.Name;
 
-            var iconTasks = new List<Task>();
             foreach (var app in group.Apps)
             {
                 var item = new PopupAppItem(app);
                 Items.Add(item);
-                iconTasks.Add(item.LoadIconAsync());
+                // 아이콘 로드는 기다리지 않고 백그라운드로 시작한다(표시를 막지 않음 → 핀 클릭 즉시 팝업이 뜬다).
+                // 항목 박스가 고정 48px라 아이콘 로드 여부와 무관하게 레이아웃이 확정되므로 먼저 표시해도 리사이즈 점프가 없고,
+                // 각 아이콘은 OneWay 바인딩으로 로드 완료 시 자기 박스 안에 채워진다.
+                _ = item.LoadIconAsync();
             }
-            // 아이콘까지 로드한 뒤 표시해 빈 아이콘→채워짐 깜빡임을 막는다(실패는 무시하고 표시 진행).
-            try { await Task.WhenAll(iconTasks); }
-            catch { /* 일부 아이콘 로드 실패는 표시를 막지 않는다 */ }
         }
         catch (Exception)
         {
@@ -113,7 +124,8 @@ public sealed partial class GroupPopupWindow : Window
     }
 
     /// <summary>
-    /// 아이콘 그리드를 포함한 콘텐츠의 실제 세로 길이를 측정해 창 높이를 맞춘다(빈 여백 제거).
+    /// 아이콘 1행 콘텐츠의 실제 가로/세로 길이를 측정해 창 크기를 맞춘다(빈 여백 제거).
+    /// 너비는 콘텐츠 자연 너비를 따르되 작업영역 폭을 상한으로 두고(초과분은 가로 스크롤), 높이는 그 너비에서 재측정한다.
     /// </summary>
     private void AdjustToContent()
     {
@@ -121,26 +133,57 @@ public sealed partial class GroupPopupWindow : Window
             return;
 
         double scale = root.XamlRoot?.RasterizationScale ?? 1.0;
-        root.UpdateLayout();
-        // 너비는 고정, 높이는 무한 제약으로 측정해 콘텐츠가 필요로 하는 만큼만 사용한다.
-        root.Measure(new Windows.Foundation.Size(PopupWidth / scale, double.PositiveInfinity));
 
+        // 가로 스크롤이 켜져 있으면 내부 ScrollViewer가 "스크롤 가능 방향은 주어진 만큼만 차지"하는 성질 때문에
+        // 무한 너비 측정 시 콘텐츠 자연 너비를 부정확하게 보고한다 → 측정 동안은 가로 스크롤을 꺼서 정확히 측정한다.
+        ScrollViewer.SetHorizontalScrollMode(AppsGrid, ScrollMode.Disabled);
+        ScrollViewer.SetHorizontalScrollBarVisibility(AppsGrid, ScrollBarVisibility.Disabled);
+        root.UpdateLayout();
+
+        // 1) 너비·높이 모두 무제한으로 측정해 아이콘 1행이 필요로 하는 자연 너비를 구한다.
+        root.Measure(new Windows.Foundation.Size(double.PositiveInfinity, double.PositiveInfinity));
+        int desiredWidth = (int)Math.Ceiling(root.DesiredSize.Width * scale);
+        if (desiredWidth <= 0)
+            desiredWidth = InitialPopupWidth;
+
+        // 2) 작업영역 폭(좌우 여백 확보)을 상한으로 클램프 — 초과분은 가로 스크롤로 처리한다.
+        int maxWidth = Math.Max(InitialPopupWidth, _metrics.Work.Width - WorkAreaMargin);
+        int finalWidth = Math.Min(desiredWidth, maxWidth);
+
+        // 콘텐츠가 상한을 넘을 때만 가로 스크롤을 켠다(그 외엔 창이 콘텐츠에 정확히 맞아 스크롤이 불필요·미표시).
+        bool overflow = desiredWidth > maxWidth;
+        if (overflow)
+        {
+            ScrollViewer.SetHorizontalScrollMode(AppsGrid, ScrollMode.Auto);
+            ScrollViewer.SetHorizontalScrollBarVisibility(AppsGrid, ScrollBarVisibility.Auto);
+        }
+
+        // 3) 확정 너비로 높이를 재측정한다(가로 스크롤바가 생기면 그만큼 높이에 반영해 잘림을 막는다).
+        root.Measure(new Windows.Foundation.Size(finalWidth / scale, double.PositiveInfinity));
         int contentHeight = (int)Math.Ceiling(root.DesiredSize.Height * scale);
         if (contentHeight <= 0)
             contentHeight = InitialPopupHeight;
 
         // 표준 프레임(테두리/캡션 등 비클라이언트)만큼 더해 클라이언트 영역이 콘텐츠를 다 담게 한다(잘림 방지).
+        // 높이뿐 아니라 너비에도 보정해야 client 폭이 테두리만큼 줄어 콘텐츠가 잘리고 가로 스크롤이 생기는 것을 막는다.
         int chrome = AppWindow.Size.Height - AppWindow.ClientSize.Height;
         if (chrome < 0)
             chrome = 0;
+        int hChrome = AppWindow.Size.Width - AppWindow.ClientSize.Width;
+        if (hChrome < 0)
+            hChrome = 0;
 
         int total = contentHeight + chrome;
-        // SizeChanged가 Resize로 재발생해도 같은 높이면 무시해 무한 루프를 막는다.
-        if (total == _lastAppliedHeight)
+        int windowWidth = finalWidth + hChrome;
+        // SizeChanged가 Resize로 재발생해도 같은 크기면 무시해 무한 루프를 막는다.
+        if (windowWidth == _lastAppliedWidth && total == _lastAppliedHeight)
             return;
+        _lastAppliedWidth = windowWidth;
         _lastAppliedHeight = total;
+        // 배치/이동도 실제 창 너비(테두리 포함)를 기준으로 해야 정렬이 어긋나지 않는다.
+        _popupWidth = windowWidth;
 
-        AppWindow.Resize(new SizeInt32(PopupWidth, total));
+        AppWindow.Resize(new SizeInt32(windowWidth, total));
         // 표시(Reveal) 전에는 화면 밖에서 크기만 맞추고, 이미 표시 중이면 정위치도 따라 갱신한다.
         if (_positioned)
             MoveToTaskbar(total);
@@ -153,6 +196,47 @@ public sealed partial class GroupPopupWindow : Window
             _launcher.Launch(item.App);
             Close();
         }
+    }
+
+    // 우클릭 메뉴 "열기": 일반 실행 후 팝업 닫기(좌클릭과 동일 동작).
+    private void OnOpenClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
+        {
+            _launcher.Launch(item.App);
+            Close();
+        }
+    }
+
+    // 우클릭 메뉴 "관리자 권한으로 실행": Win32만 승격 실행(Packaged 항목은 메뉴에서 비활성).
+    private void OnRunAsAdminClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
+        {
+            _launcher.LaunchAsAdmin(item.App);
+            Close();
+        }
+    }
+
+    // 우클릭 메뉴 "그룹 수정": 작은 팝업 창은 편집 다이얼로그를 담을 수 없으므로,
+    // 메인 앱을 "--edit-group {id}"로 실행(single-instance가 기존 메인 인스턴스로 합침)해 메인 창에서 편집한다.
+    private void OnEditGroupClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // .lnk 타깃과 동일한 실행 별칭 풀패스로 호출(검증된 실행 경로).
+            var info = new System.Diagnostics.ProcessStartInfo(WorkGroupPaths.AliasExePath)
+            {
+                Arguments = GroupArgs.BuildEditCommandLineArguments(_groupId),
+                UseShellExecute = true
+            };
+            System.Diagnostics.Process.Start(info);
+        }
+        catch (Exception)
+        {
+            // 별칭 실행 실패(파일 없음/권한 등)는 사용자 개입 없이 무시한다(plan D7 — 팝업은 곧 닫히고 로거 없음).
+        }
+        Close();
     }
 
     // 아이콘 위에 마우스가 올라오면 살짝 확대, 벗어나면 원래 크기로(부드럽게).
@@ -202,13 +286,20 @@ public sealed partial class GroupPopupWindow : Window
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
         MoveToTaskbar(height);
         _positioned = true; // 이후 SizeChanged는 정위치에서 조정
+        // 콜드 프로세스는 OS가 새 창을 포그라운드로 띄우지만, 상주 인스턴스(redirect)에서 띄울 땐
+        // Activate()만으론 포그라운드 포커스를 못 잡는다. SetForegroundWindow로 활성 상태를 확보해야
+        // 다른 앱 클릭 시 Deactivated→Close가 동작한다(FolderListPopupWindow와 동일).
+        SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
     }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     /// <summary>캡처해 둔 클릭 시점 좌표로 작업 표시줄 변에 창을 이동한다(크기는 AdjustToContent가 담당).</summary>
     private void MoveToTaskbar(int height)
     {
         var placement = TaskbarPopupPositioner.Compute(
-            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, PopupWidth, height);
+            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, _popupWidth, height);
         AppWindow.Move(new PointInt32(placement.X, placement.Y));
     }
 

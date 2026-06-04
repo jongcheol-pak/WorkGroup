@@ -22,6 +22,12 @@ public sealed partial class MainShell : Page
     /// <summary>외부(폴더 팝업 톱니)에서 "트레이 메뉴" 탭으로 전환한다(MenuItems[1]).</summary>
     public void SelectTrayMenu() => Nav.SelectedItem = Nav.MenuItems[1];
 
+    /// <summary>외부("그룹 수정" 활성화)에서 "작업 그룹" 탭으로 전환한다(MenuItems[0]).</summary>
+    public void SelectWorkGroups() => Nav.SelectedItem = Nav.MenuItems[0];
+
+    /// <summary>현재 ContentFrame에 로드된 작업 그룹 페이지(아니면 null) — 그룹 수정 라우팅용.</summary>
+    internal WorkGroupsPage? CurrentWorkGroupsPage => ContentFrame.Content as WorkGroupsPage;
+
     private void OnSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
         if (args.SelectedItem is not NavigationViewItem item) return;

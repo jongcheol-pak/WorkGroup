@@ -19,11 +19,50 @@ public sealed partial class WorkGroupsPage : Page
 {
     public WorkGroupsViewModel ViewModel { get; }
 
+    // 그룹 수정 다이얼로그 표시 중 재요청을 무시하기 위한 가드(plan D10).
+    private bool _editDialogOpen;
+
     public WorkGroupsPage()
     {
         InitializeComponent();
         ViewModel = App.Services.GetRequiredService<WorkGroupsViewModel>();
-        Loaded += async (_, _) => await ViewModel.LoadAsync();
+        Loaded += OnPageLoaded;
+    }
+
+    private async void OnPageLoaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.LoadAsync();
+        // 페이지 준비 전 들어온 "그룹 수정" 요청을 로드 완료 후 소비한다(plan D9).
+        if (App.PendingEditGroupId is { } id)
+        {
+            App.PendingEditGroupId = null;
+            await EditGroupByIdAsync(id);
+        }
+    }
+
+    /// <summary>외부("그룹 수정" 활성화)에서 지정한 그룹의 편집 다이얼로그를 연다.</summary>
+    public async Task EditGroupByIdAsync(string groupId)
+    {
+        if (_editDialogOpen)
+            return; // 표시 중 재요청은 무시(plan D10).
+
+        // 직접 호출 경로(상주 중)에서 아직 목록이 비어 있으면 1회 로드한다.
+        if (ViewModel.Groups.Count == 0)
+            await ViewModel.LoadAsync();
+
+        var item = ViewModel.Groups.FirstOrDefault(g => g.Group.Id.Value == groupId);
+        if (item is null)
+            return; // 삭제됐거나 없는 그룹 — 메인 창만 표시(plan D8).
+
+        _editDialogOpen = true;
+        try
+        {
+            await ShowEditDialogAsync(item.Group);
+        }
+        finally
+        {
+            _editDialogOpen = false;
+        }
     }
 
     private async void OnAddClick(object sender, RoutedEventArgs e)

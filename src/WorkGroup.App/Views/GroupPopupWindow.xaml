@@ -20,9 +20,18 @@
                   IsItemClickEnabled="True" SelectionMode="None"
                   ItemClick="OnAppClick"
                   CornerRadius="8"
-                
                   ScrollViewer.VerticalScrollMode="Disabled"
-                  ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                  ScrollViewer.HorizontalScrollMode="Disabled"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <!-- 아이콘을 항상 한 가로줄(1행)로 나열한다(기본 ItemsWrapGrid의 다행 래핑 방지).
+                 가상화 ItemsStackPanel은 측정 방향(가로)이 가상화 방향과 같아 무한 너비 측정 시 자연 너비를
+                 부정확하게 보고(불필요한 가로 스크롤 발생) → 비가상화 StackPanel로 정확히 측정한다(아이콘 수 적어 성능 무관). -->
+            <GridView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </GridView.ItemsPanel>
             <!-- 마우스 오버/누름 시 항목 배경(GridViewItem 기본 강조)이 보이지 않도록 투명 처리 -->
             <GridView.Resources>
                 <SolidColorBrush x:Key="GridViewItemBackgroundPointerOver" Color="Transparent" />
@@ -33,10 +42,33 @@
                     <!-- 마우스 오버 시 아이콘이 살짝 커지는 호버 애니메이션(중앙 기준 스케일) -->
                     <StackPanel Width="48" Height="48"  Spacing="4" Padding="4"
                                 HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                                ToolTipService.ToolTip="{x:Bind DisplayName}"
                                 PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
                         <StackPanel.RenderTransform>
                             <ScaleTransform />
                         </StackPanel.RenderTransform>
+                        <!-- 우클릭 컨텍스트 메뉴: 열기 / 관리자 권한으로 실행(Packaged는 비활성) / 그룹 수정 -->
+                        <StackPanel.ContextFlyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="열기" Tag="{x:Bind}" Click="OnOpenClick">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE8A7;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutItem Text="관리자 권한으로 실행" Tag="{x:Bind}"
+                                                IsEnabled="{x:Bind CanRunAsAdmin}" Click="OnRunAsAdminClick">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE7EF;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="그룹 수정" Click="OnEditGroupClick">
+                                    <MenuFlyoutItem.Icon>
+                                        <FontIcon Glyph="&#xE70F;" />
+                                    </MenuFlyoutItem.Icon>
+                                </MenuFlyoutItem>
+                            </MenuFlyout>
+                        </StackPanel.ContextFlyout>
                         <Grid VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
                               Background="{ThemeResource ControlFillColorDefaultBrush}" CornerRadius="6" Padding="6">
                             <Image HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Stretch="Uniform" Source="{x:Bind Icon, Mode=OneWay}" />

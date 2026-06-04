@@ -28,7 +28,7 @@
             <TextBox x:Name="SearchBox" PlaceholderText="폴더 검색..."
                      Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-            <Grid ColumnSpacing="12">
+            <Grid ColumnSpacing="12" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -91,31 +91,30 @@
                                                ToolTipService.ToolTip="{x:Bind Path}" />
                                 </StackPanel>
 
-                                <!-- 수정(연필) -->
-                                <Button Grid.Column="2" Tag="{x:Bind}" Click="OnEditClick"
-                                        Background="Transparent" BorderThickness="0"
-                                        ToolTipService.ToolTip="수정">
-                                    <SymbolIcon Symbol="Edit" />
-                                </Button>
-                                <!-- 더 보기(위치 열기/삭제) -->
-                                <Button Grid.Column="3" Background="Transparent" BorderThickness="0"
-                                        ToolTipService.ToolTip="더 보기">
-                                    <SymbolIcon Symbol="More" />
-                                    <Button.Flyout>
-                                        <MenuFlyout>
-                                            <MenuFlyoutItem Text="위치 열기" Tag="{x:Bind}" Click="OnOpenLocationClick">
-                                                <MenuFlyoutItem.Icon>
-                                                    <SymbolIcon Symbol="Folder" />
-                                                </MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                            <MenuFlyoutItem Text="삭제" Tag="{x:Bind}" Click="OnDeleteClick">
-                                                <MenuFlyoutItem.Icon>
-                                                    <SymbolIcon Symbol="Delete" />
-                                                </MenuFlyoutItem.Icon>
-                                            </MenuFlyoutItem>
-                                        </MenuFlyout>
-                                    </Button.Flyout>
-                                </Button>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <!-- 수정(연필) -->
+                                    <Button  Tag="{x:Bind}" Click="OnEditClick"
+                               Background="Transparent" BorderThickness="0"
+                               ToolTipService.ToolTip="수정">
+                                        <SymbolIcon Symbol="Edit" />
+                                    </Button>
+
+                                    <!-- 위치 열기 -->
+                                    <Button  Tag="{x:Bind}" Click="OnOpenLocationClick"
+Background="Transparent" BorderThickness="0"
+ToolTipService.ToolTip="위치 열기">
+                                        <SymbolIcon Symbol="Folder" />
+                                    </Button>
+
+                                    <!-- 삭제(휴지통) -->
+                                    <Button  Tag="{x:Bind}" Click="OnDeleteClick"
+Background="Transparent" BorderThickness="0"
+ToolTipService.ToolTip="삭제">
+                                        <SymbolIcon Symbol="Delete" />
+                                    </Button>
+                                </StackPanel>
+                               
+                                
                             </Grid>
                         </Border>
                     </DataTemplate>

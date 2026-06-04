@@ -65,7 +65,7 @@ public sealed class TrayIconService : IDisposable
         data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
         data.uCallbackMessage = WM_APP_TRAY;
         data.hIcon = LoadTrayIcon();
-        data.szTip = "WorkGroup";
+        data.szTip = "작업 관리";
         _added = Shell_NotifyIcon(NIM_ADD, ref data);
     }
 

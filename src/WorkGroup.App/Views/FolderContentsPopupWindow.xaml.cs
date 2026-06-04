@@ -26,8 +26,6 @@ public sealed partial class FolderContentsPopupWindow : Window
     private const int HoverDelayMs = 200;
     // 자식 팝업이 부모 위로 포개지는 가로 겹침(클수록 더 많이 겹침).
     private const int Overlap = 34;
-    // 자식 팝업을 부모보다 이만큼 위로 올려 "위쪽으로 겹치게" 한다(계단식 상승).
-    private const int VerticalOverlap = 34;
     private const int TopMargin = 100;
 
     private readonly IDirectoryBrowser _browser;
@@ -314,8 +312,9 @@ public sealed partial class FolderContentsPopupWindow : Window
     {
         var work = _anchor.Work;
         int x = _anchor.ParentLeft - PopupWidth + Overlap;
-        // 호버 버튼 높이가 아니라 부모 상단보다 살짝 위로 올려 위쪽으로 겹치게 한다.
-        int y = _anchor.ParentTop - VerticalOverlap;
+        // 호버한 항목 높이에 맞춰 배치한다(선택한 폴더 위치에 하위 팝업 표시).
+        // ButtonY는 부모 클라이언트 기준 항목 Y 오프셋 → 부모 창 상단(ParentTop)을 더해 화면 절대 Y로 변환.
+        int y = _anchor.ParentTop + _anchor.ButtonY;
 
         if (x < work.Left)
             x = _anchor.ParentRight - Overlap;

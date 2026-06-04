@@ -59,7 +59,7 @@ public sealed class ShortcutService : IShortcutService
                 _aliasExePath,
                 GroupArgs.BuildCommandLineArguments(group.Id.Value),
                 iconPath,
-                $"{group.Name} - WorkGroup");
+                $"{group.Name} - 작업 관리");
 
             return Result<string>.Ok(lnkPath);
         }

@@ -1,4 +1,6 @@
+using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.Windows.AppLifecycle;
@@ -21,6 +23,18 @@ namespace WorkGroup.App
         private bool _exiting;
         // 트레이 좌클릭으로 띄운 폴더 목록 팝업(중복 생성 방지용 추적).
         private Views.FolderListPopupWindow? _folderPopup;
+        // 상주 인스턴스가 핀 클릭 redirect로 띄운 그룹 팝업(중복 생성 방지용 추적).
+        private Views.GroupPopupWindow? _groupPopup;
+
+        // 메인 인스턴스 등록 키. 핀 클릭 시 상주 메인 인스턴스를 찾을 때도 이 키로 식별한다.
+        private const string MainInstanceKey = "WorkGroupMainInstance";
+
+        // single-instance 키(메인/편집/핀 redirect 경로 등록). Activated 이벤트는 이 인스턴스에서 발생한다.
+        private AppInstance? _keyInstance;
+        // 메인 UI 스레드 큐(OnLaunched에서 캡처). Activated가 백그라운드 스레드라 UI 마샬링에 사용.
+        private DispatcherQueue? _uiDispatcherQueue;
+        // 메인 창/페이지가 아직 준비되기 전 들어온 "그룹 수정" 요청을 보관했다가 WorkGroupsPage가 소비한다.
+        internal static string? PendingEditGroupId { get; set; }
 
         /// <summary>전역 DI 컨테이너(plan.md T9 조립).</summary>
         public static IServiceProvider Services { get; private set; } = default!;
@@ -36,33 +50,127 @@ namespace WorkGroup.App
 
         /// <summary>
         /// 활성화 분기(plan.md T2/T12):
-        /// - 그룹 id(핀 클릭/프로토콜) → 팝업만 띄우고 닫히면 종료.
+        /// - 그룹 id(핀 클릭/프로토콜) → 메인 인스턴스 상주 시 redirect, 없으면 팝업만 띄우고 닫히면 종료.
         /// - 로그인 자동 시작 → 트레이만 상주(메인 창 미표시).
         /// - 일반 실행 → 트레이 + 메인 창.
         /// </summary>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
+            // Activated(백그라운드 스레드) 마샬링에 쓸 메인 UI 스레드 큐를 진입 시 캡처한다.
+            _uiDispatcherQueue = DispatcherQueue.GetForCurrentThread();
+
             var activation = AppInstance.GetCurrent().GetActivatedEventArgs();
             var groupId = ActivationParser.TryGetGroupId(activation);
 
             if (!string.IsNullOrWhiteSpace(groupId))
             {
+                // 상주 중인 메인 인스턴스가 있으면 그쪽으로 활성화를 넘겨(redirect) 즉시 팝업을 띄운다
+                // — 새 프로세스/DI 초기화/저장소 로드 비용을 피해 표시 지연을 없앤다.
+                // 없으면(콜드) 기존처럼 이 프로세스가 팝업만 띄우고 닫히면 종료한다(콜드 동작 불변).
+                var main = FindMainInstance();
+                if (main is not null)
+                {
+                    RedirectActivationTo(activation, main);
+                    Exit();
+                    return;
+                }
+
+                // 콜드: 팝업 전용 프로세스로 띄우고 닫히면 종료(상주 안 함).
                 var popup = new GroupPopupWindow(groupId);
-                // 팝업 전용 인스턴스는 닫히면 프로세스를 종료한다(상주 안 함).
                 popup.Closed += (_, _) => Exit();
                 _window = popup;
                 popup.Activate();
                 return;
             }
 
+            // 메인/편집 활성화는 단일 인스턴스로 합친다. 이미 메인 인스턴스가 있으면 그쪽으로 넘기고 종료.
+            var keyInstance = AppInstance.FindOrRegisterForKey(MainInstanceKey);
+            if (!keyInstance.IsCurrent)
+            {
+                RedirectActivationTo(activation, keyInstance);
+                Exit();
+                return;
+            }
+            _keyInstance = keyInstance;
+            keyInstance.Activated += OnAppInstanceActivated;
+
             EnsureTray();
 
             // 메인 시작 시 저장소와 불일치하는 고아 .lnk/.ico 정리(plan.md T8 연결).
             _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();
 
-            // 로그인 자동 시작이면 트레이만 상주(메인 창은 사용자가 트레이로 연다).
-            if (activation.Kind != ExtendedActivationKind.StartupTask)
+            // "그룹 수정" 활성화면 메인 창을 열어 해당 그룹 편집 다이얼로그를 표시한다.
+            var editId = ActivationParser.TryGetEditGroupId(activation);
+            if (!string.IsNullOrWhiteSpace(editId))
+                RouteEditRequest(editId);
+            else if (activation.Kind != ExtendedActivationKind.StartupTask)
+                // 로그인 자동 시작이면 트레이만 상주(메인 창은 사용자가 트레이로 연다).
                 ShowMainWindow();
+        }
+
+        // 상주 중인 메인 인스턴스(트레이 상주)를 찾는다. 없으면 null(콜드 상태).
+        // GetInstances()는 GetCurrent를 호출한 모든 인스턴스(현재 프로세스 자신 포함)를 반환하므로,
+        // 키 등록을 한 메인 인스턴스만 Key로 식별하고 자기 자신(IsCurrent, Key 미등록)은 제외한다.
+        private static AppInstance? FindMainInstance()
+        {
+            foreach (var instance in AppInstance.GetInstances())
+            {
+                if (!instance.IsCurrent && instance.Key == MainInstanceKey)
+                    return instance;
+            }
+            return null;
+        }
+
+        // UI 스레드 데드락을 피하려고 redirect를 별도 스레드에서 수행하고 완료를 동기 대기한다(공식 Instancing 패턴).
+        private static void RedirectActivationTo(AppActivationArguments args, AppInstance keyInstance)
+        {
+            using var redirectSemaphore = new SemaphoreSlim(0, 1);
+            _ = Task.Run(async () =>
+            {
+                await keyInstance.RedirectActivationToAsync(args);
+                redirectSemaphore.Release();
+            });
+            redirectSemaphore.Wait();
+        }
+
+        // 상주 중인 메인 인스턴스가 redirect로 받은 활성화(백그라운드 스레드) — UI 스레드로 마샬링해 처리한다.
+        private void OnAppInstanceActivated(object? sender, AppActivationArguments e)
+        {
+            _uiDispatcherQueue?.TryEnqueue(() =>
+            {
+                // 핀 클릭/프로토콜(그룹 id)이면 팝업을 띄운다(editId와 상호 배타 — 먼저 분기 후 즉시 반환).
+                var groupId = ActivationParser.TryGetGroupId(e);
+                if (!string.IsNullOrWhiteSpace(groupId))
+                {
+                    ShowGroupPopup(groupId);
+                    return;
+                }
+
+                var editId = ActivationParser.TryGetEditGroupId(e);
+                if (!string.IsNullOrWhiteSpace(editId))
+                    RouteEditRequest(editId);
+                else
+                    ShowMainWindow(); // 일반 재활성화 — 메인 창을 앞으로
+            });
+        }
+
+        // "그룹 수정" 요청을 메인 창의 작업 그룹 페이지로 라우팅한다.
+        // 페이지가 아직 준비 전이면 PendingEditGroupId로 보관해 페이지 Loaded가 소비한다(plan D9).
+        private void RouteEditRequest(string editId)
+        {
+            PendingEditGroupId = editId;
+            ShowMainWindow();
+
+            if (_window?.Content is Frame { Content: MainShell shell })
+            {
+                shell.SelectWorkGroups();
+                // 이미 로드된 페이지가 있으면 즉시 처리(상주 중 재요청). 없으면 Loaded가 PendingEditGroupId를 소비.
+                if (shell.CurrentWorkGroupsPage is { } page && PendingEditGroupId is { } id)
+                {
+                    PendingEditGroupId = null;
+                    _ = page.EditGroupByIdAsync(id);
+                }
+            }
         }
 
         private void EnsureTray()
@@ -93,6 +201,20 @@ namespace WorkGroup.App
             var popup = new FolderListPopupWindow();
             _folderPopup = popup;
             popup.Closed += (_, _) => { if (ReferenceEquals(_folderPopup, popup)) _folderPopup = null; };
+            popup.Activate();
+        }
+
+        // 상주 인스턴스가 핀 클릭 redirect를 받아 그룹 팝업을 띄운다. 이전 팝업은 닫고 새로 표시한다.
+        // GroupPopupWindow는 Deactivated 시 스스로 Close하므로, 그 자율 Close가 정리를 꼬지 않도록
+        // 닫기/Activate 전에 추적(_groupPopup)을 먼저 교체한다. 콜드 경로와 달리 Closed에 Exit를 붙이지 않아 상주를 유지한다.
+        // (FolderListPopupWindow와 달리 호버 타이머/CloseSelf가 없어 표준 Close()로 닫는다.)
+        private void ShowGroupPopup(string groupId)
+        {
+            var old = _groupPopup;
+            var popup = new GroupPopupWindow(groupId);
+            _groupPopup = popup;
+            popup.Closed += (_, _) => { if (ReferenceEquals(_groupPopup, popup)) _groupPopup = null; };
+            old?.Close();
             popup.Activate();
         }
 

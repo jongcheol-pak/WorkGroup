@@ -22,4 +22,15 @@ public static class ActivationParser
             _ => null
         };
     }
+
+    /// <summary>활성화 인자에서 "그룹 수정" 대상 id를 찾는다(명령줄 별칭만). 없으면 null.</summary>
+    public static string? TryGetEditGroupId(AppActivationArguments args)
+    {
+        return args.Kind switch
+        {
+            ExtendedActivationKind.Launch when args.Data is ILaunchActivatedEventArgs launch
+                => GroupArgs.ParseEditCommandLine(launch.Arguments),
+            _ => null
+        };
+    }
 }

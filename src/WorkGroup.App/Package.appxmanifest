@@ -16,7 +16,7 @@
   <mp:PhoneIdentity PhoneProductId="6140ff7e-e1ef-4a79-a4d0-4fb550725095" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>WorkGroup.App</DisplayName>
+    <DisplayName>작업 관리</DisplayName>
     <PublisherDisplayName>User Name</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="WorkGroup.App"
-        Description="WorkGroup.App"
+        DisplayName="작업 관리"
+        Description="작업 관리"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -58,7 +58,7 @@
         <uap5:Extension Category="windows.startupTask"
                         Executable="$targetnametoken$.exe"
                         EntryPoint="$targetentrypoint$">
-          <uap5:StartupTask TaskId="WorkGroupStartupTask" Enabled="false" DisplayName="WorkGroup" />
+          <uap5:StartupTask TaskId="WorkGroupStartupTask" Enabled="false" DisplayName="작업 관리" />
         </uap5:Extension>
       </Extensions>
     </Application>
