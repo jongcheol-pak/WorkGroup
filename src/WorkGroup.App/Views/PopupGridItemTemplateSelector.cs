@@ -8,7 +8,7 @@ namespace WorkGroup.App.Views;
 /// 핀 팝업 GridView의 항목 타입에 따라 템플릿을 고른다.
 /// <see cref="PopupAddButtonItem"/>은 "+" 버튼 템플릿, 그 외(앱 항목)는 앱 아이콘 템플릿.
 /// </summary>
-public sealed partial class PopupGridItemTemplateSelector : DataTemplateSelector
+public sealed class PopupGridItemTemplateSelector : DataTemplateSelector
 {
     /// <summary>앱 아이콘 항목 템플릿.</summary>
     public DataTemplate? AppTemplate { get; set; }

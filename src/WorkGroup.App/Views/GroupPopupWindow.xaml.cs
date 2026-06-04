@@ -48,7 +48,8 @@ public sealed partial class GroupPopupWindow : Window
     // 콘텐츠 확정 후 작업 표시줄 정위치로 한 번 이동해 표시했는지. 그 전까지는 화면 밖에 머문다.
     private bool _positioned;
 
-    public ObservableCollection<PopupAppItem> Items { get; } = new();
+    // 앱 항목(PopupAppItem)과 마지막 "+" 추가버튼 항목(PopupAddButtonItem)이 섞이므로 object 컬렉션.
+    public ObservableCollection<object> Items { get; } = new();
 
     public GroupPopupWindow(string groupId)
     {
@@ -113,6 +114,9 @@ public sealed partial class GroupPopupWindow : Window
                 // 각 아이콘은 OneWay 바인딩으로 로드 완료 시 자기 박스 안에 채워진다.
                 _ = item.LoadIconAsync();
             }
+
+            // 정상 그룹이면(멤버 0개여도) 목록 끝에 "그룹 편집" 추가버튼을 둔다(NotFound/예외 경로에는 추가 안 함).
+            Items.Add(new PopupAddButtonItem());
         }
         catch (Exception)
         {
@@ -199,6 +203,11 @@ public sealed partial class GroupPopupWindow : Window
             _launcher.Launch(item.App);
             Close();
         }
+        else if (e.ClickedItem is PopupAddButtonItem)
+        {
+            // 목록 끝 "+" 버튼: 우클릭 "그룹 수정"과 동일하게 메인 창 편집 다이얼로그를 연다.
+            EditGroup();
+        }
     }
 
     // 우클릭 메뉴 "열기": 일반 실행 후 팝업 닫기(좌클릭과 동일 동작).
@@ -221,9 +230,12 @@ public sealed partial class GroupPopupWindow : Window
         }
     }
 
-    // 우클릭 메뉴 "그룹 수정": 작은 팝업 창은 편집 다이얼로그를 담을 수 없으므로,
-    // 메인 앱을 "--edit-group {id}"로 실행(single-instance가 기존 메인 인스턴스로 합침)해 메인 창에서 편집한다.
-    private void OnEditGroupClick(object sender, RoutedEventArgs e)
+    // 우클릭 메뉴 "그룹 수정": EditGroup으로 위임(목록 끝 "+" 버튼과 동일 동작).
+    private void OnEditGroupClick(object sender, RoutedEventArgs e) => EditGroup();
+
+    // 작은 팝업 창은 편집 다이얼로그를 담을 수 없으므로, 메인 앱을 "--edit-group {id}"로 실행
+    // (single-instance가 기존 메인 인스턴스로 합침)해 메인 창에서 편집한다. 실행 후 팝업을 닫는다.
+    private void EditGroup()
     {
         try
         {
