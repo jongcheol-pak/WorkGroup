@@ -4,12 +4,13 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:WorkGroup.App.ViewModels"
     mc:Ignorable="d"
     Title="{x:Bind ViewModel.Title, Mode=OneWay}"
-    PrimaryButtonText="확인"
-    CloseButtonText="취소"
+    PrimaryButtonText="{loc:Localize Key=Common_OK}"
+    CloseButtonText="{loc:Localize Key=Common_Cancel}"
     DefaultButton="Primary"
     PrimaryButtonClick="OnPrimaryButtonClick">
 
@@ -29,14 +30,14 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <Button x:Name="IconButton" Width="66" Height="66" Padding="4" VerticalAlignment="Bottom"
-                    ToolTipService.ToolTip="아이콘 변경">
+                    ToolTipService.ToolTip="{loc:Localize Key=GroupEdit_ChangeIconTooltip}">
                 <Image Width="50" Height="50" Source="{x:Bind ViewModel.PreviewImage, Mode=OneWay}" />
                 <Button.Flyout>
                     <Flyout Opening="OnIconFlyoutOpening">
                         <StackPanel Width="380" Spacing="8">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Content="사용자 아이콘" Click="OnUserIconClick" />
-                                <Button Content="리소스 아이콘" Click="OnShowResourceGrid" />
+                                <Button Content="{loc:Localize Key=GroupEdit_UserIcon}" Click="OnUserIconClick" />
+                                <Button Content="{loc:Localize Key=GroupEdit_ResourceIcon}" Click="OnShowResourceGrid" />
                             </StackPanel>
                             <GridView Visibility="{x:Bind ViewModel.ResourceGridVisibility, Mode=OneWay}" Height="320"
                                       ItemsSource="{x:Bind ViewModel.ResourceIcons, Mode=OneWay}"
@@ -57,12 +58,12 @@
             <!-- 이름: 수정 모드는 읽기전용 표시 → 클릭 시 입력창 전환, 신규는 처음부터 입력창 -->
             <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="4,0,0,0">
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameDisplayVisibility, Mode=OneWay}">
-                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" Margin="12,0,0,0" />
+                    <TextBlock Text="{loc:Localize Key=GroupEdit_NameLabel}" Style="{ThemeResource CaptionTextBlockStyle}" Margin="12,0,0,0" />
                     <!-- 입력창(TextBox)과 동일 높이(40)·세로 중앙 정렬·좌측 인셋(보더1+패딩10=11)을 맞춰 모드 전환 시 위치·크기 고정 -->
                     <Button Click="OnEditNameClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                             Background="Transparent" BorderThickness="0" Padding="11,0,6,0"
                             Height="40" VerticalContentAlignment="Center"
-                            ToolTipService.ToolTip="이름 수정">
+                            ToolTipService.ToolTip="{loc:Localize Key=GroupEdit_EditNameTooltip}">
                         <Grid ColumnSpacing="6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -76,8 +77,8 @@
                 </StackPanel>
                 <!-- 입력창 헤더는 읽기전용 헤더와 동일 스타일로 통일(클릭 시 헤더 크기 변동 방지), 입력 텍스트만 키움 -->
                 <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.NameEditVisibility, Mode=OneWay}">
-                    <TextBlock Text="그룹 이름" Style="{ThemeResource CaptionTextBlockStyle}" Margin="12,0,0,0" />
-                    <TextBox x:Name="NameTextBox" PlaceholderText="이름 입력(최대 20자)" FontSize="20"
+                    <TextBlock Text="{loc:Localize Key=GroupEdit_NameLabel}" Style="{ThemeResource CaptionTextBlockStyle}" Margin="12,0,0,0" />
+                    <TextBox x:Name="NameTextBox" PlaceholderText="{loc:Localize Key=GroupEdit_NamePlaceholder}" FontSize="20"
                              MaxLength="20" Padding="10,5,0,0"  Height="40" VerticalContentAlignment="Center"
                              Text="{x:Bind ViewModel.EditingName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
@@ -86,7 +87,7 @@
 
         <!-- 이름 변경 시 작업 표시줄 핀 재등록 안내 -->
         <InfoBar Grid.Row="1" IsOpen="{x:Bind ViewModel.ShowRenameWarning, Mode=OneWay}" IsClosable="False"
-                 Severity="Warning" Message="이름을 변경하면 작업 표시줄에 등록한 기존 항목을 제거하고 다시 등록을 해야 합니다." />
+                 Severity="Warning" Message="{loc:Localize Key=GroupEdit_RenameWarning}" />
 
         <InfoBar Grid.Row="2" IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
                  Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
@@ -104,13 +105,13 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                 <!-- 핀 팝업의 그룹 이름 헤더 표시 여부 토글 -->
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock Text="이름 표시" VerticalAlignment="Center" />
+                    <TextBlock Text="{loc:Localize Key=GroupEdit_ShowNameToggle}" VerticalAlignment="Center" />
                     <ToggleSwitch IsOn="{x:Bind ViewModel.ShowPopupHeader, Mode=TwoWay}"
                                   MinWidth="0" OnContent="" OffContent="" />
                 </StackPanel>
 
                 <!-- 앱 추가: "+" 아이콘만 표시 -->
-                <Button ToolTipService.ToolTip="앱 추가">
+                <Button ToolTipService.ToolTip="{loc:Localize Key=GroupEdit_AddAppTooltip}">
                     <SymbolIcon Symbol="Add" />
                     <Button.Flyout>
                         <Flyout Opening="OnAppPickerFlyoutOpening">
@@ -119,7 +120,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
                                 </Grid.RowDefinitions>
-                                <TextBox PlaceholderText="앱 검색"
+                                <TextBox PlaceholderText="{loc:Localize Key=GroupEdit_AppSearchPlaceholder}"
                                          Text="{x:Bind ViewModel.PickerSearch, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 <ProgressRing Grid.Row="1" IsActive="{x:Bind ViewModel.IsPickerLoading, Mode=OneWay}"
                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -171,7 +172,7 @@
                             <TextBlock Grid.Column="1" Text="{x:Bind DisplayName}" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis" />
                             <Button Grid.Column="2" Tag="{x:Bind}" Click="OnRemoveAppClick"
-                                    Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="삭제">
+                                    Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="{loc:Localize Key=Common_Delete}">
                                 <SymbolIcon Symbol="Delete" />
                             </Button>
                         </Grid>

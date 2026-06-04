@@ -145,4 +145,76 @@
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>Open-source licenses</value>
   </data>
+  <data name="Common_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Common_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="WorkGroups_Title" xml:space="preserve">
+    <value>Work Groups</value>
+  </data>
+  <data name="WorkGroups_Subtitle" xml:space="preserve">
+    <value>Bundle apps into groups and pin them to the taskbar.</value>
+  </data>
+  <data name="WorkGroups_AddTooltip" xml:space="preserve">
+    <value>Add group</value>
+  </data>
+  <data name="WorkGroups_Empty" xml:space="preserve">
+    <value>No groups yet. Start with "Add group".</value>
+  </data>
+  <data name="TrayMenu_Title" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="TrayMenu_Subtitle" xml:space="preserve">
+    <value>Click the tray icon to show your registered folders.</value>
+  </data>
+  <data name="TrayMenu_SearchPlaceholder" xml:space="preserve">
+    <value>Search folders...</value>
+  </data>
+  <data name="TrayMenu_AddTooltip" xml:space="preserve">
+    <value>Add folder</value>
+  </data>
+  <data name="TrayMenu_OpenLocationTooltip" xml:space="preserve">
+    <value>Open location</value>
+  </data>
+  <data name="TrayMenu_Empty" xml:space="preserve">
+    <value>No folders registered. Add one with "+".</value>
+  </data>
+  <data name="GroupEdit_ChangeIconTooltip" xml:space="preserve">
+    <value>Change icon</value>
+  </data>
+  <data name="GroupEdit_UserIcon" xml:space="preserve">
+    <value>Custom icon</value>
+  </data>
+  <data name="GroupEdit_ResourceIcon" xml:space="preserve">
+    <value>Built-in icon</value>
+  </data>
+  <data name="GroupEdit_NameLabel" xml:space="preserve">
+    <value>Group name</value>
+  </data>
+  <data name="GroupEdit_EditNameTooltip" xml:space="preserve">
+    <value>Edit name</value>
+  </data>
+  <data name="GroupEdit_NamePlaceholder" xml:space="preserve">
+    <value>Enter name (max 20 chars)</value>
+  </data>
+  <data name="GroupEdit_RenameWarning" xml:space="preserve">
+    <value>If you change the name, you must remove the existing taskbar pin and pin it again.</value>
+  </data>
+  <data name="GroupEdit_ShowNameToggle" xml:space="preserve">
+    <value>Show name</value>
+  </data>
+  <data name="GroupEdit_AddAppTooltip" xml:space="preserve">
+    <value>Add app</value>
+  </data>
+  <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
+    <value>Search apps</value>
+  </data>
 </root>

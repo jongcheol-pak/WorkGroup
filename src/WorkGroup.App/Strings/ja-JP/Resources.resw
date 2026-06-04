@@ -145,4 +145,76 @@
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>オープンソースライセンス</value>
   </data>
+  <data name="Common_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>編集</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="Common_Settings" xml:space="preserve">
+    <value>設定</value>
+  </data>
+  <data name="WorkGroups_Title" xml:space="preserve">
+    <value>ワークグループ</value>
+  </data>
+  <data name="WorkGroups_Subtitle" xml:space="preserve">
+    <value>アプリをまとめてグループを作成し、タスクバーにピン留めします。</value>
+  </data>
+  <data name="WorkGroups_AddTooltip" xml:space="preserve">
+    <value>グループを追加</value>
+  </data>
+  <data name="WorkGroups_Empty" xml:space="preserve">
+    <value>グループがまだありません。「グループを追加」から始めましょう。</value>
+  </data>
+  <data name="TrayMenu_Title" xml:space="preserve">
+    <value>スタート</value>
+  </data>
+  <data name="TrayMenu_Subtitle" xml:space="preserve">
+    <value>トレイアイコンをクリックすると登録したフォルダーが表示されます。</value>
+  </data>
+  <data name="TrayMenu_SearchPlaceholder" xml:space="preserve">
+    <value>フォルダーを検索...</value>
+  </data>
+  <data name="TrayMenu_AddTooltip" xml:space="preserve">
+    <value>フォルダーを追加</value>
+  </data>
+  <data name="TrayMenu_OpenLocationTooltip" xml:space="preserve">
+    <value>場所を開く</value>
+  </data>
+  <data name="TrayMenu_Empty" xml:space="preserve">
+    <value>登録されたフォルダーがありません。「+」で追加してください。</value>
+  </data>
+  <data name="GroupEdit_ChangeIconTooltip" xml:space="preserve">
+    <value>アイコンを変更</value>
+  </data>
+  <data name="GroupEdit_UserIcon" xml:space="preserve">
+    <value>ユーザーアイコン</value>
+  </data>
+  <data name="GroupEdit_ResourceIcon" xml:space="preserve">
+    <value>リソースアイコン</value>
+  </data>
+  <data name="GroupEdit_NameLabel" xml:space="preserve">
+    <value>グループ名</value>
+  </data>
+  <data name="GroupEdit_EditNameTooltip" xml:space="preserve">
+    <value>名前を編集</value>
+  </data>
+  <data name="GroupEdit_NamePlaceholder" xml:space="preserve">
+    <value>名前を入力(最大20文字)</value>
+  </data>
+  <data name="GroupEdit_RenameWarning" xml:space="preserve">
+    <value>名前を変更した場合、タスクバーに登録した既存の項目を削除して再登録する必要があります。</value>
+  </data>
+  <data name="GroupEdit_ShowNameToggle" xml:space="preserve">
+    <value>名前を表示</value>
+  </data>
+  <data name="GroupEdit_AddAppTooltip" xml:space="preserve">
+    <value>アプリを追加</value>
+  </data>
+  <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
+    <value>アプリを検索</value>
+  </data>
 </root>

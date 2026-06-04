@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:WorkGroup.App.ViewModels"
     mc:Ignorable="d">
@@ -19,8 +20,8 @@
         <!-- 헤더: 제목/부제 → 그 아래 줄에 [그룹 개수(좌) · 그룹 추가(우)] -->
         <StackPanel Grid.Row="0" Spacing="8">
             <StackPanel Spacing="4">
-                <TextBlock Text="작업 그룹" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock Text="앱을 묶어 그룹을 만들고 작업 표시줄에 핀합니다."
+                <TextBlock Text="{loc:Localize Key=WorkGroups_Title}" Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock Text="{loc:Localize Key=WorkGroups_Subtitle}"
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
@@ -35,7 +36,7 @@
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
               
                     <Button Grid.Column="1" Click="OnAddClick" Background="Transparent" BorderThickness="0"
-        ToolTipService.ToolTip="그룹 추가">
+        ToolTipService.ToolTip="{loc:Localize Key=WorkGroups_AddTooltip}">
                         <SymbolIcon Symbol="Add" />
                     </Button>
                 
@@ -120,12 +121,12 @@
                                 <!-- 수정/삭제(아이콘 전용) -->
                                 <Button Grid.Column="2" Tag="{x:Bind}" Click="OnEditClick"
                                         Background="Transparent" BorderThickness="0"
-                                        ToolTipService.ToolTip="수정">
+                                        ToolTipService.ToolTip="{loc:Localize Key=Common_Edit}">
                                     <SymbolIcon Symbol="Edit" />
                                 </Button>
                                 <Button Grid.Column="3" Tag="{x:Bind}" Click="OnDeleteClick"
                                         Background="Transparent" BorderThickness="0"
-                                        ToolTipService.ToolTip="삭제">
+                                        ToolTipService.ToolTip="{loc:Localize Key=Common_Delete}">
                                     <SymbolIcon Symbol="Delete" />
                                 </Button>
                             </Grid>
@@ -138,7 +139,7 @@
             <StackPanel Grid.Row="1" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"
                         HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
                 <SymbolIcon Symbol="AllApps" />
-                <TextBlock Text="아직 그룹이 없습니다. '그룹 추가'로 시작하세요."
+                <TextBlock Text="{loc:Localize Key=WorkGroups_Empty}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
         </Grid>

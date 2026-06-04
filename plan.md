@@ -203,7 +203,7 @@
     - "ComboBoxItem 변환이 SelectedIndex 깨뜨림?" → 항목 순서/개수 보존으로 인덱스 동일.
   - **Depends on**: T1
 
-- [ ] T5. XAML 배치 B — WorkGroupsPage / TrayMenuPage / GroupEditDialog
+- [x] T5. XAML 배치 B — WorkGroupsPage / TrayMenuPage / GroupEditDialog
   - **Type**: C
   - **Acceptance**: 빌드 성공. 세 파일 표시 문구(헤더/부제/플레이스홀더/툴팁/빈상태/버튼/레이블/InfoBar/MenuFlyout) 전부 `{loc:Localize}` 치환. 키 4개 언어 존재.
   - **Files**:
