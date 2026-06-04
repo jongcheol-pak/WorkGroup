@@ -95,10 +95,19 @@ public sealed partial class GroupPopupWindow : Window
             AppsGrid.ItemsPanel = (ItemsPanelTemplate)contentRoot.Resources[
                 _isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];
 
-        // 세로 1열 팝업은 콘텐츠 폭(약 72px)이 OS 기본 최소 창 너비(약 198px)보다 작아 그대로면 못 줄어든다.
-        // WM_GETMINMAXINFO를 가로채 최소 추적 크기를 낮춰 콘텐츠 크기대로 표시한다(가로는 충분히 넓어 불필요).
         if (_isVertical)
+        {
+            // 세로 1열 팝업은 콘텐츠 폭이 OS 기본 최소 창 너비(약 198px)보다 작아 그대로면 못 줄어든다.
+            // WM_GETMINMAXINFO를 가로채 최소 추적 크기를 낮춰 콘텐츠 크기대로 표시한다(가로는 넓어 불필요).
             RemoveMinimumTrackSize();
+            // 루트 Grid 하단 패딩은 0(가로 1행엔 무방)이라 세로 1열에선 마지막 아이템이 팝업 하단에 붙는다.
+            // 하단 패딩을 좌우와 같게 주어 띄운다(높이 측정에 자동 반영).
+            if (Content is Grid rootGrid)
+            {
+                var p = rootGrid.Padding;
+                rootGrid.Padding = new Thickness(p.Left, p.Top, p.Right, p.Left);
+            }
+        }
 
         // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
         AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
