@@ -166,6 +166,9 @@
   <data name="WorkGroups_AddTooltip" xml:space="preserve">
     <value>添加组</value>
   </data>
+  <data name="WorkGroups_SearchPlaceholder" xml:space="preserve">
+    <value>搜索群组...</value>
+  </data>
   <data name="WorkGroups_Empty" xml:space="preserve">
     <value>还没有组。点击"添加组"开始。</value>
   </data>

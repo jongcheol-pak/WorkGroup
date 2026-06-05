@@ -46,11 +46,8 @@ public sealed partial class WorkGroupsPage : Page
         if (_editDialogOpen)
             return; // 표시 중 재요청은 무시(plan D10).
 
-        // 직접 호출 경로(상주 중)에서 아직 목록이 비어 있으면 1회 로드한다.
-        if (ViewModel.Groups.Count == 0)
-            await ViewModel.LoadAsync();
-
-        var item = ViewModel.Groups.FirstOrDefault(g => g.Group.Id.Value == groupId);
+        // 검색 필터가 켜져 있어도 대상 그룹을 찾도록 표시용 Groups가 아닌 원본 전체에서 조회한다(미로드면 1회 로드).
+        var item = await ViewModel.FindByIdAsync(groupId);
         if (item is null)
             return; // 삭제됐거나 없는 그룹 — 메인 창만 표시(plan D8).
 

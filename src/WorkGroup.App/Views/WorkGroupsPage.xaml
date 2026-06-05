@@ -25,6 +25,10 @@
                            Style="{ThemeResource BodyTextBlockStyle}"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
             </StackPanel>
+
+            <TextBox x:Name="SearchBox" PlaceholderText="{loc:Localize Key=WorkGroups_SearchPlaceholder}"
+                     Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
             <Grid ColumnSpacing="12" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

@@ -1,145 +1,158 @@
-# Plan: 작업 표시줄 위치별 핀 팝업 방향(세로/가로) 전환
+# plan.md — 작업 그룹 화면 그룹 검색 기능 추가
 
-## Goal
-핀된 그룹 아이콘 클릭 시 뜨는 팝업(`GroupPopupWindow`)을 작업 표시줄이 붙은 변에 맞춰 표시한다.
-- **하단**(기본): 작업 표시줄 위, 아이콘 **가로 1행** — 현행 유지.
-- **상단**: 작업 표시줄 아래, 아이콘 **가로 1행** — 위치는 이미 정상 배치되므로 가로 유지(요청 명세 그대로).
-- **좌측**: 작업 표시줄 오른쪽, 아이콘 **세로 1열**.
-- **우측**: 작업 표시줄 왼쪽, 아이콘 **세로 1열**.
+## 목표
+트레이 메뉴 화면(`TrayMenuPage` + `FolderShortcutsViewModel`)의 **폴더 검색 UI/동작**을
+작업 그룹 화면(`WorkGroupsPage` + `WorkGroupsViewModel`)에 **동일한 방식**으로 이식한다.
+검색은 **그룹 이름 + 멤버 앱 이름**을 대상으로 부분일치(대소문자 무시)한다.
 
-핵심 작업은 **좌/우 작업 표시줄일 때 팝업 아이콘 배치를 세로(1열)로 전환**하고, 그에 맞춰 크기 측정·오버플로 스크롤 방향을 분기하는 것이다. 위치 계산(`TaskbarPopupPositioner.Compute`)은 이미 4변을 모두 처리하므로 변경하지 않는다.
+## 범위
+### In scope
+- `WorkGroupsPage.xaml` 헤더에 검색 `TextBox` 추가(트레이 메뉴와 동일 위치/스타일).
+- `WorkGroupsViewModel`에 검색 필터(`SearchText` + `_all` 원본 + `ApplyFilter`) 추가.
+- 검색 대상: 그룹 이름(`GroupListItem.Name`) **또는** 멤버 앱 이름(`Group.Apps[].DisplayName`).
+- 신규 리소스 키 `WorkGroups_SearchPlaceholder`(4개 언어).
+- `WorkGroupsPage.xaml.cs`의 외부 편집 라우팅이 검색 필터와 무관하게 동작하도록 보정(연관 파일).
 
-## Out of Scope
-- `TaskbarPopupPositioner`(위치 계산) 알고리즘 변경 — 이미 상/하/좌/우 4변을 모두 계산(단위 테스트 4건 통과). 변경 없음.
-- 폴더 바로가기 팝업(`FolderListPopupWindow`/`FolderContentsPopupWindow`) — 사용자 결정(그룹 팝업만). 현행 유지.
-- 우클릭 컨텍스트 메뉴, "+" 그룹 편집 버튼, 헤더 표시 토글, 다국어 리소스 — 기능 변경 없음(세로 배치에서도 그대로 동작).
-- 생성자 시그니처(`GroupPopupWindow(string groupId)`) — 불변. 호출처(App.xaml.cs) 무영향.
-- 호버 애니메이션·아이콘 박스 크기(48×48) 등 항목 템플릿 — 변경 없음.
+### Out of scope
+- 트레이 메뉴(`TrayMenuPage`/`FolderShortcutsViewModel`) 변경 없음.
+- 그룹 검색 정렬/하이라이트/히스토리 등 추가 기능 없음(폴더 검색에 없는 것은 추가 안 함).
+- 검색 결과 0건 전용 안내 문구 없음(폴더 검색과 동일하게, 전체 0개일 때만 빈 상태 표시).
 
-## Investigation Log
-- `AGENTS.md`/`README.md` 읽음 → DDD 4레이어, 빌드 `dotnet build WorkGroup.slnx`, 테스트 `dotnet test WorkGroup.slnx`, 헤드리스에서 GUI 관찰 불가(빌드/테스트까지만 자동 검증). 파일 UTF-8(BOM 없음), 한글 주석.
-- `Infrastructure/Interop/TaskbarPopupPositioner.cs` 읽음 → `enum TaskbarEdge { Bottom, Top, Left, Right }`, `DetectEdge(monitor, work)`(public static), `Compute(...)`가 4변 모두 좌상단 배치 계산. 좌=`work.Left`, 우=`work.Right-width`, 상=`work.Top`, 하=`work.Bottom-height`. 세로 변일 때 커서 Y를 세로 중심으로 클램프. **위치는 이미 완성.**
-- `tests/.../TaskbarPopupPositionerTests.cs` 읽음 → 4변 `DetectEdge` + 하단/좌측 `Compute` + 클램프/포함 테스트 존재. 변경 불필요.
-- `Infrastructure/Interop/ScreenMetricsProvider.cs` 읽음 → `Metrics(int CursorX, int CursorY, ScreenRect Monitor, ScreenRect Work)`를 핀 클릭 시점에 1회 캡처. `GroupPopupWindow`가 `_metrics` 필드로 보관. → 생성자에서 `DetectEdge(_metrics.Monitor, _metrics.Work)`로 변 판정 가능.
-- `Views/GroupPopupWindow.xaml` 읽음 → `GridView x:Name="AppsGrid"`, `ItemsPanel`은 비가상화 `StackPanel Orientation="Horizontal"`(한 줄 나열). 4방향 스크롤 모드 모두 초기 `Disabled`. 항목 템플릿은 `Grid.Resources`에 `AppItemTemplate`/`AddButtonTemplate` + `PopupGridItemTemplateSelector`.
-- `Views/GroupPopupWindow.xaml.cs` 읽음 → 생성자에서 `_metrics` 캡처→화면 밖 배치→`LoadAsync`. `AdjustToContent()`가 **가로 1행 전제**로 측정: ① 무한 너비/높이 Measure로 자연 너비 산출 → ② `maxWidth = Work.Width - WorkAreaMargin(24)` 상한 클램프(초과 시 가로 스크롤 Auto) → ③ 확정 너비로 높이 재측정 → ④ chrome(테두리) 보정 후 Resize. `MoveToTaskbar`가 `TaskbarPopupPositioner.Compute`로 정위치 이동. `_lastAppliedWidth/Height` 가드로 SizeChanged 무한 루프 차단.
-- `GroupPopupWindow(string groupId)` 호출처 grep → App.xaml.cs:86, 221 (둘 다 `new GroupPopupWindow(groupId)`). 시그니처 불변이라 무영향.
-- `DetectEdge` 사용처 grep → Positioner 내부 + 테스트만. 신규 호출 추가는 안전(공개 static).
+## 현황 조사 (Investigation Log)
+- 폴더 검색 패턴(`FolderShortcutsViewModel.cs:17,27-84`): `_all`(원본 List) 유지 → `SearchText`
+  `OnSearchTextChanged`→`ApplyFilter`가 `Name`/`Path` 부분일치로 `Folders`(ObservableCollection) 재구성.
+  `FolderCountText`는 `_all.Count`(검색 무관 전체), `IsEmpty = _all.Count == 0`(검색 무매치는 빈 상태 아님).
+- 폴더 검색 UI(`TrayMenuPage.xaml:29-30`): 헤더 StackPanel 안에 `TextBox`(PlaceholderText=`TrayMenu_SearchPlaceholder`,
+  `Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"`).
+- 작업 그룹 현황(`WorkGroupsViewModel.cs:25,42,48-60`): `Groups`를 서비스에서 직접 채움(원본 분리 없음).
+  `GroupCountText => _loc.Get("WorkGroups_CountFormat", Groups.Count)`. 검색 필터 없음.
+- 그룹 이름: `GroupListItem.Name`(`GroupListItem.cs:26`). 멤버 앱 이름: `GroupListItem.Group.Apps[].DisplayName`
+  (`AppEntry.DisplayName` 존재 확인 `AppEntry.cs:32`).
+- 교차 영향(`WorkGroupsPage.xaml.cs:50-53`): `EditGroupByIdAsync`가 `ViewModel.Groups.FirstOrDefault(...)`로 조회.
+  → 검색 필터가 켜진 상태(상주 중 직접 호출)에서는 대상 그룹이 `Groups`에서 빠져 편집이 무시될 수 있음 ⇒ 보정 필요.
+- 리소스 키 grep: `WorkGroups_SearchPlaceholder` 미존재(신규). `WorkGroups_CountFormat`/`_Title`/`_AddTooltip` 존재.
+- 검색 placeholder 다국어 기존값(폴더): ko"폴더 검색...", en"Search folders...", ja"フォルダーを検索...", zh"搜索文件夹...".
+- 참조 grep `GroupCountText|WorkGroupsViewModel`: `ServiceConfiguration.cs`(DI 등록), `WorkGroupsPage.xaml`(바인딩),
+  `WorkGroupsPage.xaml.cs`(사용), VM 자신. App 레이어라 단위 테스트 없음(테스트는 Domain/Application만).
 
-## Impact Analysis
-### 4-A. 심볼/타입 추적
-- 변경 대상: `GroupPopupWindow.xaml`, `GroupPopupWindow.xaml.cs` 2개 파일 한정.
-- `GroupPopupWindow` 생성자: 시그니처 불변 → App.xaml.cs 2개 호출처 **변경 없음**(확인 완료).
-- `TaskbarPopupPositioner.DetectEdge`: public static, 신규 호출만 추가(시그니처/동작 불변) → 기존 사용처·테스트 무영향.
-- `TaskbarEdge` enum: 참조만 추가, 정의 불변.
-- `AppsGrid`(GridView) `ItemsPanel`/스크롤 속성: 코드비하인드에서만 접근. 외부 바인딩 없음.
-### 4-B. 계약·직렬화
-- 직렬화·이벤트 페이로드·공개 API 변경 없음. groups.json 스키마 무관.
-### 4-C. 영향 받는 테스트
-- `TaskbarPopupPositionerTests`(Application.Tests) — 위치 계산 불변이므로 그대로 통과해야 함(회귀 가드).
-- 측정/방향 분기는 UI 코드비하인드라 단위 테스트 대상 아님(헤드리스 GUI 관찰 불가). 신규 테스트 없음 → F5 MSIX GUI 수동 검증으로 보완.
+## 위험
+- (낮음) `GroupCountText` 기준을 `Groups.Count`→`_all.Count`로 변경: 검색 중에도 전체 개수 유지(폴더와 동일, 의도된 변경).
+- (낮음) 외부 편집 라우팅이 필터된 `Groups`를 보던 문제 → 전체 원본(`_all`) 기준 조회로 보정(연관 파일 수정).
+- (낮음) resw 신규 키 추가 → **클린 빌드 필요**(증분 빌드는 PRI에 신규 키 누락 가능, notes.md i18n 항목 경고).
 
-## Risks
-- **회귀(하단 가로)**: 측정 로직을 방향 분기로 재구성하면서 기존 하단/상단 가로 1행 동작이 깨질 위험. → 가로 경로는 현행 로직을 그대로 보존하고 세로 경로만 대칭으로 신설(공통 헬퍼로 중복 최소화하되 가로 동작 보존 우선).
-- **ItemsPanel 교체 시점**: 아이템이 추가된 뒤 `ItemsPanel`을 바꾸면 재생성·깜빡임 우려. → 생성자에서 `_metrics` 캡처 직후(아이템 로드 `LoadAsync` 시작 전) 1회 결정·적용.
-- **세로 오버플로 측정 부정확**: 가로에서 겪은 "스크롤 활성 상태 측정 시 자연 길이 오보고" 문제가 세로(VerticalScrollMode)에서도 동일 발생 가능. → 측정 동안 해당 방향 스크롤을 Disabled로 끄고 측정, 초과 시에만 Auto로 켜는 기존 패턴을 세로에 대칭 적용.
-- **헤드리스 검증 한계**: 좌/우 작업 표시줄은 GUI에서만 실측 가능. 자동 검증은 빌드+기존 테스트 회귀까지.
+## Impact Analysis (전수 조사)
+### 4-A 심볼/타입
+- `WorkGroupsViewModel` 참조처(grep 전수): `ServiceConfiguration.cs`(Transient 등록, 시그니처 무변경 → 영향 없음),
+  `WorkGroupsPage.xaml`(`ViewModel.Groups`/`GroupCountText`/`EmptyVisibility`/`StatusMessage` 바인딩 — 기존 멤버 유지),
+  `WorkGroupsPage.xaml.cs`(`LoadAsync`/`Groups`/`DeleteAsync`/`StatusMessage` 사용).
+- `Groups`(ObservableCollection) 공개 멤버는 **유지**(XAML 바인딩 대상). 내부적으로 채우는 소스만 `_all`→필터로 변경.
+- 신규 공개 멤버: `SearchText`(ObservableProperty), `AllGroups`(IReadOnlyList, 코드비하인드 조회용). 제거/시그니처 변경 없음.
+### 4-B 계약·직렬화
+- 직렬화/저장 형식 변경 없음(groups.json 무관). 도메인/리포지토리 무변경.
+### 4-C 영향 테스트
+- App 레이어 ViewModel 단위 테스트 없음(`tests/`는 Domain/Application). 신규 테스트 불필요(기존 컨벤션 일치).
+- 회귀: Domain 23 / Application 92 그대로 통과해야 함(변경이 App 레이어 한정).
 
-## Tasks
+## 작업 분해
 
-### T1. 작업 표시줄 변 판정 + 세로/가로 ItemsPanel·스크롤 전환 (Type D)
-- **Files**:
-  - `src/WorkGroup.App/Views/GroupPopupWindow.xaml` — `Grid.Resources`에 두 `ItemsPanelTemplate`을 `x:Key`로 추가: `HorizontalItemsPanel`(StackPanel Orientation=Horizontal, 현행 인라인과 동일), `VerticalItemsPanel`(StackPanel Orientation=Vertical). GridView 인라인 `<GridView.ItemsPanel>`은 제거하고 기본을 코드에서 일괄 지정(또는 인라인 가로 유지 후 세로일 때만 교체). 세로 스크롤 초기값도 명시적으로 Disabled 유지(이미 4축 Disabled).
-  - `src/WorkGroup.App/Views/GroupPopupWindow.xaml.cs` — **삽입 위치 명시**: 생성자에서 `_metrics = new ScreenMetricsProvider().Capture();`(현 L79) **직후, `_ = LoadAsync(groupId);`(현 L85) 전**에 다음을 수행 — ① `var edge = TaskbarPopupPositioner.DetectEdge(_metrics.Monitor, _metrics.Work);` ② `_isVertical = edge is TaskbarEdge.Left or TaskbarEdge.Right;`(신규 `private readonly bool _isVertical` 필드) ③ `AppsGrid.ItemsPanel = (ItemsPanelTemplate)((FrameworkElement)Content).Resources[_isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];`. 아이템 로드(`LoadAsync`) **전**이라 ItemsHost 재생성 비용·깜빡임 없음(set-after-load 우려는 시점 통제로 회피).
-- **구현 메모**: `using WorkGroup.Infrastructure.Interop;`는 이미 존재. `AppsGrid`는 `InitializeComponent()` 이후 접근 가능(현 생성자에서 이미 `root`/서비스 접근). 리소스는 `Grid.Resources`(루트 Grid = `Content`)에 두므로 `((FrameworkElement)Content).Resources[키]`로 조회.
-- **Acceptance**: 좌/우 변 모니터 환경에서 핀 클릭 시 아이콘이 세로 1열로 나열되고, 상/하 변에서는 가로 1행을 유지한다. 빌드 0 경고/0 에러, 기존 테스트 전부 통과.
-- **Edge Cases**:
-  - 멤버 0개 그룹(앱 없이 "+" 버튼만): 세로에서도 "+" 1개만 세로로 표시(StackPanel 단일 항목).
-  - 판정 불가(`DetectEdge` 기본 Bottom): 가로로 폴백(현행과 동일).
-  - **AddButton 박스 정렬**: 세로 StackPanel(Orientation=Vertical)에서 48×48 박스(AppItemTemplate/AddButtonTemplate 모두 `HorizontalAlignment="Center"`)가 가로 중앙 정렬로 동일하게 보이는지 — 템플릿 변경 없음 전제이나 방향 전환 영향이므로 GUI 검증 항목에 포함.
-- **Halt Forecast**: ItemsPanel을 코드에서 교체하는 API가 동작하지 않으면(예: 리소스 조회 실패) Halt 대신 XAML에 두 GridView를 두는 대안 검토 — 그러나 우선 리소스 교체 방식으로 진행(`ItemsControl.ItemsPanel`은 set 가능한 의존 속성, 아이템 로드 전 1회 적용).
+### T1. WorkGroupsViewModel 검색 필터 추가 — Type C
+**파일**: `src/WorkGroup.App/ViewModels/WorkGroupsViewModel.cs`
+**내용**(폴더 VM 패턴 이식):
+- `private readonly List<GroupListItem> _all = new();` 추가.
+- 생성자에서 `SearchText = string.Empty;` 초기화.
+- `[ObservableProperty] public partial string SearchText { get; set; }` 추가.
+- `partial void OnSearchTextChanged(string value) => ApplyFilter();` 추가.
+- `LoadAsync` 변경: 서비스 결과로 `_all`을 재구성(각 항목 생성 + `_ = item.LoadAsync()` 아이콘 1회 로드) →
+  `ApplyFilter()` 호출 → `OnPropertyChanged(nameof(GroupCountText))`. (현행처럼 `Groups`에 직접 add 하지 않음.)
+- `ApplyFilter()` 신규(private): `SearchText.Trim()` 쿼리로 `Groups.Clear()` 후 `_all`에서
+  `query.Length == 0 || item.Name.Contains(query, OrdinalIgnoreCase)
+   || item.Group.Apps.Any(a => a.DisplayName.Contains(query, OrdinalIgnoreCase))` 인 항목만 add.
+  끝에 `IsEmpty = _all.Count == 0;`.
+- `GroupCountText`를 `_all.Count` 기준으로 변경: `_loc.Get("WorkGroups_CountFormat", _all.Count)`.
+- `public async Task<GroupListItem?> FindByIdAsync(string groupId)` 추가 — `_all`(원본 전체)에서 id 조회,
+  미로드면 1회 `LoadAsync`. (내부 상태 `_all`을 노출하지 않도록 메서드로 캡슐화 — 품질 리뷰 M1 반영.)
+- `using System;`(StringComparison)/`using System.Linq;` 필요 시 추가(기존 using 확인 후).
 
-### T2. AdjustToContent 측정·오버플로 스크롤을 방향에 따라 분기 (Type D)
-- **Files**: `src/WorkGroup.App/Views/GroupPopupWindow.xaml.cs` — `AdjustToContent()`를 `_isVertical` 분기. **가로 경로는 현행 코드 그대로 보존**하고, 세로 경로를 너비·높이 **양축 대칭**으로 신설한다.
-- **세로 경로 의사코드(양축 상한·정합성 명시)**:
-  ```
-  scale = RasterizationScale
-  // 측정 동안 양축 스크롤 모두 Disabled (정확한 자연 길이 측정)
-  SetVerticalScrollMode(AppsGrid, Disabled); SetVerticalScrollBarVisibility(Disabled);
-  SetHorizontalScrollMode(AppsGrid, Disabled); SetHorizontalScrollBarVisibility(Disabled);
-  root.UpdateLayout();
+**Acceptance**: 빌드 0 error. 검색어 입력 시 `Groups`가 이름/멤버앱이름 부분일치 항목만 포함하고,
+빈 검색어면 전체 표시. `GroupCountText`는 검색과 무관하게 전체 개수.
 
-  // 1) 무제한 측정 → 세로 1열 자연 높이/너비
-  root.Measure(∞, ∞)
-  desiredHeight = ceil(DesiredSize.Height * scale)  // ≤0이면 InitialPopupHeight
-  // 2) 높이 상한(작업영역 높이) 클램프 → 초과 시 세로 스크롤 Auto
-  maxHeight = max(InitialPopupHeight, Work.Height - WorkAreaMargin)
-  finalHeight = min(desiredHeight, maxHeight)
-  if (desiredHeight > maxHeight) { SetVerticalScrollMode(Auto); SetVerticalScrollBarVisibility(Auto); }
-  // 3) 확정 높이로 너비 재측정(세로 스크롤바 폭 반영)
-  root.Measure(∞, finalHeight/scale)
-  desiredWidth = ceil(DesiredSize.Width * scale)    // ≤0이면 InitialPopupWidth
-  // 4) 너비도 상한 클램프 (긴 그룹명/NotFound 메시지로 좁은 작업영역 초과 방지) — B2
-  maxWidth = max(InitialPopupWidth, Work.Width - WorkAreaMargin)
-  finalWidth = min(desiredWidth, maxWidth)
-  // 5) chrome 보정(양축) 후 Resize, _popupWidth 갱신(우측 정렬 필수) — B1
-  windowWidth = finalWidth + hChrome;  windowHeight = finalHeight + chrome  // windowHeight는 현행 가로 경로의 total과 동일 의미
-  if (windowWidth==_lastAppliedWidth && windowHeight==_lastAppliedHeight) return;
-  _lastAppliedWidth = windowWidth; _lastAppliedHeight = windowHeight; _popupWidth = windowWidth;
-  AppWindow.Resize(windowWidth, windowHeight);
-  if (_positioned) MoveToTaskbar(windowHeight);
-  ```
-- **정합성 근거(B1)**: `MoveToTaskbar`는 `TaskbarPopupPositioner.Compute(... _popupWidth, height)`를 호출하고, `Right` 변은 `work.Right - popupWidth`로 우측 정렬한다 → 세로(우측 작업 표시줄)에서 `_popupWidth`가 실제 창 너비여야 변에 정확히 접한다. 따라서 세로 경로도 `_popupWidth = windowWidth` 갱신 + `MoveToTaskbar(windowHeight)` 전달 필수.
-- **축별 스크롤 리셋(M2)**: 가로 경로는 시작 시 가로축만 Disabled 리셋(현행), 세로축은 항상 Disabled. 세로 경로는 시작 시 양축 Disabled 리셋 후 세로축만 초과 시 Auto. → 재측정(SizeChanged 재진입) 때마다 분기에 맞는 축만 켜져 자연 길이 오보고 재발 차단.
-- **공통 유지**: `_lastAppliedWidth/Height` 가드, `chrome = Size.Height - ClientSize.Height`(음수 0 보정), `hChrome = Size.Width - ClientSize.Width`(음수 0 보정)는 양 경로 공통.
-- **Acceptance**: 세로 표시 시 창이 아이콘 열 콘텐츠에 꼭 맞고(빈 여백 없음), 아이콘이 작업영역 높이를 넘으면 세로 스크롤이 생겨 잘리지 않으며, 너비가 작업영역을 넘으면 너비 상한으로 클램프되어 화면 밖으로 나가지 않는다. 우측 작업 표시줄에서 팝업 오른쪽 변이 작업영역 우변에 접한다. 가로 표시는 기존과 동일(회귀 없음). 빌드 0/0, 기존 테스트 통과.
-- **Edge Cases**:
-  - 세로 콘텐츠가 작업영역 높이 초과: 세로 스크롤 Auto, 너비 재측정에 스크롤바 폭 반영(잘림 방지).
-  - **세로 너비가 작업영역 폭 초과(긴 그룹명/NotFound)**: `maxWidth` 클램프로 화면 밖 이탈 방지(B2). 클램프 시 헤더는 기존 TextBlock 동작(줄바꿈/잘림)에 맡김(템플릿 무변경).
-  - 콘텐츠 측정값 0 이하: 초기값(`InitialPopupWidth/Height`)으로 폴백(현행 가드 유지).
-  - SizeChanged 재진입: `_lastAppliedWidth/Height` 동일값이면 조기 반환(무한 루프 차단, 현행 유지).
-- **Halt Forecast**: 세로 측정에서 StackPanel(Vertical) 자연 높이가 부정확 보고되면(비가상화라 가능성 낮음) 측정 전 양축 스크롤 Disabled 보장으로 해소. 그래도 불가 시 Halt하지 말고 가로의 "측정 동안 스크롤 끄기" 패턴을 재확인.
+**Edge Cases**:
+- 빈/공백 검색어(`Trim()` 후 길이 0) → 전체 표시.
+- `_all` 0개(그룹 없음) → `Groups` 0개 + `IsEmpty=true`(빈 상태 안내).
+- 검색 무매치(그룹은 있으나 일치 0) → `Groups` 0개 + `IsEmpty=false`(빈 목록만, 안내 미표시 — 폴더와 동일).
+- 멤버 앱 0개 그룹 → `Any(...)`가 false, 이름만으로 매칭.
 
-### T3. 문서 갱신 (Type A)
-- **Files**: `README.md`(핵심 기능 "그룹 팝업 런처" 설명에 좌/우 작업 표시줄 시 세로 표시 반영), `notes.md`(`## 최근 변경` 최상단에 항목 추가, 1개월 초과 항목 정리).
-- **Acceptance**: README의 그룹 팝업 설명이 현재 동작(상/하 가로, 좌/우 세로)과 일치. notes에 변경 내역 1건 추가.
+**Halt Forecast**:
+- 기존 using에 `System.Linq` 없으면 `Any`/`Contains(string)` 사용을 위해 추가(빌드 에러로 즉시 식별).
+- `ApplyFilter`가 호출될 때마다 `IsEmpty = _all.Count == 0`을 재설정하므로(검색 입력·로드 모두 경유),
+  `[NotifyPropertyChangedFor(nameof(EmptyVisibility))]`(기존)로 빈 상태 통지가 항상 정상 — 폴더 VM과 100% 동일 흐름.
 
-## Decision Points (결정 완료)
-- **D1. 세로 전환 트리거** = `TaskbarEdge.Left` 또는 `Right`일 때만. (사용자 결정: 좌/우만 세로, 상/하 가로) ★
-- **D2. 적용 범위** = `GroupPopupWindow`만. 폴더 팝업 제외. (사용자 결정) ★
-- **D3. 세로 레이아웃 세부** = 헤더(그룹 이름)는 상단 유지, "+" 버튼은 목록 끝(아래), 오버플로는 세로 스크롤. (사용자 결정: 추천안) ★
-- **D4. ItemsPanel 전환 방식** = XAML에 가로/세로 `ItemsPanelTemplate`을 리소스로 두고 생성자에서 `_isVertical`에 따라 `AppsGrid.ItemsPanel` 지정. (코드 1회 결정, 깜빡임/재생성 최소화) ★ 근거: 아이템 로드 전 1회 적용.
-- **D5. 위치 계산** = `TaskbarPopupPositioner` 무변경(이미 4변 처리). ★ 근거: 단위 테스트 4건 통과 확인.
-- **D6. 측정 분기 구조** = 가로 경로는 현행 로직 보존, 세로는 대칭 신설. ★ 근거: 회귀 위험 최소화.
-- **D7. 신규 테스트** = 없음(UI 코드비하인드, 헤드리스 GUI 관찰 불가). 기존 `TaskbarPopupPositionerTests` 회귀 가드. ★
-- **D8. 다국어** = 신규 리소스 키 없음(텍스트 변경 없음). ★
-- **D9. 에러/폴백** = `DetectEdge` 판정 불가 시 Bottom(가로) 폴백, 측정값 0 이하 시 초기값 폴백 — 현행 가드 재사용. ★
-- **D10. chrome 보정** = 세로 경로도 너비/높이 양쪽 chrome 보정 유지(잘림 방지). ★
-- **D11. WorkAreaMargin 재사용** = 동일 상수(24)를 세로에선 높이 여백으로 재사용. ★ 근거: 좌우/상하 여백 대칭, 신규 상수 불필요.
-- **D12. 세로 너비 상한** = 세로 경로도 `maxWidth = Work.Width - WorkAreaMargin`로 너비 클램프(B2). ★ 근거: 긴 그룹명/NotFound 메시지로 좁은 좌/우 작업영역에서 화면 밖 이탈·잘림 방지. 너비 초과 시 헤더는 기존 TextBlock 동작(줄바꿈/잘림)에 맡김(템플릿 무변경, 신규 스크롤 도입 안 함).
-- **D13. _popupWidth 정합성** = 세로 경로도 `_popupWidth = windowWidth` 갱신 + `MoveToTaskbar(windowHeight)` 전달(B1). ★ 근거: `Compute`의 `Right` 변 우측 정렬(`work.Right - popupWidth`)이 정확한 창 너비를 요구.
-- **D14. 축별 스크롤 리셋** = 측정 시작 시 분기에 맞는 축만 Disabled 리셋, 반대 축은 항상 Disabled 유지(M2). ★ 근거: SizeChanged 재진입 시 자연 길이 오보고(가로에서 겪은 문제) 재발 차단.
+### T2. WorkGroupsPage.xaml 검색 TextBox 추가 — Type C
+**파일**: `src/WorkGroup.App/Views/WorkGroupsPage.xaml`
+**내용**: 헤더 StackPanel(`Grid.Row=0`) 안, 제목/부제 StackPanel과 [개수·추가] Grid **사이**에
+트레이 메뉴와 동일한 검색 TextBox 삽입:
+```xml
+<TextBox x:Name="SearchBox" PlaceholderText="{loc:Localize Key=WorkGroups_SearchPlaceholder}"
+         Text="{x:Bind ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+```
+(헤더 StackPanel `Spacing="8"`은 **의도적으로 유지** — 트레이 메뉴는 12지만 작업 그룹 기존 토큰을 바꾸지 않는다(범위 밖).
+개수·추가 Grid의 기존 `Margin="0,16,0,0"` 유지. 검색창↔개수줄 간격은 수동 GUI 검증에서 확인.)
+
+**Acceptance**: 빌드 0 error. 페이지에 검색창이 제목 아래·목록 위에 표시되고 입력이 `SearchText`에 양방향 바인딩.
+
+**Edge Cases**: 없음(정적 마크업). `x:Bind`가 신규 `ViewModel.SearchText`를 찾으므로 T1 선행 필요.
+
+### T3. 외부 편집 라우팅 보정 — Type C
+**파일**: `src/WorkGroup.App/Views/WorkGroupsPage.xaml.cs`
+**내용**: `EditGroupByIdAsync`가 필터된 `Groups` 대신 원본 전체를 조회하도록 VM 메서드로 위임:
+- 기존 로드 가드 + `ViewModel.Groups.FirstOrDefault(...)` 2줄을 `var item = await ViewModel.FindByIdAsync(groupId);` 1줄로 교체.
+(검색 필터가 켜진 상태에서도 "그룹 수정" 외부 요청이 대상 그룹을 찾도록. 로드 가드는 VM이 담당.)
+
+**Acceptance**: 빌드 0 error. 검색어가 입력된 상태에서 외부 편집 라우팅이 들어와도 대상 그룹 편집 다이얼로그가 열림(코드 경로상).
+
+**Edge Cases**:
+- 대상 그룹이 실제로 삭제됨 → `FirstOrDefault` null → 기존대로 메인 창만 표시(return).
+- 상주 직접 호출 시 `_all` 미로드(0개) → `LoadAsync()` 1회(기존 가드 유지, 기준만 `AllGroups`).
+
+**Halt Forecast**: 없음(2줄 치환).
+
+### T4. 리소스 키 WorkGroups_SearchPlaceholder 추가(4개 언어) — Type A
+**파일**: `Strings/ko-KR`, `en-US`, `ja-JP`, `zh-Hans`/`Resources.resw`
+**내용**: 각 파일에 신규 `<data name="WorkGroups_SearchPlaceholder" xml:space="preserve">` 추가:
+- ko-KR: `그룹 검색...`
+- en-US: `Search groups...`
+- ja-JP: `グループを検索...`
+- zh-Hans: `搜索群组...`
+
+**Acceptance**: 4개 파일 모두 키 추가, 값 비어있지 않음(ResourceParityTests 통과 — 4언어 키 패리티/빈값 검사).
+
+**Edge Cases**: 4언어 모두 추가(누락 시 ResourceParityTests 실패).
+
+## Decision Points (해결됨)
+- D1. 검색 대상 필드 = **그룹 이름 + 멤버 앱 이름**(사용자 확정). 폴더의 이름+경로에 대응.
+- D2. 검색 매칭 = 부분일치 + `StringComparison.OrdinalIgnoreCase`(폴더 검색과 동일).
+- D3. 개수 표시 = 전체 기준(`_all.Count`, 검색 무관) — 폴더 `FolderCountText`와 동일 정책.
+- D4. 빈 상태 = 전체 0개일 때만 안내, 검색 무매치는 빈 목록만 — 폴더와 동일.
+- D5. 검색 UI 위치/스타일 = 제목 아래·목록 위 `TextBox`, TwoWay+PropertyChanged — 트레이 메뉴와 동일.
+- D6. `Groups`(ObservableCollection) 공개 멤버 유지(XAML 바인딩 호환) — 내부 소스만 `_all`→필터로 분리.
 
 ## 검증 방법
-1. `dotnet build WorkGroup.slnx` → 경고 0 / 에러 0.
-2. `dotnet test WorkGroup.slnx` → 기존 테스트 전부 통과(`TaskbarPopupPositionerTests` 포함 회귀 없음).
-3. 수정 후 변경 파일 재확인(누락·UTF-8/BOM·한글 주석).
-4. **F5 MSIX GUI 수동 검증**(헤드리스 불가): 작업 표시줄을 좌/우/상/하로 옮겨가며 핀 클릭 → 좌/우는 세로 1열·해당 변에 접함, 상/하는 가로 1행, 오버플로 스크롤 방향, 빈 여백 없음, 헤더/"+" 위치 확인.
+1. `dotnet build WorkGroup.slnx` → 0 error / 경고 확인(신규 resw 반영 위해 클린 빌드 권장).
+2. `dotnet test WorkGroup.slnx` → Domain 23 / Application 92 + ResourceParityTests 통과(회귀 없음).
+3. (수동, F5 MSIX) 작업 그룹 화면 검색창 표시 / 그룹 이름·멤버 앱 이름으로 필터 / 개수 유지 / 빈 검색 복원 GUI 검증.
 
-## 승인 필요 항목
-- 없음(공개 API·구조·의존성·스키마 변경 없음, 단일 View 2파일 + 문서). 사용자 승인 게이트(ExitPlanMode)만.
+## 승인 필요 사항
+- 없음. 공개 API 시그니처 변경/구조 변경/의존성 추가/직렬화 변경 없음(공개 멤버 추가만, 제거·변경 없음).
+
+## Task 목록 체크
+- [x] T1. WorkGroupsViewModel 검색 필터 추가
+- [x] T2. WorkGroupsPage.xaml 검색 TextBox 추가
+- [x] T3. 외부 편집 라우팅 보정(WorkGroupsPage.xaml.cs)
+- [x] T4. WorkGroups_SearchPlaceholder 4개 언어 추가
 
 ## Progress Log
-- T1-T2 완료 (커밋 c69a260): GroupPopupWindow에 작업 표시줄 변 판정(DetectEdge)→`_isVertical`→ItemsPanel 세로/가로 교체 + AdjustToContent를 Measure(H/V)Content로 분기(세로는 양축 상한·세로 스크롤·`_popupWidth` 정합). 빌드 0/0, 테스트 117/117.
-- T3 완료 (커밋 a3503cc): README/notes 문서 갱신(좌/우 세로·상/하 가로). 문서만이라 빌드 무영향.
-- Phase F: plan-completion-reviewer PASS(BLOCKER/MAJOR 0). 좌/우/상/하 실제 렌더링은 F5 MSIX GUI 수동 검증 대상.
+- T1~T4 완료: WorkGroupsViewModel 검색 필터(_all+SearchText+ApplyFilter, 이름·멤버앱이름 매칭) + WorkGroupsPage.xaml 검색 TextBox + 외부 편집 라우팅을 FindByIdAsync로 캡슐화(품질 M1 반영) + 4개 언어 resw 키. 빌드 0/0, 테스트 23+94. spec OK, quality M1 반영 완료.
 
 ## Next Steps
-- 권장 다음 액션: F5 MSIX 배포로 작업 표시줄을 좌/우/상/하로 옮겨가며 핀 클릭 GUI 검증(좌/우 세로 1열·해당 변 접촉, 우측 우변 접촉, 세로 오버플로 스크롤, 빈 여백 없음, 세로에서 48×48 박스 가로 중앙 정렬). 이상 없으면 master로 PR.
-- Suggested skills: 공식 /code-review (PR 전 최종 점검)
-
-## Follow-ups
-- (MINOR, code-quality M1) `MoveToTaskbar(int height)`는 너비를 `_popupWidth` 필드에서 읽는 비대칭 시그니처다. 현재 동작은 정확(`AdjustToContent`가 `_popupWidth` 갱신 후 호출)하나, 향후 좌/우 변 접촉 오프셋 등 너비 기반 배치 확장 시 `MoveToTaskbar(int width, int height)`로 통일 검토. 기존 코드 패턴이라 이번 범위에서는 미변경.
-
-## Open Questions (모두 해결)
-- 세로 전환 범위 → 좌/우만(D1). 적용 대상 → 그룹 팝업만(D2). 세로 레이아웃 → 추천안(D3). 모두 사용자 답변 반영 완료.
+- 권장 다음 액션: F5 MSIX GUI 수동 검증(검색창 표시·이름/멤버앱이름 필터·개수 유지·빈 검색 복원) 후 PR/머지.
+- Suggested skills: 공식 /code-review, 공식 /verify(수동 GUI)

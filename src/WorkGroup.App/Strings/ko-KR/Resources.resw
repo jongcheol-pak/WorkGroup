@@ -166,6 +166,9 @@
   <data name="WorkGroups_AddTooltip" xml:space="preserve">
     <value>그룹 추가</value>
   </data>
+  <data name="WorkGroups_SearchPlaceholder" xml:space="preserve">
+    <value>그룹 검색...</value>
+  </data>
   <data name="WorkGroups_Empty" xml:space="preserve">
     <value>아직 그룹이 없습니다. '그룹 추가'로 시작하세요.</value>
   </data>
