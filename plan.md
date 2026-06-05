@@ -51,7 +51,7 @@
 - 직렬화/저장 형식 변경 없음(groups.json 무관). 도메인/리포지토리 무변경.
 ### 4-C 영향 테스트
 - App 레이어 ViewModel 단위 테스트 없음(`tests/`는 Domain/Application). 신규 테스트 불필요(기존 컨벤션 일치).
-- 회귀: Domain 23 / Application 92 그대로 통과해야 함(변경이 App 레이어 한정).
+- 회귀: Domain 23 / Application 94 그대로 통과해야 함(변경이 App 레이어 한정).
 
 ## 작업 분해
 
@@ -138,7 +138,7 @@
 
 ## 검증 방법
 1. `dotnet build WorkGroup.slnx` → 0 error / 경고 확인(신규 resw 반영 위해 클린 빌드 권장).
-2. `dotnet test WorkGroup.slnx` → Domain 23 / Application 92 + ResourceParityTests 통과(회귀 없음).
+2. `dotnet test WorkGroup.slnx` → Domain 23 / Application 94 + ResourceParityTests 통과(회귀 없음).
 3. (수동, F5 MSIX) 작업 그룹 화면 검색창 표시 / 그룹 이름·멤버 앱 이름으로 필터 / 개수 유지 / 빈 검색 복원 GUI 검증.
 
 ## 승인 필요 사항
