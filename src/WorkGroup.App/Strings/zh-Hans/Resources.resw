@@ -59,10 +59,10 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="App_DisplayName" xml:space="preserve">
-    <value>工作组</value>
+    <value>工作组管理</value>
   </data>
   <data name="App_Description" xml:space="preserve">
-    <value>工作组</value>
+    <value>工作组管理</value>
   </data>
   <data name="Settings_Title" xml:space="preserve">
     <value>设置</value>
@@ -161,7 +161,7 @@
     <value>工作组</value>
   </data>
   <data name="WorkGroups_Subtitle" xml:space="preserve">
-    <value>将应用组合成组并固定到任务栏。</value>
+    <value>将应用组合成组并添加到任务栏。</value>
   </data>
   <data name="WorkGroups_AddTooltip" xml:space="preserve">
     <value>添加组</value>
@@ -392,7 +392,7 @@
     <value>清理孤立快捷方式失败。</value>
   </data>
   <data name="Infra_Shortcut_DescriptionFormat" xml:space="preserve">
-    <value>{0} - 工作组</value>
+    <value>{0} - 工作组管理</value>
   </data>
   <data name="Infra_Launch_FailedFormat" xml:space="preserve">
     <value>无法启动"{0}"。</value>

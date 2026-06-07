@@ -184,11 +184,14 @@ namespace WorkGroup.App
         {
             if (_tray is not null) return;
             _tray = new TrayIconService();
-            // 트레이 콜백은 메시지 전용 창의 WndProc(=UI 스레드)에서 호출된다.
-            _tray.OpenRequested += ShowMainWindow;       // 우클릭 메뉴 "열기" → 메인 창
-            _tray.LeftClickRequested += ShowFolderListPopup; // 좌클릭 → 폴더 목록 팝업
-            _tray.ExitRequested += () =>
+            // 트레이 콜백은 메시지 전용 창의 원시 Win32 WndProc(=UI 스레드) 안에서 동기로 호출된다.
+            // 그 재진입 상태에서 WinUI Window를 생성/Activate하면 Microsoft.UI.Input가 fail-fast(c0000602)로 종료한다.
+            // → TryEnqueue로 깨끗한 메시지 루프 턴까지 지연해 재진입을 푼다(OnAppInstanceActivated와 동일 패턴).
+            _tray.OpenRequested += () => _uiDispatcherQueue?.TryEnqueue(ShowMainWindow);       // 우클릭 메뉴 "열기" → 메인 창
+            _tray.LeftClickRequested += () => _uiDispatcherQueue?.TryEnqueue(ShowFolderListPopup); // 좌클릭 → 폴더 목록 팝업
+            _tray.ExitRequested += () => _uiDispatcherQueue?.TryEnqueue(() =>
             {
+                // 좌/우클릭과 동일하게 WndProc 재진입을 벗어난 뒤 종료한다(자기 hwnd DestroyWindow를 그 WndProc 안에서 호출하지 않도록).
                 _exiting = true; // 이후 창 Closing을 취소하지 않고 실제 종료한다.
                 // 메인 창을 실제로 닫아 WinUIEx의 Window.Closed가 발생하도록 한다
                 // → 창 크기/위치 persistence가 이 시점에 저장된다(plan.md DW5).
@@ -196,7 +199,7 @@ namespace WorkGroup.App
                 _window?.Close();
                 _tray?.Dispose();
                 Exit();
-            };
+            });
             _tray.Initialize();
         }
 

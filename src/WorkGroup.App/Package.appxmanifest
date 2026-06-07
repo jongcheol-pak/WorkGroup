@@ -54,11 +54,14 @@
         <uap:Extension Category="windows.protocol">
           <uap:Protocol Name="workgroup" />
         </uap:Extension>
-        <!-- 로그인 시 자동 시작(plan.md T12). 기본 비활성, 사용자가 토글. -->
+        <!-- 로그인 시 자동 시작(plan.md T12). 기본 활성, 사용자가 토글. -->
+        <!-- startupTask 확장의 Executable/EntryPoint 토큰($targetnametoken$ 등)은
+             메인 Application 과 달리 패키징 시 치환되지 않으므로 실제 exe 이름과
+             full-trust 진입점을 리터럴로 지정해야 MSIX 검증을 통과한다. -->
         <uap5:Extension Category="windows.startupTask"
-                        Executable="$targetnametoken$.exe"
-                        EntryPoint="$targetentrypoint$">
-          <uap5:StartupTask TaskId="WorkGroupStartupTask" Enabled="false" DisplayName="ms-resource:///Resources/App_DisplayName" />
+                        Executable="WorkGroup.App.exe"
+                        EntryPoint="Windows.FullTrustApplication">
+          <uap5:StartupTask TaskId="WorkGroupStartupTask" Enabled="true" DisplayName="ms-resource:///Resources/App_DisplayName" />
         </uap5:Extension>
       </Extensions>
     </Application>
