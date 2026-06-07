@@ -47,7 +47,7 @@
 ## 작업 분해
 
 ### T1. 핀-콜드 트레이 상주 + 상주 설정 헬퍼 추출  — Type D
-- [ ] 구현 완료
+- [x] 구현 완료
 - **파일**: `src/WorkGroup.App/App.xaml.cs`
 - **변경**:
   - `private void BecomeResidentInstance(AppInstance keyInstance)` 추가: `_keyInstance = keyInstance; keyInstance.Activated += OnAppInstanceActivated; EnsureTray(); _uiDispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () => { try { EnsureGroupPopup(); } catch { } }); _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();` (현 메인 경로 `:101-115`의 상주 설정 이동).
