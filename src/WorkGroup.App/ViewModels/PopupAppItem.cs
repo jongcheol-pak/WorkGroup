@@ -29,5 +29,16 @@ public sealed partial class PopupAppItem : ObservableObject
     /// <summary>선택 시에만 체크 아이콘을 보이게 한다.</summary>
     public Visibility SelectionGlyphVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
 
+    // 아이콘 지연 로드 1회 보장 플래그(UI 스레드 단일 호출 전제 — 컨테이너 실현/추가 모두 UI 스레드).
+    private bool _iconRequested;
+
     public async Task LoadIconAsync() => Icon = await AppIconLoader.LoadAsync(App);
+
+    /// <summary>아이콘을 1회만 지연 로드한다(중복 호출 무시). 재사용/신규 경로의 중복 로드를 모두 흡수한다.</summary>
+    public void EnsureIconLoad()
+    {
+        if (_iconRequested) return;
+        _iconRequested = true;
+        _ = LoadIconAsync();
+    }
 }

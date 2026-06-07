@@ -77,6 +77,24 @@ public sealed partial class GroupEditDialog : ContentDialog
             ViewModel.SetUserImage(file.Path);
     }
 
+    // "파일 추가" 클릭 시 실행 파일(.exe/.lnk) 선택기를 띄워 선택 파일을 앱 목록에 추가한다(아이콘 선택기와 동일 패턴).
+    private async void OnAddFileClick(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker();
+        picker.FileTypeFilter.Add(".exe");
+        picker.FileTypeFilter.Add(".lnk");
+
+        if (App.MainWindow is not null)
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
+        }
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is not null)
+            ViewModel.AddManualFile(file.Path);
+    }
+
     private void OnShowResourceGrid(object sender, RoutedEventArgs e)
         => ViewModel.ShowResourceGrid = true;
 
@@ -92,6 +110,16 @@ public sealed partial class GroupEditDialog : ContentDialog
         // 항목 클릭으로 추가↔해제 토글(Flyout은 유지하여 연속 선택 가능).
         if (e.ClickedItem is PopupAppItem item)
             ViewModel.ToggleApp(item.App);
+    }
+
+    // 앱 피커 목록은 컨테이너가 실제로 화면에 실현될 때만 아이콘을 지연 로드한다
+    // (설치 앱 전체 선로딩 제거 → WinRT 객체 churn/파이널라이저 압력↓, plan.md 크래시 완화 T2).
+    private void OnAppPickerContainerChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        // 재활용 큐로 들어가는 컨테이너는 무시(검색마다 Clear+재구성되어 재활용 빈번).
+        if (args.InRecycleQueue) return;
+        if (args.Item is PopupAppItem item)
+            item.EnsureIconLoad();
     }
 
     private void OnRemoveAppClick(object sender, RoutedEventArgs e)

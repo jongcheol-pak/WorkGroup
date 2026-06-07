@@ -136,6 +136,36 @@
   <data name="Settings_Theme_Dark" xml:space="preserve">
     <value>ダーク</value>
   </data>
+  <data name="Settings_Section_Reset" xml:space="preserve">
+    <value>初期化</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_Header" xml:space="preserve">
+    <value>作業グループの初期化</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_Description" xml:space="preserve">
+    <value>登録済みのすべての作業グループと生成されたショートカットを削除します。</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_Header" xml:space="preserve">
+    <value>トレイメニューの初期化</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_Description" xml:space="preserve">
+    <value>トレイメニューに登録されたすべてのフォルダーを削除します。</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_ConfirmTitle" xml:space="preserve">
+    <value>作業グループの初期化</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_ConfirmMessage" xml:space="preserve">
+    <value>登録済みのすべての作業グループが削除されます。続行しますか?</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_ConfirmTitle" xml:space="preserve">
+    <value>トレイメニューの初期化</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_ConfirmMessage" xml:space="preserve">
+    <value>トレイメニューに登録されたすべてのフォルダーが削除されます。続行しますか?</value>
+  </data>
+  <data name="Settings_Reset_Done" xml:space="preserve">
+    <value>初期化しました。</value>
+  </data>
   <data name="About_Title" xml:space="preserve">
     <value>バージョン情報</value>
   </data>
@@ -153,6 +183,9 @@
   </data>
   <data name="Common_Delete" xml:space="preserve">
     <value>削除</value>
+  </data>
+  <data name="Common_Reset" xml:space="preserve">
+    <value>初期化</value>
   </data>
   <data name="Common_Settings" xml:space="preserve">
     <value>設定</value>
@@ -216,6 +249,9 @@
   </data>
   <data name="GroupEdit_AddAppTooltip" xml:space="preserve">
     <value>アプリを追加</value>
+  </data>
+  <data name="GroupEdit_AddFileTooltip" xml:space="preserve">
+    <value>ファイル追加</value>
   </data>
   <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
     <value>アプリを検索</value>

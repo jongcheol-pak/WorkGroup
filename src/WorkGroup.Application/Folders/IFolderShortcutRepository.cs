@@ -19,4 +19,7 @@ public interface IFolderShortcutRepository
 
     /// <summary>식별자로 폴더를 삭제한다. 없으면 성공으로 간주(멱등).</summary>
     Task<Result> DeleteAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>등록된 모든 폴더를 삭제한다(설정 화면 초기화용, 멱등).</summary>
+    Task<Result> ClearAllAsync(CancellationToken cancellationToken = default);
 }

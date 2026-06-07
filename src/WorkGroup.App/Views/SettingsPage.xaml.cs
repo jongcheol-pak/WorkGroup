@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
@@ -34,6 +35,38 @@ public sealed partial class SettingsPage : Page
             PrimaryButtonText = loc?.Get("Settings_Language_RestartConfirm"),
             CloseButtonText = loc?.Get("Common_Cancel"),
             DefaultButton = ContentDialogButton.Primary
+        };
+        return await dialog.ShowAsync() == ContentDialogResult.Primary;
+    }
+
+    // 작업 그룹 목록 초기화 — 확인 후 ViewModel에 위임.
+    private async void OnResetWorkGroupsClick(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmResetAsync("Settings_Reset_WorkGroups_ConfirmTitle", "Settings_Reset_WorkGroups_ConfirmMessage"))
+            await ViewModel.ResetWorkGroupsAsync();
+    }
+
+    // 트레이 메뉴 목록 초기화 — 확인 후 ViewModel에 위임.
+    private async void OnResetTrayMenuClick(object sender, RoutedEventArgs e)
+    {
+        if (await ConfirmResetAsync("Settings_Reset_TrayMenu_ConfirmTitle", "Settings_Reset_TrayMenu_ConfirmMessage"))
+            await ViewModel.ResetTrayMenuAsync();
+    }
+
+    // 초기화 확인 다이얼로그(기본 버튼=취소로 실수 방지). XamlRoot 없으면 취소 처리.
+    private async Task<bool> ConfirmResetAsync(string titleKey, string messageKey)
+    {
+        if (XamlRoot is null) return false;
+
+        var loc = LocalizationService.Current;
+        var dialog = new ContentDialog
+        {
+            XamlRoot = XamlRoot,
+            Title = loc?.Get(titleKey),
+            Content = loc?.Get(messageKey),
+            PrimaryButtonText = loc?.Get("Common_Reset"),
+            CloseButtonText = loc?.Get("Common_Cancel"),
+            DefaultButton = ContentDialogButton.Close
         };
         return await dialog.ShowAsync() == ContentDialogResult.Primary;
     }

@@ -1,27 +1,43 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using WorkGroup.App.Services;
+using WorkGroup.Application.Folders;
+using WorkGroup.Application.Groups;
+using WorkGroup.Domain.Common;
 
 namespace WorkGroup.App.ViewModels;
 
 /// <summary>
 /// 설정 화면 ViewModel(plan.md T3). 로그인 자동 시작 토글, 앱 테마(시스템/라이트/다크) 전환,
-/// 표시 언어(시스템/한국어/영어/일본어/중국어) 선택을 제공한다.
+/// 표시 언어(시스템/한국어/영어/일본어/중국어) 선택, 작업 그룹·트레이 메뉴 목록 초기화를 제공한다.
 /// </summary>
 public sealed partial class SettingsViewModel : ObservableObject
 {
     private readonly StartupService _startup;
     private readonly ThemeService _theme;
     private readonly LanguageService _language;
+    private readonly IGroupAppService _groups;
+    private readonly IFolderShortcutRepository _folders;
+    private readonly LocalizationService _loc;
 
     // 초기 로드 중 변경 핸들러의 오발동을 막는다(plan.md M3).
     private bool _suppress;
 
-    public SettingsViewModel(StartupService startup, ThemeService theme, LanguageService language)
+    public SettingsViewModel(
+        StartupService startup,
+        ThemeService theme,
+        LanguageService language,
+        IGroupAppService groups,
+        IFolderShortcutRepository folders,
+        LocalizationService loc)
     {
         _startup = startup;
         _theme = theme;
         _language = language;
+        _groups = groups;
+        _folders = folders;
+        _loc = loc;
         StatusMessage = string.Empty;
+        StatusSeverity = InfoBarSeverity.Warning; // 자동 시작 거부 등 기존 경고 경로의 기본 심각도.
     }
 
     /// <summary>언어 변경 시 재시작 확인을 View에 위임하는 콜백(코드비하인드가 설정, true=확인).</summary>
@@ -41,6 +57,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasStatus))]
     public partial string StatusMessage { get; set; }
+
+    /// <summary>상태 메시지 심각도(InfoBar.Severity 바인딩용). 기본 경고, 초기화 성공 시 정보.</summary>
+    [ObservableProperty]
+    public partial InfoBarSeverity StatusSeverity { get; set; }
 
     /// <summary>상태 메시지 표시 여부(InfoBar.IsOpen 바인딩용).</summary>
     public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
@@ -116,6 +136,27 @@ public sealed partial class SettingsViewModel : ObservableObject
         finally
         {
             _suppress = false;
+        }
+    }
+
+    /// <summary>등록된 모든 작업 그룹을 산출물과 함께 삭제한다(확인 다이얼로그 통과 후 View가 호출).</summary>
+    public async Task ResetWorkGroupsAsync() => ApplyResetResult(await _groups.ClearAllAsync());
+
+    /// <summary>트레이 메뉴에 등록된 모든 폴더를 삭제한다(확인 다이얼로그 통과 후 View가 호출).</summary>
+    public async Task ResetTrayMenuAsync() => ApplyResetResult(await _folders.ClearAllAsync());
+
+    // 초기화 결과를 상태 메시지/심각도로 반영한다(성공=정보, 실패=경고).
+    private void ApplyResetResult(Result result)
+    {
+        if (result.IsSuccess)
+        {
+            StatusSeverity = InfoBarSeverity.Success;
+            StatusMessage = _loc.Get("Settings_Reset_Done");
+        }
+        else
+        {
+            StatusSeverity = InfoBarSeverity.Warning;
+            StatusMessage = result.Error ?? string.Empty;
         }
     }
 

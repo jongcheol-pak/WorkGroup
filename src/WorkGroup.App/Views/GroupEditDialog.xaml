@@ -126,7 +126,8 @@
                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 <ListView Grid.Row="1" ItemsSource="{x:Bind ViewModel.AvailableApps, Mode=OneWay}"
                                           Visibility="{x:Bind ViewModel.PickerListVisibility, Mode=OneWay}"
-                                          SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAppPickerItemClick">
+                                          SelectionMode="None" IsItemClickEnabled="True" ItemClick="OnAppPickerItemClick"
+                                          ContainerContentChanging="OnAppPickerContainerChanging">
                                     <ListView.ItemTemplate>
                                         <DataTemplate x:DataType="vm:PopupAppItem">
                                             <Grid ColumnSpacing="10" Padding="2">
@@ -150,6 +151,11 @@
                             </Grid>
                         </Flyout>
                     </Button.Flyout>
+                </Button>
+
+                <!-- 파일 추가: 실행 파일(.exe/.lnk)을 직접 선택해 추가("앱 추가"의 + 와 구분되는 폴더 열기 아이콘) -->
+                <Button ToolTipService.ToolTip="{loc:Localize Key=GroupEdit_AddFileTooltip}" Click="OnAddFileClick">
+                    <SymbolIcon Symbol="OpenFile" />
                 </Button>
             </StackPanel>
         </Grid>

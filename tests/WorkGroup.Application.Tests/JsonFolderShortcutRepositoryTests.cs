@@ -51,6 +51,26 @@ public sealed class JsonFolderShortcutRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task ClearAll_모든_폴더_제거()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync("Module", @"D:\Module");
+        await sut.AddAsync("Source", @"D:\Source");
+
+        var result = await sut.ClearAllAsync();
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(await sut.LoadAllAsync());
+    }
+
+    [Fact]
+    public async Task ClearAll_비어있어도_성공_멱등()
+    {
+        var sut = CreateSut();
+        Assert.True((await sut.ClearAllAsync()).IsSuccess);
+    }
+
+    [Fact]
     public async Task Add_Id는_단조_증가()
     {
         var sut = CreateSut();

@@ -102,6 +102,17 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
         finally { _gate.Release(); }
     }
 
+    public async Task<Result> ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            // 빈 목록을 원자적으로 기록한다(부수 산출물 없음 — 파일 내용만 비운다).
+            return await WriteUnlockedAsync(Array.Empty<FolderShortcut>(), cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
     // 경로 중복 검사(대소문자 무시). excludeId가 있으면 자기 자신은 제외(수정 시).
     private static bool IsDuplicatePath(IEnumerable<FolderShortcut> items, string? path, int? excludeId)
     {

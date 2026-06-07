@@ -136,6 +136,36 @@
   <data name="Settings_Theme_Dark" xml:space="preserve">
     <value>Dark</value>
   </data>
+  <data name="Settings_Section_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_Header" xml:space="preserve">
+    <value>Reset work groups</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_Description" xml:space="preserve">
+    <value>Delete all registered work groups and their generated shortcuts.</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_Header" xml:space="preserve">
+    <value>Reset tray menu</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_Description" xml:space="preserve">
+    <value>Delete all folders registered in the tray menu.</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_ConfirmTitle" xml:space="preserve">
+    <value>Reset work groups</value>
+  </data>
+  <data name="Settings_Reset_WorkGroups_ConfirmMessage" xml:space="preserve">
+    <value>All registered work groups will be deleted. Continue?</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_ConfirmTitle" xml:space="preserve">
+    <value>Reset tray menu</value>
+  </data>
+  <data name="Settings_Reset_TrayMenu_ConfirmMessage" xml:space="preserve">
+    <value>All folders registered in the tray menu will be deleted. Continue?</value>
+  </data>
+  <data name="Settings_Reset_Done" xml:space="preserve">
+    <value>Reset complete.</value>
+  </data>
   <data name="About_Title" xml:space="preserve">
     <value>About</value>
   </data>
@@ -153,6 +183,9 @@
   </data>
   <data name="Common_Delete" xml:space="preserve">
     <value>Delete</value>
+  </data>
+  <data name="Common_Reset" xml:space="preserve">
+    <value>Reset</value>
   </data>
   <data name="Common_Settings" xml:space="preserve">
     <value>Settings</value>
@@ -216,6 +249,9 @@
   </data>
   <data name="GroupEdit_AddAppTooltip" xml:space="preserve">
     <value>Add app</value>
+  </data>
+  <data name="GroupEdit_AddFileTooltip" xml:space="preserve">
+    <value>Add file</value>
   </data>
   <data name="GroupEdit_AppSearchPlaceholder" xml:space="preserve">
     <value>Search apps</value>

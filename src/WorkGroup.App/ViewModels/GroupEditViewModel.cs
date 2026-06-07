@@ -172,7 +172,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
                 {
                     var item = new PopupAppItem(app);
                     SelectedApps.Add(item);
-                    _ = item.LoadIconAsync();
+                    item.EnsureIconLoad();
                 }
         }
         catch (Exception ex)
@@ -209,9 +209,8 @@ public sealed partial class GroupEditViewModel : ObservableObject
             _installedItems.Clear();
             foreach (var app in await _inventory.GetInstalledAppsAsync())
             {
-                var item = new PopupAppItem(app);
-                _installedItems.Add(item);
-                _ = item.LoadIconAsync();
+                // 아이콘은 picker 목록 컨테이너가 실제 실현될 때 지연 로드한다(설치 앱 전체 선로딩 제거 → WinRT 파이널라이저 압력↓).
+                _installedItems.Add(new PopupAppItem(app));
             }
             RefreshAvailable();
             _pickerLoaded = true;
@@ -246,15 +245,27 @@ public sealed partial class GroupEditViewModel : ObservableObject
         if (SelectedApps.Any(i => i.App.SameTarget(app.LaunchTarget)))
             return;
 
-        var item = _installedItems.FirstOrDefault(i => i.App.SameTarget(app.LaunchTarget));
-        if (item is null)
-        {
-            // 설치 목록에 없는 멤버(제거된 앱 등)도 표시할 수 있도록 새로 만든다.
-            item = new PopupAppItem(app);
-            _ = item.LoadIconAsync();
-        }
+        // 설치 목록에 없는 멤버(제거된 앱 등)도 표시할 수 있도록 새로 만든다.
+        var item = _installedItems.FirstOrDefault(i => i.App.SameTarget(app.LaunchTarget))
+                   ?? new PopupAppItem(app);
+        // 재사용 항목(picker에서 미실현이라 아직 미로드일 수 있음)/신규 모두 선택 목록 아이콘을 보장한다(가드로 중복 방지).
+        item.EnsureIconLoad();
         SelectedApps.Add(item);
         RefreshAvailable();
+    }
+
+    /// <summary>사용자가 고른 실행 파일(.exe/.lnk)을 검증해 앱 목록에 추가한다(실패 시 상태 메시지 표시).</summary>
+    public void AddManualFile(string path)
+    {
+        var result = _inventory.CreateManualEntry(path);
+        if (result.IsFailure)
+        {
+            StatusMessage = result.Error ?? string.Empty;
+            return;
+        }
+
+        StatusMessage = string.Empty;
+        AddApp(result.Value);
     }
 
     /// <summary>앱을 선택 목록에서 제거한다.</summary>

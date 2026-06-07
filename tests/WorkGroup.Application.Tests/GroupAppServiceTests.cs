@@ -94,6 +94,31 @@ public sealed class GroupAppServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ClearAllAsync_모든_그룹과_폴더_제거_및_lnk_삭제_위임()
+    {
+        var sut = CreateSut();
+        var g1 = AppGroup.Create("업무").Value;
+        var g2 = AppGroup.Create("개인").Value;
+        await sut.SaveAsync(g1);
+        await sut.SaveAsync(g2);
+
+        var result = await sut.ClearAllAsync();
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty((await sut.GetAllAsync()));                                 // 저장소 비워짐
+        Assert.True(_shortcuts.Deleted);                                        // .lnk 삭제 위임
+        Assert.False(Directory.Exists(Path.Combine(_groupsDir, g1.Id.Value)));  // 그룹 폴더 제거
+        Assert.False(Directory.Exists(Path.Combine(_groupsDir, g2.Id.Value)));
+    }
+
+    [Fact]
+    public async Task ClearAllAsync_그룹_없으면_성공_멱등()
+    {
+        var result = await CreateSut().ClearAllAsync();
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
     public async Task CleanupOrphansAsync_유효하지_않은_그룹폴더_제거_및_lnk_정리_위임()
     {
         var group = Group();

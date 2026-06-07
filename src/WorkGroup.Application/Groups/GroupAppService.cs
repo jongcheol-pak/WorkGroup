@@ -92,6 +92,23 @@ public sealed class GroupAppService : IGroupAppService
         return await _repository.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<Result> ClearAllAsync(CancellationToken cancellationToken = default)
+    {
+        // 전체 그룹을 개별 DeleteAsync로 제거해 .lnk·아이콘 폴더 정리 로직을 재사용한다.
+        var groups = await _repository.LoadAllAsync(cancellationToken).ConfigureAwait(false);
+
+        // 폴더 잠금 등은 DeleteAsync 내부에서 흡수되므로, 여기서 가시화되는 실패는 영속화 쓰기 실패뿐이다.
+        Result? firstFailure = null;
+        foreach (var group in groups)
+        {
+            var result = await DeleteAsync(group.Id, cancellationToken).ConfigureAwait(false);
+            if (result.IsFailure)
+                firstFailure ??= result;
+        }
+
+        return firstFailure ?? Result.Ok();
+    }
+
     public async Task CleanupOrphansAsync(CancellationToken cancellationToken = default)
     {
         var groups = await _repository.LoadAllAsync(cancellationToken).ConfigureAwait(false);

@@ -18,6 +18,9 @@ public interface IGroupAppService
     /// <summary>그룹과 그 .lnk·.ico를 삭제한다(멱등).</summary>
     Task<Result> DeleteAsync(GroupId id, CancellationToken cancellationToken = default);
 
+    /// <summary>저장된 모든 그룹을 .lnk·.ico 산출물과 함께 삭제한다(설정 화면 초기화용, 멱등).</summary>
+    Task<Result> ClearAllAsync(CancellationToken cancellationToken = default);
+
     /// <summary>저장된 그룹과 일치하지 않는 고아 .lnk·.ico를 정리한다(앱 시작 시 호출 권장 — plan.md T8).</summary>
     Task CleanupOrphansAsync(CancellationToken cancellationToken = default);
 }

@@ -21,7 +21,8 @@
             </StackPanel>
 
             <InfoBar IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
-                     Severity="Warning" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
+                     Severity="{x:Bind ViewModel.StatusSeverity, Mode=OneWay}"
+                     Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}"
                      Margin="0,0,0,8" />
 
             <!-- 일반 -->
@@ -62,6 +63,24 @@
                     <ComboBoxItem Content="日本語" />
                     <ComboBoxItem Content="中文(简体)" />
                 </ComboBox>
+            </controls:SettingsCard>
+
+            <!-- 초기화 -->
+            <TextBlock Text="{loc:Localize Key=Settings_Section_Reset}" Style="{StaticResource SettingsGroupHeaderStyle}" />
+            <controls:SettingsCard Header="{loc:Localize Key=Settings_Reset_WorkGroups_Header}"
+                                   Description="{loc:Localize Key=Settings_Reset_WorkGroups_Description}">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74D;" />
+                </controls:SettingsCard.HeaderIcon>
+                <Button Content="{loc:Localize Key=Common_Reset}" Click="OnResetWorkGroupsClick" />
+            </controls:SettingsCard>
+
+            <controls:SettingsCard Header="{loc:Localize Key=Settings_Reset_TrayMenu_Header}"
+                                   Description="{loc:Localize Key=Settings_Reset_TrayMenu_Description}">
+                <controls:SettingsCard.HeaderIcon>
+                    <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE74D;" />
+                </controls:SettingsCard.HeaderIcon>
+                <Button Content="{loc:Localize Key=Common_Reset}" Click="OnResetTrayMenuClick" />
             </controls:SettingsCard>
         </StackPanel>
     </ScrollViewer>

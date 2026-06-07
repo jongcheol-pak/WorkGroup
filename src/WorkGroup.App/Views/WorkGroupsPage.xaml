@@ -7,8 +7,11 @@
     xmlns:loc="using:WorkGroup.App.Markup"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:WorkGroup.App.ViewModels"
-    mc:Ignorable="d">
+    mc:Ignorable="d"
+    NavigationCacheMode="Required">
 
+    <!-- 탭 재진입마다 페이지를 재생성하면 InitializeComponent의 CsWinRT 이벤트 마샬링이 GC 파이널라이저와
+         락 경합 → STA 재진입 FailFast(c000027b)가 발생할 수 있다. 페이지를 캐시해 재생성/재Connect를 막는다. -->
     <!-- 목록이 가용 높이를 채우고 ListView 내부에서 스크롤되도록 ScrollViewer 대신 Grid(행 *)를 쓴다(DG6 변형). -->
     <Grid Padding="{StaticResource PageContentPadding}" RowSpacing="12"
           MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch">
