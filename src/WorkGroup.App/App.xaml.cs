@@ -23,7 +23,7 @@ namespace WorkGroup.App
         private bool _exiting;
         // 트레이 좌클릭으로 띄운 폴더 목록 팝업(중복 생성 방지용 추적).
         private Views.FolderListPopupWindow? _folderPopup;
-        // 상주 인스턴스가 핀 클릭 redirect로 띄운 그룹 팝업(중복 생성 방지용 추적).
+        // 상주 인스턴스가 재사용하는 그룹 팝업 창(첫 핀 클릭에 1회 생성, 이후 ShowForGroup으로 반복 표시).
         private Views.GroupPopupWindow? _groupPopup;
 
         // 메인 인스턴스 등록 키. 핀 클릭 시 상주 메인 인스턴스를 찾을 때도 이 키로 식별한다.
@@ -57,7 +57,7 @@ namespace WorkGroup.App
 
         /// <summary>
         /// 활성화 분기(plan.md T2/T12):
-        /// - 그룹 id(핀 클릭/프로토콜) → 메인 인스턴스 상주 시 redirect, 없으면 팝업만 띄우고 닫히면 종료.
+        /// - 그룹 id(핀 클릭/프로토콜) → 메인 인스턴스 상주 시 redirect, 없으면 이 프로세스가 트레이에 상주 + 팝업 표시.
         /// - 로그인 자동 시작 → 트레이만 상주(메인 창 미표시).
         /// - 일반 실행 → 트레이 + 메인 창.
         /// </summary>
@@ -73,38 +73,28 @@ namespace WorkGroup.App
             {
                 // 상주 중인 메인 인스턴스가 있으면 그쪽으로 활성화를 넘겨(redirect) 즉시 팝업을 띄운다
                 // — 새 프로세스/DI 초기화/저장소 로드 비용을 피해 표시 지연을 없앤다.
-                // 없으면(콜드) 기존처럼 이 프로세스가 팝업만 띄우고 닫히면 종료한다(콜드 동작 불변).
-                var main = FindMainInstance();
-                if (main is not null)
+                // 없으면(콜드) 이 프로세스가 키를 등록해 트레이에 상주하면서 팝업을 표시한다(이후 클릭은 redirect, 종료는 트레이로).
+                var keyInstance = AppInstance.FindOrRegisterForKey(MainInstanceKey);
+                if (!keyInstance.IsCurrent)
                 {
-                    RedirectActivationTo(activation, main);
+                    RedirectActivationTo(activation, keyInstance);
                     Exit();
                     return;
                 }
-
-                // 콜드: 팝업 전용 프로세스로 띄우고 닫히면 종료(상주 안 함).
-                var popup = new GroupPopupWindow(groupId);
-                popup.Closed += (_, _) => Exit();
-                _window = popup;
-                popup.Activate();
+                BecomeResidentInstance(keyInstance);
+                ShowGroupPopup(groupId); // 재사용 창으로 표시(닫혀도 Hide로 상주 유지).
                 return;
             }
 
             // 메인/편집 활성화는 단일 인스턴스로 합친다. 이미 메인 인스턴스가 있으면 그쪽으로 넘기고 종료.
-            var keyInstance = AppInstance.FindOrRegisterForKey(MainInstanceKey);
-            if (!keyInstance.IsCurrent)
+            var keyInstanceMain = AppInstance.FindOrRegisterForKey(MainInstanceKey);
+            if (!keyInstanceMain.IsCurrent)
             {
-                RedirectActivationTo(activation, keyInstance);
+                RedirectActivationTo(activation, keyInstanceMain);
                 Exit();
                 return;
             }
-            _keyInstance = keyInstance;
-            keyInstance.Activated += OnAppInstanceActivated;
-
-            EnsureTray();
-
-            // 메인 시작 시 저장소와 불일치하는 고아 .lnk/.ico 정리(plan.md T8 연결).
-            _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();
+            BecomeResidentInstance(keyInstanceMain);
 
             // "그룹 수정" 활성화면 메인 창을 열어 해당 그룹 편집 다이얼로그를 표시한다.
             var editId = ActivationParser.TryGetEditGroupId(activation);
@@ -115,17 +105,25 @@ namespace WorkGroup.App
                 ShowMainWindow();
         }
 
-        // 상주 중인 메인 인스턴스(트레이 상주)를 찾는다. 없으면 null(콜드 상태).
-        // GetInstances()는 GetCurrent를 호출한 모든 인스턴스(현재 프로세스 자신 포함)를 반환하므로,
-        // 키 등록을 한 메인 인스턴스만 Key로 식별하고 자기 자신(IsCurrent, Key 미등록)은 제외한다.
-        private static AppInstance? FindMainInstance()
+        // 이 프로세스를 상주(트레이) 메인 인스턴스로 설정한다: 키 인스턴스 보관 + Activated(redirect) 구독 +
+        // 트레이 아이콘 + 팝업 창 prewarm + 고아 산출물 정리. 메인/편집 경로와 핀-콜드 상주 경로가 공유한다.
+        private void BecomeResidentInstance(AppInstance keyInstance)
         {
-            foreach (var instance in AppInstance.GetInstances())
+            _keyInstance = keyInstance;
+            keyInstance.Activated += OnAppInstanceActivated;
+
+            EnsureTray();
+
+            // 그룹 팝업 재사용 창을 유휴 시점에 미리 생성(prewarm)해 첫 핀 클릭의 창 생성·Mica 초기화 비용을 옮긴다.
+            // 가시 시작(트레이/메인 창)을 늦추지 않도록 Low 우선순위로 지연, 실패해도 첫 클릭이 지연 생성으로 폴백한다.
+            _uiDispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
             {
-                if (!instance.IsCurrent && instance.Key == MainInstanceKey)
-                    return instance;
-            }
-            return null;
+                try { EnsureGroupPopup(); }
+                catch { /* prewarm 실패는 무시 — ShowGroupPopup이 지연 생성 폴백 */ }
+            });
+
+            // 상주 시작 시 저장소와 불일치하는 고아 .lnk/.ico 정리(plan.md T8 연결).
+            _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();
         }
 
         // UI 스레드 데드락을 피하려고 redirect를 별도 스레드에서 수행하고 완료를 동기 대기한다(공식 Instancing 패턴).
@@ -195,8 +193,9 @@ namespace WorkGroup.App
                 _exiting = true; // 이후 창 Closing을 취소하지 않고 실제 종료한다.
                 // 메인 창을 실제로 닫아 WinUIEx의 Window.Closed가 발생하도록 한다
                 // → 창 크기/위치 persistence가 이 시점에 저장된다(plan.md DW5).
-                // (트레이는 메인 프로세스에만 초기화되므로 여기서 _window는 항상 메인 WindowEx — 팝업 분기는 EnsureTray 미호출로 미도달.)
+                // 핀-콜드 상주 경로는 메인 창을 띄우지 않아 _window가 null일 수 있다(?.로 null-safe 처리).
                 _window?.Close();
+                _groupPopup?.Close(); // 재사용 그룹 팝업은 Hide로 살아 있으므로 종료 시 명시적으로 닫는다.
                 _tray?.Dispose();
                 Exit();
             });
@@ -214,18 +213,24 @@ namespace WorkGroup.App
             popup.Activate();
         }
 
-        // 상주 인스턴스가 핀 클릭 redirect를 받아 그룹 팝업을 띄운다. 이전 팝업은 닫고 새로 표시한다.
-        // GroupPopupWindow는 Deactivated 시 스스로 Close하므로, 그 자율 Close가 정리를 꼬지 않도록
-        // 닫기/Activate 전에 추적(_groupPopup)을 먼저 교체한다. 콜드 경로와 달리 Closed에 Exit를 붙이지 않아 상주를 유지한다.
-        // (FolderListPopupWindow와 달리 호버 타이머/CloseSelf가 없어 표준 Close()로 닫는다.)
+        // 상주 인스턴스가 핀 클릭 redirect를 받아 그룹 팝업을 띄운다. 매 클릭 새 창을 만들지 않고
+        // 재사용 창(_groupPopup) 1개를 ShowForGroup으로 다시 채워 표시한다(창 생성·Mica 초기화 비용·깜빡임 제거).
+        // 재사용 창은 Deactivated 시 Close가 아니라 Hide로 살아 있고, 종료 정리는 EnsureTray의 ExitRequested가 담당한다.
         private void ShowGroupPopup(string groupId)
         {
-            var old = _groupPopup;
-            var popup = new GroupPopupWindow(groupId);
+            EnsureGroupPopup();
+            _groupPopup!.ShowForGroup(groupId); // EnsureGroupPopup 직후라 비-null.
+        }
+
+        // 재사용 그룹 팝업 창을 1회 생성한다(이미 있으면 무시). 첫 클릭 또는 시작 시 prewarm이 공유한다.
+        private void EnsureGroupPopup()
+        {
+            if (_groupPopup is not null)
+                return;
+            var popup = new GroupPopupWindow(); // 재사용(웜) 생성자 — InitializeChrome만 수행(Activate 전까지 비표시).
             _groupPopup = popup;
+            // 종료 등으로 닫히면 추적 해제(닫힌 창 재사용 방지).
             popup.Closed += (_, _) => { if (ReferenceEquals(_groupPopup, popup)) _groupPopup = null; };
-            old?.Close();
-            popup.Activate();
         }
 
         /// <summary>폴더 팝업의 설정(톱니)에서 메인 창의 "트레이 메뉴" 탭을 연다.</summary>

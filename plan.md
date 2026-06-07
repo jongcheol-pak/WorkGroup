@@ -1,91 +1,77 @@
-# plan — 그룹 편집 화면에 ".exe/.lnk 파일 추가" 버튼
+# plan — 핀 클릭 콜드 시 트레이 상주(+팝업 표시)
 
 ## 목표
-그룹 추가/편집 다이얼로그에서 "앱 추가(+)" 버튼 오른쪽에 "파일 추가" 버튼을 두고, 클릭 시 파일 선택기로 실행 파일(.exe/.lnk)을 골라 선택 앱 목록에 추가한다.
+핀 클릭으로 그룹 팝업을 띄울 때 **상주(트레이) 인스턴스가 없으면**, 그 프로세스를 "팝업만 띄우고 닫히면 종료"가 아니라 **트레이에 상주(키 등록 + 트레이 아이콘 + Activated 구독)** 시키면서 팝업도 표시한다. → 이후 핀 클릭은 그 상주 인스턴스로 redirect(웜)되고 prewarm 등 이점을 받는다.
 
 ## 범위
-- IN: "파일 추가" 버튼 추가, 단일 파일 선택기(.exe/.lnk), 선택 파일을 앱 목록에 추가, 툴팁 로컬라이제이션.
-- OUT: 다중 파일 동시 선택, 새 파일 형식 지원(이미지/폴더 등), 도메인/직렬화/인벤토리 로직 변경, 자동 테스트 신규 추가(인프라 `CreateManualEntry`는 이미 테스트됨).
+- IN: `App.OnLaunched`의 핀 클릭 콜드 경로를 "팝업 전용 후 종료" → "트레이 상주 + 팝업 표시"로 변경. 상주 설정(키/Activated/트레이/prewarm/orphan 정리)을 `BecomeResidentInstance` 헬퍼로 추출해 메인 경로와 공유.
+- OUT: 메인 창 자동 표시(트레이만 상주 — 사용자 "트레이로"), 폴더 팝업, 팝업 내용/애니메이션, groups.json·아이콘 캐시, 자동 시작(StartupTask) 동작.
 
-## 결정 사항 (사용자 승인 완료)
-- **D1 선택 개수**: 단일 파일(`PickSingleFileAsync`).
-- **D2 파일 형식**: `.exe` + `.lnk`(인프라 `CreateManualEntry`가 이미 두 형식 허용, 오류 메시지도 .exe/.lnk 안내).
-- **D3 중복 처리**: 이미 목록에 있는 대상은 기존 `AddApp`이 `SameTarget`(경로 기준)으로 조용히 무시(기존 동작 일관).
-- **D4 재사용**: 신규 도메인/인프라 작성 없음 — 기존 `IAppInventory.CreateManualEntry`(검증+AppEntry 생성) + `GroupEditViewModel.AddApp`(중복 제거+아이콘 로드) 재사용.
+## 동작 변경 명시 (사용자 승인 = 요청)
+- **기존**: 앱 미실행 상태에서 핀 클릭 → 단명 프로세스가 팝업만 표시, 팝업 닫히면 프로세스 종료.
+- **변경 후**: 앱 미실행 상태에서 핀 클릭 → 프로세스가 **트레이에 상주** + 팝업 표시. 팝업을 닫아도(포커스 잃음→Hide) **앱은 트레이에 남고**, 종료는 트레이 메뉴로 한다(메인 창은 안 뜸).
+
+## 결정 사항 (확정)
+- **D1 등록 방식**: 핀 경로의 `FindMainInstance()`(찾기 전용) → `AppInstance.FindOrRegisterForKey(MainInstanceKey)`(원자적 등록)로 교체. `IsCurrent` 아니면 redirect+Exit(웜, 기존과 동일 대상), `IsCurrent`면 이 프로세스가 상주가 됨(콜드 → 상주).
+- **D2 상주 설정 공유**: `private void BecomeResidentInstance(AppInstance keyInstance)` 추출 — `_keyInstance` 보관 + `Activated += OnAppInstanceActivated` + `EnsureTray()` + prewarm(Low 지연) + `CleanupOrphansAsync`(fire-forget). 메인 경로(현 101-115)와 핀-상주 경로가 공유.
+- **D3 팝업 표시 방식**: 상주 후 `ShowGroupPopup(groupId)`(재사용 흐름)로 표시 — 콜드 `new GroupPopupWindow(groupId)`(Closed→Exit) 대신. 닫힘 시 Hide로 상주 유지(`_groupPopup` 추적).
+- **D4 메인 창 미표시**: 핀-상주 경로는 트레이만(메인 창 안 띄움). "그룹 수정"이 아닌 단순 핀이므로 팝업만.
+- **D5 `FindMainInstance` 제거**: 핀 경로에서만 쓰던 헬퍼(grep 전수, 호출처 1곳=핀 경로) → `FindOrRegisterForKey` 전환으로 미사용 → 삭제.
 
 ## 영향 범위 전수 조사 (Impact Analysis)
-- **재사용 자산(변경 없음, 직접 확인)**:
-  - `IAppInventory.CreateManualEntry(string)` → `Result<AppEntry>`(`IAppInventory.cs:19`, 구현 `InstalledAppInventory.cs:57-73`): .exe/.lnk 검증 → `new AppEntry(파일명, 경로, AppKind.Win32, 경로)`. 이미 단위 테스트 존재(`InstalledAppInventoryTests.cs:54-82`).
-  - `GroupEditViewModel.AddApp(AppEntry)`(`GroupEditViewModel.cs:243-255`): `SameTarget` 중복 무시 + `EnsureIconLoad` + `RefreshAvailable`.
-  - `AppIconLoader.LoadAsync`(`AppIconLoader.cs:14-53`): Win32(LaunchTarget=exe 경로)는 셸 썸네일로 아이콘 추출 → exe/.lnk 아이콘 표시 보장.
-  - `GroupEditViewModel`은 이미 `IAppInventory _inventory`를 주입받음(`GroupEditViewModel.cs:23,40`) → **DI 변경 불필요**.
-- **신규 심볼**:
-  - `GroupEditViewModel.AddManualFile(string path)` — 호출처: 신규 코드비하인드 핸들러 `OnAddFileClick` 1곳뿐(grep 시 신규 메서드라 기존 호출자 없음).
-  - `GroupEditDialog.OnAddFileClick` — XAML `Click`에서만 참조.
-- **로컬라이제이션 패리티**: `ResourceParityTests`가 4개 언어 `.resw` 키 동일성 강제 → 신규 키 `GroupEdit_AddFileTooltip`를 4개 파일 모두 추가.
-- **파일 선택기 패턴 선례**: `GroupEditDialog.OnUserIconClick`(`GroupEditDialog.xaml.cs:59-78`)이 `FileOpenPicker`+`InitializeWithWindow`+`PickSingleFileAsync`를 이미 사용 → 동일 패턴 적용(`Windows.Storage.Pickers` using 기존 존재 `:4`).
-- **오류 메시지 키**: `Infra_Inventory_EmptyPath`/`FileNotFound`/`InvalidType` 3개 키가 각각 4개 언어에 존재(확인) → `CreateManualEntry` 실패 시 `Result.Error`(이미 현지화) 그대로 표시.
+- **변경 파일**: `src/WorkGroup.App/App.xaml.cs` 단일.
+- **`OnLaunched` 핀 분기**(`App.xaml.cs:72-91`): `FindMainInstance()`(`:77`) + 콜드 팝업 블록(`:85-90`)을 `FindOrRegisterForKey`+`IsCurrent` 분기 + `BecomeResidentInstance` + `ShowGroupPopup`로 교체.
+- **`OnLaunched` 메인/편집 분기**(`:93-...`): 이미 `FindOrRegisterForKey`+`IsCurrent`(`:94-100`). 상주 설정 인라인(`:101-115`)을 `BecomeResidentInstance(keyInstance)` 호출로 대체(이후 RouteEdit/ShowMainWindow는 유지).
+- **`FindMainInstance()`**(`:129-135`): grep 전수 — 호출처 `:77` 1곳뿐. 전환 후 미사용 → 삭제(잔존 시 경고).
+- **`BecomeResidentInstance`가 호출하는 것들**(모두 기존 존재, 심볼명 기준 — 라인은 근사): `EnsureTray()`(정의 `:191`~, ExitRequested 핸들러 포함), `OnAppInstanceActivated`(`:152`~, redirect 마샬링), `EnsureGroupPopup()`(직전 task), `CleanupOrphansAsync`(`IGroupAppService`), `_uiDispatcherQueue`(`:67` 캡처). 시그니처 변경 없음.
+- **`FindMainInstance` 호출처 grep(Investigation Log)**: `grep "FindMainInstance"` → 정의(`:129`) + 호출 `:77` 1곳뿐. 전환 후 미사용 확정.
+- **`EnsureTray`의 ExitRequested 주석(`:206`)**: "트레이는 메인 프로세스에만 초기화 … `_window`는 항상 메인 WindowEx — 팝업 분기는 EnsureTray 미호출로 미도달"은 **핀-상주 도입으로 거짓이 됨**(이제 핀-상주도 EnsureTray 호출 + `_window`는 null 가능). `_window?.Close()`는 null-safe라 동작은 안전하나 **주석을 갱신**해야 한다(M2).
+- **`ShowGroupPopup`**(직전 task에서 `EnsureGroupPopup`+`ShowForGroup`): 핀-상주 경로에서 **UI 스레드(OnLaunched)에서 직접 호출** — 메인 경로의 `ShowMainWindow` 직접 호출과 동일 스레드. (기존 콜드도 `popup.Activate()`를 OnLaunched에서 직접 했으므로 창 표시 시점 동일.)
+- **`_window`/`_groupPopup`/`ExitRequested`**: 핀-상주는 메인 창 없음 → `_window` null 유지. `ExitRequested`의 `_window?.Close()`+`_groupPopup?.Close()`는 null-safe(불변).
+- **직렬화/도메인/DI/공개 API 변경 없음**. 신규 의존성 없음.
+- **테스트**: App 계층 라이프사이클 — 단위 테스트 없음(AppInstance/WinUI 의존). 빌드 + GUI 수동 검증.
 
 ## 위험
-- 외부 의존: `FileOpenPicker`는 데스크톱 WinUI에서 HWND 초기화 필요 → 기존 `OnUserIconClick`과 동일하게 `App.MainWindow` HWND로 `InitializeWithWindow`(MainWindow null 가드 동일).
-- 회귀: 기존 "앱 추가(+)" 버튼/Flyout과 독립(별도 버튼, Flyout 없음) → 기존 흐름 영향 없음.
-- 동시성: VM 메서드는 UI 스레드 동기 호출(파일 선택은 await 후 경로만 전달) — 기존 `SetUserImage` 패턴과 동일.
+- **라이프사이클·c0000602 영역**: 트레이 생성 + 창 표시 경로. `EnsureTray`는 트레이 콜백을 `TryEnqueue`로 지연(c0000602 기수정)하고, 팝업 표시는 안정화된 `ShowGroupPopup` 재사용 → 위험 낮음. 단 핀-콜드에서 트레이+팝업 동시 셋업은 신규 조합이라 GUI 검증 필수.
+- **동시 핀 클릭(콜드)**: 둘이 거의 동시면 `FindOrRegisterForKey`가 원자적으로 하나만 IsCurrent → 그 프로세스가 상주, 나머지는 redirect. 상주가 redirect를 받아 팝업 재표시(ShowForGroup 토큰/재사용이 흡수).
+- **동작 변경 자체**: 핀 클릭이 앱을 트레이에 상주시킨다(이전엔 단명). 사용자 요청이지만 "왜 앱이 안 꺼지지?" 혼동 가능 → 의도된 동작(트레이로 종료).
+- **회귀**: 웜 redirect 경로·메인/편집 경로·자동 시작·`ExitRequested` 정리 불변(헬퍼 추출은 동작 보존). 콜드 단명 모델만 상주로 전환.
 
 ## 검증 방법
-- `dotnet build WorkGroup.slnx` — 경고/에러 0.
-- `dotnet test WorkGroup.slnx` — 전체 통과(`ResourceParityTests` 포함). 신규 자동 테스트는 없음(재사용 인프라는 기존 테스트로 커버, VM/뷰는 GUI 수동 검증).
+- `dotnet build WorkGroup.slnx` — 경고/에러 0(미사용 `FindMainInstance` 삭제 포함).
+- `dotnet test WorkGroup.slnx` — 전체 통과(회귀 없음).
+- **F5 MSIX GUI 수동 검증**: ① 앱 완전 종료 상태에서 핀 클릭 → 팝업 표시 **+ 트레이 아이콘 상주**, 팝업 닫아도 트레이 유지, 트레이로 종료 정상. ② 이미 상주 중 핀 클릭 → 기존처럼 redirect로 팝업(웜). ③ 동시/연속 핀 클릭 중복 창/크래시 없음. ④ 트레이 좌클릭(폴더)·우클릭(열기/종료)·메인 창 정상.
 
 ---
 
 ## 작업 분해
 
-### T1. GroupEditViewModel에 파일 추가 메서드  — Type C
-- [x] 구현 완료
-- **파일**: `src/WorkGroup.App/ViewModels/GroupEditViewModel.cs`
-- **변경**: `public void AddManualFile(string path)` 추가 — `_inventory.CreateManualEntry(path)` 호출, 실패 시 `StatusMessage = result.Error`, 성공 시 `StatusMessage = string.Empty` 후 `AddApp(result.Value)`.
-- **Decision Points**:
-  - 반환 타입: `void`(기존 `SetUserImage`/`AddApp` 패턴, 결과는 StatusMessage/목록으로 표현).
-  - 실패 표시: `CreateManualEntry`의 현지화된 `Result.Error` 재사용(신규 키 불필요).
-  - 중복: `AddApp`이 처리(별도 분기 없음 — D3).
-- **Edge Cases**: 존재하지 않는 경로/지원하지 않는 형식 → `CreateManualEntry`가 `Fail` → StatusMessage 표시. 빈 경로 → `Fail`. 이미 추가된 대상 → `AddApp` 무시(목록 불변).
-- **Halt Forecast**: 없음(기존 주입 의존성·기존 메서드 재사용).
-- **Acceptance**: 빌드 성공. `AddManualFile`이 `CreateManualEntry`→(성공 시)`AddApp` 위임, 실패 시 `StatusMessage` 설정함(코드 리뷰로 확인).
-
-### T2. 로컬라이제이션 키 추가(4개 언어)  — Type A
-- [x] 구현 완료
-- **파일**: `src/WorkGroup.App/Strings/{ko-KR,en-US,ja-JP,zh-Hans}/Resources.resw`
-- **추가 키**: `GroupEdit_AddFileTooltip` — ko="파일 추가", en="Add file", ja="ファイル追加", zh="添加文件". (기존 `GroupEdit_AddAppTooltip` 인접 위치에 삽입)
-- **Decision Points**: 키 접두사 `GroupEdit_*` 일관, 버튼은 아이콘만 표시하므로 툴팁 키만 추가.
-- **Edge Cases**: 4개 파일 키 누락 시 `ResourceParityTests` 실패 → 전수 추가로 방지.
-- **Acceptance**: `dotnet test`의 `ResourceParityTests` 통과(4개 언어 키 동일).
-
-### T3. GroupEditDialog 버튼 + 파일 선택 핸들러  — Type C
-- [x] 구현 완료
-- **파일**:
-  - `src/WorkGroup.App/Views/GroupEditDialog.xaml` — "앱 추가(+)" 버튼 오른쪽(같은 `StackPanel`, `Grid.Row=3` `Grid.Column=1`)에 "파일 추가" `Button` 추가: `SymbolIcon Symbol="OpenFile"` + `ToolTipService.ToolTip="{loc:Localize Key=GroupEdit_AddFileTooltip}"` + `Click="OnAddFileClick"`(Flyout 없음).
-  - `src/WorkGroup.App/Views/GroupEditDialog.xaml.cs` — `OnAddFileClick`: `FileOpenPicker`에 `.exe`·`.lnk` 필터, `App.MainWindow` HWND로 `InitializeWithWindow`(null 가드), `PickSingleFileAsync`, 결과 비-null 시 `ViewModel.AddManualFile(file.Path)`(기존 `OnUserIconClick` 패턴 모방).
-- **Decision Points**:
-  - 버튼 아이콘: `SymbolIcon Symbol="OpenFile"`(파일 열기 의미, 기존 "+" `Symbol="Add"`와 시각적 구분).
-  - 배치: 기존 `StackPanel`(Spacing=12) 마지막 자식으로 추가 → "+" 우측.
-  - 파일 형식 필터: `.exe`, `.lnk`(D2).
-- **Edge Cases**: 선택 취소(file null) → 무시. `App.MainWindow` null → 초기화 생략(기존 `OnUserIconClick` 동일). 잘못된 형식은 필터+`CreateManualEntry`로 이중 차단.
-- **Halt Forecast**: 없음(기존 파일 선택기 선례 존재).
-- **Acceptance**: 빌드 성공. 다이얼로그에 "+" 우측 "파일 추가" 버튼 노출, 클릭 시 .exe/.lnk 선택기 → 선택 파일이 앱 목록에 추가됨(헤드리스 빌드로 컴파일·바인딩 검증, 실제 동작은 F5 GUI 수동 확인).
+### T1. 핀-콜드 트레이 상주 + 상주 설정 헬퍼 추출  — Type D
+- [ ] 구현 완료
+- **파일**: `src/WorkGroup.App/App.xaml.cs`
+- **변경**:
+  - `private void BecomeResidentInstance(AppInstance keyInstance)` 추가: `_keyInstance = keyInstance; keyInstance.Activated += OnAppInstanceActivated; EnsureTray(); _uiDispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () => { try { EnsureGroupPopup(); } catch { } }); _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();` (현 메인 경로 `:101-115`의 상주 설정 이동).
+  - 메인/편집 경로(`:101-115`): 인라인 상주 설정 → `BecomeResidentInstance(keyInstance);` 한 줄로 대체(이후 `RouteEdit`/`ShowMainWindow` 분기 유지).
+  - 핀 경로(`:77-90`) 교체: `var keyInstance = AppInstance.FindOrRegisterForKey(MainInstanceKey); if (!keyInstance.IsCurrent) { RedirectActivationTo(activation, keyInstance); Exit(); return; } BecomeResidentInstance(keyInstance); ShowGroupPopup(groupId); return;` (콜드 `new GroupPopupWindow(groupId)`+`Closed→Exit` 삭제).
+  - `FindMainInstance()`(`:129`~) 삭제(미사용 — grep 호출처 `:77` 1곳뿐).
+  - 주석 갱신: ① `OnLaunched` XML doc summary(`:58-62`)·콜드 주석(`:76`,`:85`)을 "상주 없으면 트레이 상주 + 팝업"으로 수정. ② **`EnsureTray`의 ExitRequested 주석(`:206`)** — "팝업 분기는 EnsureTray 미호출"이 거짓이 되므로 "핀-상주 경로에선 `_window`가 null일 수 있고 `?.Close()`가 null-safe로 처리한다"로 갱신(M2).
+- **Decision Points**(11 — Type D):
+  - 등록: `FindOrRegisterForKey`(원자적, D1) — 웜 redirect 동작 보존.
+  - 헬퍼 추출: `BecomeResidentInstance`(D2) — 메인·핀 경로 공유, 동작 보존.
+  - 팝업 표시: `ShowGroupPopup` 재사용 흐름(D3) — 닫혀도 상주.
+  - 메인 창: 미표시(D4).
+  - 정리: `FindMainInstance` 삭제(D5).
+  - 스레드: OnLaunched(UI 스레드)에서 직접 호출 — 기존 `ShowMainWindow`/`popup.Activate` 동일.
+- **Edge Cases**: 콜드 핀 → 상주+팝업(정상). 동시 콜드 핀(FindOrRegisterForKey 원자적 — 하나 상주, 나머지 redirect → **수신측 `OnAppInstanceActivated`(`:152`)의 groupId 분기가 `ShowGroupPopup` 호출로 흡수**, ShowForGroup 토큰/재사용). 상주 중 핀(IsCurrent 아님 → redirect, 기존). 팝업 닫음(Hide, 상주 유지). 상주 후 트레이 종료(ExitRequested 정리). prewarm·ShowGroupPopup 중복 생성(EnsureGroupPopup null 1회). `keyInstance` 등록 실패(이론상 없음 — FindOrRegisterForKey 계약상 항상 인스턴스 반환).
+- **Halt Forecast**: 트레이+팝업 동시 셋업이 c0000602 fail-fast를 유발하면 → `EnsureTray`의 TryEnqueue 지연이 이미 방어. 빌드 에러(시그니처) 시 Phase I 1회 복귀. 실제 fail-fast는 헤드리스 미관측 → GUI 검증 권고(Halt 아님, 코드 리뷰로 안정화 패턴 확인).
+- **Acceptance**: 빌드 성공(미사용 `FindMainInstance` 삭제 후 경고 0). 핀 콜드 경로가 `FindOrRegisterForKey`로 등록해 IsCurrent면 `BecomeResidentInstance`+`ShowGroupPopup`, 아니면 redirect; 메인 경로도 `BecomeResidentInstance` 공유(코드 리뷰). 실제 상주+팝업·트레이 유지·종료는 F5 GUI 수동 검증.
 
 ## 작업 의존성
-- T3 ← T1(VM 메서드), T2(loc 키). T1·T2는 상호 독립.
+- 단일 task(T1). 의존 없음.
 
 ## 문서 갱신
-- `README.md`: 그룹 편집의 앱 추가에 "파일(.exe/.lnk) 직접 추가" 기재(해당 기능 설명 위치).
-- `notes.md`: 변경 내역 1줄 추가(최신 위).
+- `README.md`: **L61**의 "상주 인스턴스가 없으면(콜드) … 팝업만 표시 후 종료" 서술을 "상주 인스턴스가 없으면 새 인스턴스가 **트레이에 상주하며** 팝업을 표시(이후 종료는 트레이로)"로 수정(확정 위치).
+- `notes.md`: 변경 내역 1줄(최신 위).
 
 ## 승인 필요 항목
-- 없음(공개 API 추가/변경 없음 — VM에 메서드 추가는 내부 UI 계층, 인터페이스 변경 아님). 신규 의존성 없음.
-
-## Progress Log
-- T1~T3 완료(미커밋): `GroupEditViewModel.AddManualFile`(CreateManualEntry→AddApp 위임), `GroupEdit_AddFileTooltip` 4언어, `GroupEditDialog.xaml` "+" 우측 "파일 추가" 버튼(`SymbolIcon OpenFile`, "+"의 Add와 구분) + `OnAddFileClick`(FileOpenPicker .exe/.lnk 단일). 빌드 0/0, 테스트 Domain 23/Application 98(ResourceParityTests 통과). 리뷰: spec-compliance 핵심 acceptance 전부 OK / code-quality MINOR 2건(기존 패턴 일치로 유지).
-- 리뷰 scope 경고(M1/N1)는 **이번 task 결함 아님**: working tree에 (a)세션 시작 시점부터 있던 기존 ui-overhaul 변경(`PopupAppItem.cs` EnsureIconLoad, `ContainerContentChanging`), (b)앞 작업(설정 초기화)의 `Settings_*`/`Common_Reset` resw 키가 함께 있어 전체 diff에 혼재한 것. 커밋 시 기능별 선택 staging 필요.
-
-## Next Steps
-- 권장 다음 액션: 기능별 선택 staging 후 커밋(파일 추가 기능 / 설정 초기화 / 기존 ui-overhaul 분리). 실제 버튼·파일 선택·목록 추가 동작은 F5 MSIX GUI 수동 확인.
-- Suggested skills: 공식 /verify (GUI 동작 확인), 공식 /code-review (커밋 후 diff 검토)
+- **활성화/라이프사이클 동작 변경**(핀 클릭이 앱을 트레이 상주시킴) — 사용자 요청으로 승인됨. 공개 API/직렬화/DI 변경 없음, 신규 의존성 없음.

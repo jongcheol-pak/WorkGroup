@@ -23,6 +23,7 @@
                 <!-- 마우스 오버 시 아이콘이 살짝 커지는 호버 애니메이션(중앙 기준 스케일) -->
                 <StackPanel Width="48" Height="48"  Spacing="4" Padding="4"
                             HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"
+                            Opacity="{x:Bind IconOpacity, Mode=OneWay}"
                             ToolTipService.ToolTip="{x:Bind DisplayName}"
                             PointerEntered="OnIconPointerEntered" PointerExited="OnIconPointerExited">
                     <StackPanel.RenderTransform>
@@ -109,6 +110,7 @@
                   ItemContainerStyle="{StaticResource PopupItemContainerStyle}"
                   IsItemClickEnabled="True" SelectionMode="None"
                   ItemClick="OnAppClick"
+                  ContainerContentChanging="OnAppsContainerChanging"
                   CornerRadius="8"
                   ScrollViewer.VerticalScrollMode="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Disabled"

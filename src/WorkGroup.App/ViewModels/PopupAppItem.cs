@@ -9,7 +9,11 @@ namespace WorkGroup.App.ViewModels;
 /// <summary>팝업 그리드의 앱 항목(아이콘 비동기 로드).</summary>
 public sealed partial class PopupAppItem : ObservableObject
 {
-    public PopupAppItem(AppEntry app) => App = app;
+    public PopupAppItem(AppEntry app)
+    {
+        App = app;
+        IsAvailable = true; // 기본 활성. 누락 판정은 팝업에서만 EvaluateAvailability로 갱신(다른 화면은 항상 활성).
+    }
 
     public AppEntry App { get; }
 
@@ -17,6 +21,18 @@ public sealed partial class PopupAppItem : ObservableObject
 
     /// <summary>관리자 권한 실행 가능 여부(Packaged 앱은 불가 → 메뉴 항목 비활성용).</summary>
     public bool CanRunAsAdmin => App.Kind == AppKind.Win32;
+
+    /// <summary>실행 대상이 존재해 클릭 가능한지(팝업 전용). 누락 시 비활성·흐림 처리한다.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IconOpacity))]
+    public partial bool IsAvailable { get; set; }
+
+    /// <summary>누락 항목을 흐리게 보이도록 하는 아이콘 불투명도(활성 1.0, 누락 0.4).</summary>
+    public double IconOpacity => IsAvailable ? 1.0 : 0.4;
+
+    /// <summary>실행 대상 존재 여부로 활성/비활성을 갱신한다(Win32만 파일 존재 확인, Packaged는 항상 활성).</summary>
+    public void EvaluateAvailability()
+        => IsAvailable = App.Kind != AppKind.Win32 || File.Exists(App.LaunchTarget);
 
     [ObservableProperty]
     public partial ImageSource? Icon { get; set; }

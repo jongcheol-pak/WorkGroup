@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -40,12 +41,20 @@ public sealed partial class GroupPopupWindow : Window
     // 세로 스크롤바가 생길 때 콘텐츠 폭에 더해 잘림을 막는 근사 스크롤바 폭(px).
     private const int VerticalScrollBarWidth = 16;
 
-    private readonly IGroupAppService _groupService;
-    private readonly IAppLauncher _launcher;
-    // 핀 클릭 시점의 커서/모니터 좌표(표시를 미뤄도 클릭 위치 기준으로 배치하도록 생성자에서 1회 캡처).
-    private readonly ScreenMetricsProvider.Metrics _metrics;
-    // "그룹 수정" 메뉴에서 메인 앱에 편집 활성화 인자를 넘길 때 사용하는 그룹 식별자.
-    private readonly string _groupId;
+    // 공유 초기화(InitializeChrome)에서 DI로 1회 해석하므로 readonly 불가. null! 초기화로 정의 할당 경고를 막는다.
+    private IGroupAppService _groupService = null!;
+    private IAppLauncher _launcher = null!;
+    // 핀 클릭 시점의 커서/모니터 좌표(표시 시점에 재캡처 — 재사용 창은 클릭마다 갱신).
+    private ScreenMetricsProvider.Metrics _metrics;
+    // "그룹 수정" 메뉴에서 메인 앱에 편집 활성화 인자를 넘길 때 사용하는 그룹 식별자(표시마다 갱신).
+    private string _groupId = string.Empty;
+
+    // 상주(웜) 경로의 재사용 창 여부. true면 Deactivated 시 Close 대신 Hide로 살려 둔다.
+    private bool _reusable;
+    // AppWindow.Hide()가 유발하는 Deactivated 재진입(→ HidePopup 재귀)을 차단하는 가드.
+    private bool _hiding;
+    // 표시 경합 가드: ShowForGroup마다 증가. 늦게 끝난 이전 LoadAsync/Reveal이 최신 표시를 덮어쓰지 않게 한다.
+    private int _showToken;
 
     // 현재 적용된 창 너비(px). 아이콘 1행 콘텐츠 너비에 맞춰 동적으로 결정한다(폭 상한까지).
     private int _popupWidth = InitialPopupWidth;
@@ -54,21 +63,57 @@ public sealed partial class GroupPopupWindow : Window
     private int _lastAppliedHeight = -1;
     // 콘텐츠 확정 후 작업 표시줄 정위치로 한 번 이동해 표시했는지. 그 전까지는 화면 밖에 머문다.
     private bool _positioned;
-    // 작업 표시줄이 좌/우 변에 붙었는지. 참이면 아이콘을 세로 1열로 배치하고 측정도 세로 기준으로 한다.
-    private readonly bool _isVertical;
+    // 작업 표시줄이 좌/우 변에 붙었는지. 참이면 아이콘을 세로 1열로 배치하고 측정도 세로 기준으로 한다(표시마다 재판정).
+    private bool _isVertical;
+    // 작업 표시줄 변(진입 애니메이션 방향 결정용). 표시마다 ApplyEdgeLayout에서 갱신.
+    private TaskbarEdge _edge;
+
+    // 콘텐츠 페이드인(Opacity 0→1) Storyboard(빠른 재표시 시 중지용).
+    private Storyboard? _entranceStoryboard;
+    // 창 위치 라이즈(작업 표시줄 쪽 → 정위치) 프레임 애니메이션 상태.
+    private bool _windowAnimating;
+    private Stopwatch? _riseClock;
+    private PointInt32 _riseFrom, _riseTo;
 
     // 앱 항목(PopupAppItem)과 마지막 "+" 추가버튼 항목(PopupAddButtonItem)이 섞이므로 object 컬렉션.
     public ObservableCollection<object> Items { get; } = new();
 
+    /// <summary>콜드(프로세스 단명) 경로 생성자: 창 1회 생성 후 표시, Deactivated 시 Close→Exit(기존 동작 불변).</summary>
     public GroupPopupWindow(string groupId)
+    {
+        InitializeChrome();
+        _reusable = false;
+        _groupId = groupId;
+
+        ApplyEdgeLayout();
+        if (_isVertical)
+            // 세로 1열 팝업은 콘텐츠 폭이 OS 기본 최소 창 너비(약 198px)보다 작아 그대로면 못 줄어든다.
+            // WM_GETMINMAXINFO를 가로채 최소 추적 크기를 낮춘다(콜드는 방향이 고정이라 세로일 때만 설치).
+            RemoveMinimumTrackSize();
+
+        // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
+        AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
+        AppWindow.Move(new PointInt32(OffScreen, OffScreen));
+
+        _ = LoadAsync(groupId, _showToken);
+    }
+
+    /// <summary>상주(웜) 경로 재사용 창 생성자: 1회 생성 후 ShowForGroup으로 반복 표시한다(닫지 않고 Hide).</summary>
+    public GroupPopupWindow()
+    {
+        InitializeChrome();
+        _reusable = true;
+        // 재사용 창은 방향이 표시마다 바뀔 수 있으므로 최소 추적 크기 가드를 항상 설치한다(1px 최소는 가로에도 무해).
+        RemoveMinimumTrackSize();
+    }
+
+    // 창 1회 초기화(재질/테마/서비스/프레젠터/Activated 구독) — 두 생성자가 공유한다.
+    private void InitializeChrome()
     {
         InitializeComponent();
 
-        _groupId = groupId;
-
         // 메인 창과 동일한 재질(Mica)을 팝업에도 적용해 흰 외곽선 없는 표준 창 프레임으로 만든다.
         SystemBackdrop = new MicaBackdrop();
-
         // 콘텐츠를 타이틀바 영역까지 확장해 상단 빈 캡션 여백을 없앤다(타이틀바는 ConfigurePresenter에서 숨김).
         ExtendsContentIntoTitleBar = true;
 
@@ -84,44 +129,69 @@ public sealed partial class GroupPopupWindow : Window
         _launcher = App.Services.GetRequiredService<IAppLauncher>();
 
         ConfigurePresenter();
-        // 핀 클릭 위치를 즉시 캡처(표시는 콘텐츠 확정 후로 미뤄도 이 좌표 기준으로 배치).
+        Activated += OnActivated;
+        // 라이즈 프레임 루프(CompositionTarget.Rendering)는 정적 이벤트라, 콜드 Close·종료 Close 등
+        // 모든 닫힘 경로에서 구독을 풀어야 닫히는 창에 유령 Move가 가지 않는다.
+        Closed += (_, _) => StopWindowRise();
+    }
+
+    // 클릭 시점 좌표를 캡처하고 작업 표시줄 변에 맞춰 세로/가로 배치(ItemsPanel·하단 패딩)를 적용한다.
+    // 콜드 생성자와 재사용 ShowForGroup이 공유 — 표시마다 변이 바뀔 수 있어 매번 재적용한다.
+    private void ApplyEdgeLayout()
+    {
         _metrics = new ScreenMetricsProvider().Capture();
 
-        // 작업 표시줄 변을 판정해 좌/우면 세로 배치로 전환한다. 아이템 로드(LoadAsync) 전에
-        // ItemsPanel을 1회 교체해 ItemsHost 재생성·깜빡임을 피한다.
-        var edge = TaskbarPopupPositioner.DetectEdge(_metrics.Monitor, _metrics.Work);
-        _isVertical = edge is TaskbarEdge.Left or TaskbarEdge.Right;
+        _edge = TaskbarPopupPositioner.DetectEdge(_metrics.Monitor, _metrics.Work);
+        _isVertical = _edge is TaskbarEdge.Left or TaskbarEdge.Right;
+
         if (Content is FrameworkElement contentRoot)
             AppsGrid.ItemsPanel = (ItemsPanelTemplate)contentRoot.Resources[
                 _isVertical ? "VerticalItemsPanel" : "HorizontalItemsPanel"];
 
-        if (_isVertical)
-        {
-            // 세로 1열 팝업은 콘텐츠 폭이 OS 기본 최소 창 너비(약 198px)보다 작아 그대로면 못 줄어든다.
-            // WM_GETMINMAXINFO를 가로채 최소 추적 크기를 낮춰 콘텐츠 크기대로 표시한다(가로는 넓어 불필요).
-            RemoveMinimumTrackSize();
-            // 루트 Grid 하단 패딩은 0(가로 1행엔 무방)이라 세로 1열에선 마지막 아이템이 팝업 하단에 붙는다.
-            // 하단 패딩을 좌우와 같게 주어 띄운다(높이 측정에 자동 반영).
-            if (Content is Grid rootGrid)
-            {
-                var p = rootGrid.Padding;
-                rootGrid.Padding = new Thickness(p.Left, p.Top, p.Right, p.Left);
-            }
-        }
-
-        // 측정이 끝날 때까지 화면 밖에 둔다 → 초기 리사이즈/깜빡임이 사용자에게 보이지 않음.
-        AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
-        AppWindow.Move(new PointInt32(OffScreen, OffScreen));
-        Activated += OnActivated;
-
-        _ = LoadAsync(groupId);
+        // 세로 1열은 마지막 아이템이 하단에 붙지 않도록 하단 패딩을 좌우와 같게(12) 준다. 가로는 XAML 기본(하단 0).
+        if (Content is Grid rootGrid)
+            rootGrid.Padding = new Thickness(12, 12, 12, _isVertical ? 12 : 0);
     }
 
-    private async Task LoadAsync(string groupId)
+    /// <summary>재사용 창을 지정 그룹으로 다시 채워 표시한다(상주 경로 전용). 상태를 리셋하고 오프스크린에서 재측정·재배치한다.</summary>
+    internal void ShowForGroup(string groupId)
+    {
+        _groupId = groupId;
+        StopWindowRise(); // 진행 중 라이즈가 있으면 새 표시 전에 정리.
+
+        // 리셋·재배치 전에 먼저 화면 밖으로 치운다. 이미 떠 있는 창을 재표시할 때 온스크린에서
+        // Items.Clear()·ItemsPanel 교체가 보이는 깜빡임을 막는다(측정 후 RevealAtTaskbar가 정위치로 이동).
+        AppWindow.Resize(new SizeInt32(InitialPopupWidth, InitialPopupHeight));
+        AppWindow.Move(new PointInt32(OffScreen, OffScreen));
+
+        ApplyEdgeLayout();
+
+        // 이전 표시 상태/측정 캐시 리셋(잔상·잘못된 크기 방지). 스크롤 모드는 측정(AdjustToContent) 단계가
+        // 다시 설정하므로 여기서 따로 끄지 않는다(중복 제거).
+        _positioned = false;
+        _lastAppliedWidth = -1;
+        _lastAppliedHeight = -1;
+        Items.Clear();
+        TitleText.Text = string.Empty;
+        TitleText.Visibility = Visibility.Collapsed;
+        if (Content is FrameworkElement root)
+            root.RequestedTheme = App.Services.GetRequiredService<WorkGroup.App.Services.ThemeService>().Read();
+
+        // 화면 밖에서 표시한 뒤(측정 후 정위치 이동), 토큰을 올려 늦은 이전 로드를 무효화한다.
+        AppWindow.Show();
+        Activate();
+
+        _ = LoadAsync(groupId, ++_showToken);
+    }
+
+    private async Task LoadAsync(string groupId, int token)
     {
         try
         {
             var groups = await _groupService.GetAllAsync();
+            // 로드 중 더 최근 표시가 시작됐으면(재사용 창 빠른 재클릭) 이 결과로 목록을 덮어쓰지 않는다.
+            if (token != _showToken) return;
+
             var group = groups.FirstOrDefault(g => g.Id.Value == groupId);
             if (group is null)
             {
@@ -142,6 +212,7 @@ public sealed partial class GroupPopupWindow : Window
             foreach (var app in group.Apps)
             {
                 var item = new PopupAppItem(app);
+                item.EvaluateAvailability(); // 실행 파일 누락 멤버는 비활성·흐림 처리(컨테이너 실현 전 확정).
                 Items.Add(item);
                 // 아이콘 로드는 기다리지 않고 백그라운드로 시작한다(표시를 막지 않음 → 핀 클릭 즉시 팝업이 뜬다).
                 // 항목 박스가 고정 48px라 아이콘 로드 여부와 무관하게 레이아웃이 확정되므로 먼저 표시해도 리사이즈 점프가 없고,
@@ -160,7 +231,7 @@ public sealed partial class GroupPopupWindow : Window
         finally
         {
             // 콘텐츠 확정 후 한 프레임 뒤에 실제 높이로 측정하고 작업 표시줄 정위치로 이동해 표시한다.
-            DispatcherQueue.TryEnqueue(RevealAtTaskbar);
+            DispatcherQueue.TryEnqueue(() => RevealAtTaskbar(token));
         }
     }
 
@@ -201,8 +272,14 @@ public sealed partial class GroupPopupWindow : Window
 
         AppWindow.Resize(new SizeInt32(windowWidth, total));
         // 표시(Reveal) 전에는 화면 밖에서 크기만 맞추고, 이미 표시 중이면 정위치도 따라 갱신한다.
+        // 여기는 크기가 실제로 바뀐 경우에만 도달한다(위 dedup early-return). 라이즈 진행 중 크기가 바뀌면
+        // 옛 _riseTo로 수렴하지 않도록 라이즈를 중단하고 새 크기 기준 정위치로 스냅한다(M2).
         if (_positioned)
+        {
+            if (_windowAnimating)
+                StopWindowRise();
             MoveToTaskbar(total);
+        }
     }
 
     /// <summary>
@@ -295,12 +372,21 @@ public sealed partial class GroupPopupWindow : Window
         return (finalWidth, finalHeight);
     }
 
+    // 누락(파일 삭제) 멤버는 컨테이너를 비활성화해 좌클릭(ItemClick)·우클릭(ContextFlyout)을 막는다(흐림은 템플릿 Opacity가 담당).
+    private void OnAppsContainerChanging(ListViewBase sender, ContainerContentChangingEventArgs args)
+    {
+        if (args.InRecycleQueue) return;
+        if (args.Item is PopupAppItem item && args.ItemContainer is not null)
+            args.ItemContainer.IsEnabled = item.IsAvailable;
+    }
+
     private void OnAppClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is PopupAppItem item)
         {
+            if (!item.IsAvailable) return; // 누락 멤버는 실행하지 않는다. 컨테이너 IsEnabled=false가 클릭을 막지만, ContainerContentChanging 미발화 등으로 비활성이 적용 안 된 경우의 fallback.
             _launcher.Launch(item.App);
-            Close();
+            DismissPopup();
         }
         else if (e.ClickedItem is PopupAddButtonItem)
         {
@@ -314,8 +400,9 @@ public sealed partial class GroupPopupWindow : Window
     {
         if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
         {
+            if (!item.IsAvailable) return; // 누락 멤버는 실행하지 않는다. 컨테이너 IsEnabled=false가 클릭을 막지만, ContainerContentChanging 미발화 등으로 비활성이 적용 안 된 경우의 fallback.
             _launcher.Launch(item.App);
-            Close();
+            DismissPopup();
         }
     }
 
@@ -324,8 +411,9 @@ public sealed partial class GroupPopupWindow : Window
     {
         if ((sender as FrameworkElement)?.Tag is PopupAppItem item)
         {
+            if (!item.IsAvailable) return; // 누락 멤버는 실행하지 않는다. 컨테이너 IsEnabled=false가 클릭을 막지만, ContainerContentChanging 미발화 등으로 비활성이 적용 안 된 경우의 fallback.
             _launcher.LaunchAsAdmin(item.App);
-            Close();
+            DismissPopup();
         }
     }
 
@@ -333,7 +421,7 @@ public sealed partial class GroupPopupWindow : Window
     private void OnEditGroupClick(object sender, RoutedEventArgs e) => EditGroup();
 
     // 작은 팝업 창은 편집 다이얼로그를 담을 수 없으므로, 메인 앱을 "--edit-group {id}"로 실행
-    // (single-instance가 기존 메인 인스턴스로 합침)해 메인 창에서 편집한다. 실행 후 팝업을 닫는다.
+    // (single-instance가 기존 메인 인스턴스로 합침)해 메인 창에서 편집한다. 실행 후 팝업을 정리한다(재사용=Hide/콜드=Close).
     private void EditGroup()
     {
         try
@@ -348,9 +436,9 @@ public sealed partial class GroupPopupWindow : Window
         }
         catch (Exception)
         {
-            // 별칭 실행 실패(파일 없음/권한 등)는 사용자 개입 없이 무시한다(팝업은 곧 닫히고 로거 없음).
+            // 별칭 실행 실패(파일 없음/권한 등)는 사용자 개입 없이 무시한다(팝업은 곧 정리되고 로거 없음).
         }
-        Close();
+        DismissPopup();
     }
 
     // 아이콘 위에 마우스가 올라오면 살짝 확대, 벗어나면 원래 크기로(부드럽게).
@@ -394,16 +482,105 @@ public sealed partial class GroupPopupWindow : Window
     }
 
     /// <summary>콘텐츠 측정이 끝난 뒤 작업 표시줄 정위치로 이동해 처음으로 화면에 표시한다(점프·깜빡임 방지).</summary>
-    private void RevealAtTaskbar()
+    private void RevealAtTaskbar(int token)
     {
-        AdjustToContent(); // 화면 밖에서 최종 크기 확정
+        // 더 최근 표시가 시작됐으면(재사용 창 빠른 재클릭) 이 reveal은 stale이므로 건너뛴다.
+        if (token != _showToken)
+            return;
+
+        AdjustToContent(); // 화면 밖에서 최종 크기 확정(_popupWidth/_lastAppliedHeight)
         int height = _lastAppliedHeight > 0 ? _lastAppliedHeight : InitialPopupHeight;
-        MoveToTaskbar(height);
+
+        // 최종 위치를 계산해, 작업 표시줄 쪽으로 오프셋한 시작 위치에 둔 뒤 창 자체를 정위치로 떠오르게 한다.
+        var placement = TaskbarPopupPositioner.Compute(
+            _metrics.Monitor, _metrics.Work, _metrics.CursorX, _metrics.CursorY, _popupWidth, height);
+        _riseTo = new PointInt32(placement.X, placement.Y);
+        _riseFrom = StartOffset(_riseTo);
+        AppWindow.Move(_riseFrom);
+
         _positioned = true; // 이후 SizeChanged는 정위치에서 조정
         // 콜드 프로세스는 OS가 새 창을 포그라운드로 띄우지만, 상주 인스턴스(redirect)에서 띄울 땐
         // Activate()만으론 포그라운드 포커스를 못 잡는다. SetForegroundWindow로 활성 상태를 확보해야
         // 다른 앱 클릭 시 Deactivated→Close가 동작한다(FolderListPopupWindow와 동일).
         SetForegroundWindow(WinRT.Interop.WindowNative.GetWindowHandle(this));
+
+        StartWindowRise();  // 창 위치를 시작 오프셋 → 정위치로 ease-out 이동
+        PlayContentFade();  // 콘텐츠 페이드인(Opacity 0→1)
+    }
+
+    // 최종 위치에서 작업 표시줄 쪽으로 28px 오프셋한 시작 위치를 구한다(변별 방향).
+    private PointInt32 StartOffset(PointInt32 to)
+    {
+        const int offset = 28;
+        return _edge switch
+        {
+            TaskbarEdge.Bottom => new PointInt32(to.X, to.Y + offset),   // 아래(표시줄)에서 위로
+            TaskbarEdge.Top => new PointInt32(to.X, to.Y - offset),      // 위(표시줄)에서 아래로
+            TaskbarEdge.Left => new PointInt32(to.X - offset, to.Y),     // 왼쪽(표시줄)에서 오른쪽으로
+            TaskbarEdge.Right => new PointInt32(to.X + offset, to.Y),    // 오른쪽(표시줄)에서 왼쪽으로
+            _ => new PointInt32(to.X, to.Y + offset)
+        };
+    }
+
+    // 창 위치를 _riseFrom → _riseTo로 프레임마다 ease-out 보간 이동한다(Mica 창 자체가 떠오름).
+    // 주의: Mica 창을 매 렌더 프레임 AppWindow.Move로 옮기면 DWM 합성 주기와 어긋나 끊겨 보일 수 있다
+    // (plan.md T1 — 부드러움은 GUI 수동 검증 대상. 미흡 시 DispatcherTimer 폴백 또는 콘텐츠 애니메이션 롤백).
+    private void StartWindowRise()
+    {
+        StopWindowRise();
+        _riseClock = Stopwatch.StartNew();
+        _windowAnimating = true;
+        CompositionTarget.Rendering += OnRiseFrame;
+    }
+
+    private void OnRiseFrame(object? sender, object e)
+    {
+        double t = (_riseClock?.ElapsedMilliseconds ?? 180) / 180.0;
+        if (t >= 1)
+        {
+            AppWindow.Move(_riseTo); // 정위치 안착
+            StopWindowRise();
+            return;
+        }
+        double k = 1 - Math.Pow(1 - t, 3); // EaseOutCubic
+        AppWindow.Move(new PointInt32(Lerp(_riseFrom.X, _riseTo.X, k), Lerp(_riseFrom.Y, _riseTo.Y, k)));
+    }
+
+    private void StopWindowRise()
+    {
+        if (!_windowAnimating)
+            return;
+        CompositionTarget.Rendering -= OnRiseFrame; // 정적 이벤트라 모든 종료 경로에서 명시적 해제(유령 Move 방지).
+        _windowAnimating = false;
+        _riseClock = null;
+    }
+
+    private static int Lerp(int a, int b, double k) => (int)(a + (b - a) * k);
+
+    // 콘텐츠(루트 Grid)를 페이드인한다(Opacity 0→1, ease-out 180ms). 창 라이즈와 동시 진행.
+    private void PlayContentFade()
+    {
+        if (Content is not Grid root)
+            return;
+
+        // 시작값 0을 base로 먼저 설정한 뒤 직전 Storyboard를 Stop한다(Stop이 base로 되돌려도 시작값 고착 없음).
+        root.Opacity = 0;
+        _entranceStoryboard?.Stop();
+
+        var fade = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(180)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        Storyboard.SetTarget(fade, root);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(fade);
+        _entranceStoryboard = storyboard;
+        storyboard.Begin();
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]
@@ -424,7 +601,9 @@ public sealed partial class GroupPopupWindow : Window
     private IntPtr MinSizeSubclassProc(
         IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, IntPtr uIdSubclass, IntPtr dwRefData)
     {
-        if (uMsg == WM_GETMINMAXINFO && lParam != IntPtr.Zero)
+        // 세로 1열일 때만 OS 최소 추적 크기를 1px로 낮춘다. 재사용 창은 서브클래스를 항상 설치하지만
+        // 가로 배치에서는 OS 기본 최소 폭을 유지해야 콜드 가로 팝업과 너비가 일치한다(설치 시점이 아닌 현재 방향으로 판단).
+        if (uMsg == WM_GETMINMAXINFO && lParam != IntPtr.Zero && _isVertical)
         {
             var info = System.Runtime.InteropServices.Marshal.PtrToStructure<MINMAXINFO>(lParam);
             info.ptMinTrackSize.X = 1;
@@ -463,7 +642,40 @@ public sealed partial class GroupPopupWindow : Window
 
     private void OnActivated(object sender, WindowActivatedEventArgs e)
     {
-        if (e.WindowActivationState == WindowActivationState.Deactivated)
+        if (e.WindowActivationState != WindowActivationState.Deactivated)
+            return;
+        // Hide()가 유발한 Deactivated가 다시 들어와 HidePopup이 재귀하는 것을 막는다(c000027b 재진입 영역).
+        if (_hiding)
+            return;
+
+        DismissPopup();
+    }
+
+    // 표시를 마친다: 재사용 창은 숨겨 다음 표시를 위해 살려 두고(닫지 않음), 콜드 창은 기존대로 Close→Exit.
+    // 앱 실행/그룹 수정 클릭과 Deactivated 모두 이 경로로 통일한다(재사용 창을 Close로 파괴하지 않도록).
+    private void DismissPopup()
+    {
+        if (_reusable)
+            HidePopup();
+        else
             Close();
+    }
+
+    // 재사용 창을 화면에서 숨긴다(닫지 않음). Hide()가 Deactivated를 재발화시킬 수 있어 _hiding으로 재진입을 차단한다.
+    private void HidePopup()
+    {
+        if (_hiding)
+            return;
+        _hiding = true;
+        StopWindowRise();            // 숨기는 창에 라이즈 프레임 Move가 계속 가지 않도록 중단.
+        _entranceStoryboard?.Stop(); // 숨긴 창에서 페이드 Storyboard 콜백이 계속 발화하지 않도록 정리.
+        try
+        {
+            AppWindow.Hide();
+        }
+        finally
+        {
+            _hiding = false;
+        }
     }
 }
