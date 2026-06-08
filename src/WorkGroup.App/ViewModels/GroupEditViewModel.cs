@@ -48,7 +48,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
         EditingName = string.Empty;
         PickerSearch = string.Empty;
         StatusMessage = string.Empty;
-        ShowPopupHeader = true;
+        ShowPopupHeader = false;
         SelectedIcon = IconSource.FromCustomImage(DefaultIconUri);
 
         // 선택 앱 개수 표시(AppCountText)는 목록 변경(추가/삭제/Clear)마다 갱신한다. 구독은 생성자에서 단 1회.
@@ -150,7 +150,7 @@ public sealed partial class GroupEditViewModel : ObservableObject
             IsNameEditing = group is null; // 신규는 즉시 입력, 수정은 읽기전용부터
             Title = _loc.Get(group is null ? "GroupEdit_AddTitle" : "GroupEdit_EditTitle");
             EditingName = group?.Name ?? string.Empty;
-            ShowPopupHeader = group?.ShowPopupHeader ?? true; // 편집은 그룹 값, 신규는 표시(true)
+            ShowPopupHeader = group?.ShowPopupHeader ?? false; // 편집은 그룹 값, 신규는 숨김(false)
             OnPropertyChanged(nameof(ShowRenameWarning)); // 초기 상태 보정
 
             // 중복 검사용 기존 그룹명 스냅샷(편집 시 자기 제외).

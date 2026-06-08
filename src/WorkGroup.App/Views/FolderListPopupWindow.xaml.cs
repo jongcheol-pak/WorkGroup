@@ -204,6 +204,11 @@ public sealed partial class FolderListPopupWindow : Window
         button.Click += OnFolderClick;
         button.PointerEntered += OnFolderPointerEntered;
         button.PointerExited += OnFolderPointerExited;
+
+        // 디스크에서 삭제된(존재하지 않는) 폴더는 흐리게 표시하고 클릭/호버를 막는다.
+        if (!System.IO.Directory.Exists(folder.Path))
+            button.IsEnabled = false;
+
         return button;
     }
 
