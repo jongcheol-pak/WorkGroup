@@ -119,5 +119,12 @@ MSIX 패키지 수락 검증 경고("packageQuery requires approval")를 없애�
 - 없음(전환 범위 확정, 다운스트림 회귀 점검 완료).
 
 ## Progress Log
-- T1 완료 (커밋 후속): InstalledAppInventory 패키지 소스를 shell:AppsFolder COM 열거로 교체 + IsPackagedAumid 헬퍼. COM 누수(FolderItems) 수정. 빌드/테스트 OK(121/121). spec+quality 리뷰 통과.
+- T1 완료: InstalledAppInventory 패키지 소스를 shell:AppsFolder COM 열거로 교체 + IsPackagedAumid 헬퍼. COM 누수(FolderItems) 수정. 빌드/테스트 OK. spec+quality 리뷰 통과.
 - T2 완료: Package.appxmanifest에서 packageQuery 제거(runFullTrust 유지). App 빌드 OK.
+- T3 완료: IsPackagedAumid 단위 5케이스 + 통합 "패키지 앱 ≥1개" 단언 추가. 테스트 127/127. spec 리뷰 OK.
+- T4 완료: README/csproj 주석/notes 갱신. 잔존 언급 0. 빌드 OK.
+- Phase F 통과: 전체 빌드 0/0, 테스트 127/127. plan-completion-reviewer OK(0/0/0).
+
+## Next Steps
+- 권장 다음 액션: F5(Visual Studio MSIX 배포)로 ① 패키지/Win32 앱 목록·아이콘 렌더 ② 시스템 확장 잡음 과다 노출 여부 ③ 실제 패키징 시 packageQuery 수락 경고 소멸을 수동 검증. 이상 없으면 master 병합.
+- Suggested skills: 공식 /code-review, 공식 /verify
