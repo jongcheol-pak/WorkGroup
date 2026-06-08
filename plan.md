@@ -27,7 +27,7 @@ MSIX 패키지 수락 검증 경고("packageQuery requires approval")를 없애�
 - **D2 패키지 판별 기준**: `shell:AppsFolder` 항목의 `Path`가 **`!`를 포함**하면 패키지 AUMID로 본다(`PackageFamilyName!AppId`는 Windows AUMID 사양상 `!` 구분자 필수 — 기존 테스트 데이터 `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`와 일치). `.exe`로 끝나는 실제 파일 경로는 제외(이는 Win32 .lnk 소스가 담당). 이 판별을 순수 `internal static` 헬퍼 `IsPackagedAumid`로 분리해 단위 테스트한다.
 - **D3 COM 수명 관리**: DevDashboard 참고 구현과 동일하게 `Type.GetTypeFromProgID("Shell.Application")` + `Activator.CreateInstance` + `dynamic` 열거, 각 `item`은 루프 내 `finally`에서 `Marshal.ReleaseComObject`, `folder`/`shell`은 바깥 `finally`에서 해제.
 - **D4 시스템 항목 필터**: 별도 이름 기반 필터(`Microsoft.*Extension/Client`)는 **추가하지 않는다**. 기존 `PackageManager` 경로 동작(프레임워크/리소스 패키지만 제외)과 가장 가깝게 유지 — shell:AppsFolder는 "모든 앱" 목록과 동일 집합을 반환하므로 사용자 대상 앱만 노출된다.
-- **D5 실패 격리**: 한 소스(패키지) 실패가 전체를 막지 않는 기존 계약 유지 — COM 접근 실패는 `_logger.LogWarning` 후 빈 목록 반환(`OperationCanceledException`은 재전파). Win32 소스는 독립적으로 계속 수집.
+- **D5 실패 격리**: 한 소스(패키지) 실패가 전체를 막지 않는 기존 계약 유지. **전체 COM 접근 실패**는 `_logger.LogWarning` 후 빈/부분 목록 반환, **항목 단위 실패**는 `_logger.LogDebug`(노이즈 억제 — 기존 `TryMapPackage`/`ResolveLogoPath`와 동일 수준) 후 해당 항목만 skip. `OperationCanceledException`은 재전파(취소=취소, 기존 PackageManager 경로와 동일). Win32 소스는 독립적으로 계속 수집.
 
 ## 영향 범위 전수 조사 (Impact Analysis)
 

@@ -1,7 +1,6 @@
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Windows.ApplicationModel;
-using Windows.Management.Deployment;
 using WorkGroup.Application.Inventory;
 using WorkGroup.Application.Localization;
 using WorkGroup.Domain.Common;
@@ -11,7 +10,7 @@ namespace WorkGroup.Infrastructure.Inventory;
 
 /// <summary>
 /// 현재 사용자 기준 설치 앱을 수집한다(plan.md D5/D6).
-/// - 패키지(Store/UWP): PackageManager로 열거, 실행 대상 = AUMID.
+/// - 패키지(Store/UWP): shell:AppsFolder를 Shell.Application COM으로 열거(AUMID 항목만), 실행 대상 = AUMID. packageQuery 제한 기능 불필요.
 /// - Win32: 시작 메뉴의 .lnk 바로가기 열거, 실행 대상 = .lnk 경로(셸 실행).
 /// 표시명(대소문자 무시) 기준으로 중복을 제거하며 패키지 항목을 우선한다.
 /// </summary>
@@ -76,87 +75,87 @@ public sealed class InstalledAppInventory : IAppInventory
 
     private Task<IReadOnlyList<AppEntry>> GetPackagedAppsAsync(CancellationToken cancellationToken)
     {
-        // 동기 WinRT 호출이지만 한 소스의 실패가 전체를 막지 않도록 분리해 감싼다.
-        return Task.Run<IReadOnlyList<AppEntry>>(() =>
+        // shell:AppsFolder COM 열거는 동기이므로 오프로드한다. 한 소스 실패가 전체를 막지 않도록 분리해 감싼다.
+        return Task.Run<IReadOnlyList<AppEntry>>(() => GetPackagedAppsFromShellFolder(cancellationToken), cancellationToken);
+    }
+
+    /// <summary>
+    /// shell:AppsFolder(가상 셸 폴더)를 Shell.Application COM으로 열거해 패키지 앱만 수집한다.
+    /// 항목의 Path가 AUMID(PackageFamilyName!AppId) 형식이면 패키지로 본다. Win32(.exe 경로 등)는 .lnk 소스가 담당하므로 제외.
+    /// </summary>
+    private IReadOnlyList<AppEntry> GetPackagedAppsFromShellFolder(CancellationToken cancellationToken)
+    {
+        var apps = new List<AppEntry>();
+        dynamic? shell = null;
+        dynamic? folder = null;
+        dynamic? items = null;
+        try
         {
-            var apps = new List<AppEntry>();
-            try
+            Type? shellType = Type.GetTypeFromProgID("Shell.Application");
+            if (shellType is null)
+                return apps;
+
+            shell = Activator.CreateInstance(shellType);
+            if (shell is null)
+                return apps;
+
+            folder = shell.NameSpace("shell:AppsFolder");
+            if (folder is null)
+                return apps;
+
+            // Items()는 별도 FolderItems COM 객체이므로 변수로 보관해 finally에서 해제한다.
+            items = folder.Items();
+            foreach (dynamic item in items)
             {
-                var manager = new PackageManager();
-                // 빈 문자열 = 현재 사용자(관리자 권한 불필요 — D6).
-                foreach (var package in manager.FindPackagesForUser(string.Empty))
+                try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (package.IsFramework || package.IsResourcePackage)
-                        continue;
-
-                    AppEntry? entry = TryMapPackage(package);
-                    if (entry is not null)
-                        apps.Add(entry);
+                    string? name = item.Name;
+                    string? path = item.Path;
+                    // 아이콘은 소비자가 shell:AppsFolder\{AUMID}로 직접 렌더하므로 IconLocation은 생략한다.
+                    if (!string.IsNullOrWhiteSpace(name) && IsPackagedAumid(path))
+                        apps.Add(new AppEntry(name, path!, AppKind.Packaged));
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // 항목 단위 실패는 노이즈가 크므로 Debug 수준(기존 TryMapPackage와 동일). 전체 실패만 Warning.
+                    _logger.LogDebug(ex, "shell:AppsFolder 항목 처리 실패");
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(item);
                 }
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                // 권한 없음 등 → 이 소스는 건너뛰고 나머지를 반환(plan.md T4 Edge Cases).
-                _logger.LogWarning(ex, "패키지 앱 열거에 실패했습니다. 해당 소스를 건너뜁니다.");
-            }
-
-            return apps;
-        }, cancellationToken);
-    }
-
-    private AppEntry? TryMapPackage(Package package)
-    {
-        // GetAppListEntries()는 Windows 10.0.19041.0+ 에서만 지원된다(앱 대상은 Windows 11).
-        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041))
-            return null;
-
-        try
+        }
+        catch (OperationCanceledException)
         {
-            var entries = package.GetAppListEntries();
-            if (entries.Count == 0)
-                return null;
-
-            // 패키지의 첫 번째 앱(주 진입점)을 대표로 사용한다.
-            var appEntry = entries[0];
-            var name = appEntry.DisplayInfo?.DisplayName;
-            var aumid = appEntry.AppUserModelId;
-            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(aumid))
-                return null;
-
-            return new AppEntry(name, aumid, AppKind.Packaged, ResolveLogoPath(package));
+            // 취소는 부분 결과를 버리고 전파한다(기존 PackageManager 경로와 동일 — 취소=취소).
+            throw;
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "패키지 매핑 실패: {Package}", package.Id?.FamilyName);
-            return null;
+            // 권한/COM 실패 등 → 이 소스는 건너뛰고 나머지를 반환(plan.md T1 Edge Cases).
+            _logger.LogWarning(ex, "패키지 앱(shell:AppsFolder) 열거에 실패했습니다. 해당 소스를 건너뜁니다.");
         }
-    }
-
-    private string? ResolveLogoPath(Package package)
-    {
-        // 패키지 로고가 실제 파일이면 경로를 반환(아이콘 추출용). 없으면 null(IconService가 기본으로 대체).
-        try
+        finally
         {
-            var logo = package.Logo;
-            if (logo is not null && logo.IsFile)
-            {
-                var path = logo.LocalPath;
-                if (File.Exists(path))
-                    return path;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "패키지 로고 경로 접근 실패: {Package}", package.Id?.FamilyName);
+            if (items is not null) Marshal.ReleaseComObject(items);
+            if (folder is not null) Marshal.ReleaseComObject(folder);
+            if (shell is not null) Marshal.ReleaseComObject(shell);
         }
 
-        return null;
+        return apps;
     }
+
+    /// <summary>shell:AppsFolder 항목 Path가 패키지 AUMID(PackageFamilyName!AppId)인지 판정한다. '!'는 패키지 AUMID 구분자.</summary>
+    internal static bool IsPackagedAumid(string? path) =>
+        !string.IsNullOrWhiteSpace(path)
+        && path.Contains('!')
+        && !path.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
 
     // ----- Win32(시작 메뉴 바로가기) -----
 
