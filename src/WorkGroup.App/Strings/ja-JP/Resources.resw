@@ -172,6 +172,9 @@
   <data name="About_Subtitle" xml:space="preserve">
     <value>アプリ情報とオープンソースライセンスを表示します。</value>
   </data>
+  <data name="About_Website" xml:space="preserve">
+    <value>公式ホームページ</value>
+  </data>
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>オープンソースライセンス</value>
   </data>

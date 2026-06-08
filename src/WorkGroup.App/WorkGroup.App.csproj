@@ -41,6 +41,7 @@
         <AppxBundle>Never</AppxBundle>
         <GenerateAppInstallerFile>False</GenerateAppInstallerFile>
         <GenerateTestArtifacts>False</GenerateTestArtifacts>
+        <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
     </PropertyGroup>
 
     <ItemGroup>

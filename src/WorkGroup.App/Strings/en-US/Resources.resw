@@ -172,6 +172,9 @@
   <data name="About_Subtitle" xml:space="preserve">
     <value>Shows app info and open-source licenses.</value>
   </data>
+  <data name="About_Website" xml:space="preserve">
+    <value>Official Website</value>
+  </data>
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>Open-source licenses</value>
   </data>

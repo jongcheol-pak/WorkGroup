@@ -172,6 +172,9 @@
   <data name="About_Subtitle" xml:space="preserve">
     <value>앱 정보와 오픈소스 라이선스를 표시합니다.</value>
   </data>
+  <data name="About_Website" xml:space="preserve">
+    <value>공식 홈페이지</value>
+  </data>
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>오픈소스 라이선스</value>
   </data>

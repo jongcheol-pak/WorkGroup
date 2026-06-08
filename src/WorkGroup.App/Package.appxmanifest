@@ -9,15 +9,15 @@
   IgnorableNamespaces="uap uap5 rescap">
 
   <Identity
-    Name="6140ff7e-e1ef-4a79-a4d0-4fb550725095"
-    Publisher="CN=User Name"
-    Version="1.0.0.0" />
+    Name="JongCheol.8930A247C36"
+    Publisher="CN=C4E87E75-D777-4282-B3A5-57BFD2309B52"
+    Version="1.0.2.0" />
 
-  <mp:PhoneIdentity PhoneProductId="6140ff7e-e1ef-4a79-a4d0-4fb550725095" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="2428a0be-0c72-42c3-8578-80200f0454e1" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>ms-resource:///Resources/App_DisplayName</DisplayName>
-    <PublisherDisplayName>User Name</PublisherDisplayName>
+    <PublisherDisplayName>JongCheol</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

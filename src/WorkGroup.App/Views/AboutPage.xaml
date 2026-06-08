@@ -11,6 +11,7 @@
     mc:Ignorable="d">
 
     <ScrollViewer Padding="{StaticResource PageContentPadding}" HorizontalScrollMode="Disabled">
+        <Grid>
         <StackPanel MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch" Spacing="4">
 
             <!-- 페이지 헤더 -->
@@ -27,6 +28,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Image Grid.Column="0" Source="ms-appx:///Assets/AppIcon.ico"
                            Width="96" Height="96" VerticalAlignment="Center" />
@@ -35,6 +37,10 @@
                         <TextBlock Text="{x:Bind ViewModel.Version}"
                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
+                    <!-- 공식 홈페이지 링크(NavigateUri로 기본 브라우저 실행 — 코드비하인드 불필요) -->
+                    <HyperlinkButton Grid.Column="2" VerticalAlignment="Center"
+                                     Content="{loc:Localize Key=About_Website}"
+                                     NavigateUri="https://jongcheol-pak.github.io/WorkGroup" />
                 </Grid>
             </Border>
 
@@ -51,5 +57,6 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </StackPanel>
+        </Grid>
     </ScrollViewer>
 </Page>

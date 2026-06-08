@@ -172,6 +172,9 @@
   <data name="About_Subtitle" xml:space="preserve">
     <value>显示应用信息和开源许可证。</value>
   </data>
+  <data name="About_Website" xml:space="preserve">
+    <value>官方网站</value>
+  </data>
   <data name="About_Licenses_Header" xml:space="preserve">
     <value>开源许可证</value>
   </data>

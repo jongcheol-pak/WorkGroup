@@ -10,6 +10,7 @@
     mc:Ignorable="d">
 
     <ScrollViewer Padding="{StaticResource PageContentPadding}" HorizontalScrollMode="Disabled">
+        <Grid>
         <StackPanel MaxWidth="{StaticResource ContentMaxWidth}" HorizontalAlignment="Stretch" Spacing="4">
 
             <!-- 페이지 헤더 -->
@@ -83,5 +84,6 @@
                 <Button Content="{loc:Localize Key=Common_Reset}" Click="OnResetTrayMenuClick" />
             </controls:SettingsCard>
         </StackPanel>
+        </Grid>
     </ScrollViewer>
 </Page>
