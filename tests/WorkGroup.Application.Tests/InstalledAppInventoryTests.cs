@@ -86,6 +86,17 @@ public class InstalledAppInventoryUnitTests
             File.Delete(txt);
         }
     }
+
+    [Theory]
+    [InlineData("Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", true)] // PFN!AppId = 패키지
+    [InlineData(@"C:\Program Files\app\app.exe", false)]               // 실제 .exe 경로 = Win32(.lnk 소스 담당)
+    [InlineData("Microsoft.Office.WINWORD.EXE.15", false)]             // 점 구분 명시적 AUMID, '!' 없음
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void IsPackagedAumid_PFN_구분자가_있는_AUMID만_true(string? path, bool expected)
+    {
+        Assert.Equal(expected, InstalledAppInventory.IsPackagedAumid(path));
+    }
 }
 
 /// <summary>실제 머신에서 인벤토리를 수집하는 통합 테스트(환경 의존 — Integration 트레이트).</summary>
@@ -116,5 +127,16 @@ public class InstalledAppInventoryIntegrationTests
 
         var distinct = apps.Select(a => a.DisplayName).Distinct(StringComparer.OrdinalIgnoreCase).Count();
         Assert.Equal(apps.Count, distinct);
+    }
+
+    [Fact]
+    public async Task GetInstalledApps_패키지_앱이_하나_이상_포함된다()
+    {
+        var sut = new InstalledAppInventory();
+
+        var apps = await sut.GetInstalledAppsAsync();
+
+        // shell:AppsFolder 패키지 추출이 조용히 0개가 되면(판별 과엄격/COM 실패) 실패하도록 — 개발 머신엔 Store 패키지 앱 상존.
+        Assert.Contains(apps, a => a.Kind == AppKind.Packaged);
     }
 }

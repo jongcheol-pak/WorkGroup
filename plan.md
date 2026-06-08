@@ -117,3 +117,7 @@ MSIX 패키지 수락 검증 경고("packageQuery requires approval")를 없애�
 
 ## Open Questions
 - 없음(전환 범위 확정, 다운스트림 회귀 점검 완료).
+
+## Progress Log
+- T1 완료 (커밋 후속): InstalledAppInventory 패키지 소스를 shell:AppsFolder COM 열거로 교체 + IsPackagedAumid 헬퍼. COM 누수(FolderItems) 수정. 빌드/테스트 OK(121/121). spec+quality 리뷰 통과.
+- T2 완료: Package.appxmanifest에서 packageQuery 제거(runFullTrust 유지). App 빌드 OK.
