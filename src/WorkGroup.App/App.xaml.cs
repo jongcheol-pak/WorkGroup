@@ -169,8 +169,11 @@ namespace WorkGroup.App
             if (_window?.Content is Frame { Content: MainShell shell })
             {
                 shell.SelectWorkGroups();
-                // 이미 로드된 페이지가 있으면 즉시 처리(상주 중 재요청). 없으면 Loaded가 PendingEditGroupId를 소비.
-                if (shell.CurrentWorkGroupsPage is { } page && PendingEditGroupId is { } id)
+                // 페이지가 이미 "로드 완료"된 경우(상주 중 재요청)에만 즉시 처리한다.
+                // 콜드 시작에선 SelectWorkGroups가 페이지를 동기 navigate해 CurrentWorkGroupsPage가 non-null이 되지만
+                // 아직 Loaded 전이라 XamlRoot이 null → 즉시 EditGroupByIdAsync를 호출하면 ContentDialog가 실패한다.
+                // 이 경우 PendingEditGroupId를 남겨 페이지 Loaded(OnPageLoaded)가 XamlRoot 준비 후 소비하도록 한다.
+                if (shell.CurrentWorkGroupsPage is { IsLoaded: true } page && PendingEditGroupId is { } id)
                 {
                     PendingEditGroupId = null;
                     _ = page.EditGroupByIdAsync(id);
