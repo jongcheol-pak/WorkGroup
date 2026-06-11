@@ -154,8 +154,11 @@ namespace WorkGroup.App
                 var editId = ActivationParser.TryGetEditGroupId(e);
                 if (!string.IsNullOrWhiteSpace(editId))
                     RouteEditRequest(editId);
-                else
-                    ShowMainWindow(); // 일반 재활성화 — 메인 창을 앞으로
+                else if (e.Kind != ExtendedActivationKind.StartupTask)
+                    // 일반 재활성화 — 메인 창을 앞으로.
+                    // 로그인 자동 시작이 redirect로 들어온 경우는 제외(이미 상주 중이므로 아무 동작 불필요)
+                    // — 콜드 경로(OnLaunched)와 동일한 StartupTask 검사로 메인 창 표시를 막는다.
+                    ShowMainWindow();
             });
         }
 
