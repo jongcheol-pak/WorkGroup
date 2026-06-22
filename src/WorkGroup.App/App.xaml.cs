@@ -212,7 +212,7 @@ namespace WorkGroup.App
         {
             if (_tray is not null) return;
             _tray = new TrayIconService();
-            // 트레이 콜백은 메시지 전용 창의 원시 Win32 WndProc(=UI 스레드) 안에서 동기로 호출된다.
+            // 트레이 콜백은 트레이 메시지 창(숨김 top-level)의 원시 Win32 WndProc(=UI 스레드) 안에서 동기로 호출된다.
             // 그 재진입 상태에서 WinUI Window를 생성/Activate하면 Microsoft.UI.Input가 fail-fast(c0000602)로 종료한다.
             // → TryEnqueue로 깨끗한 메시지 루프 턴까지 지연해 재진입을 푼다(OnAppInstanceActivated와 동일 패턴).
             _tray.OpenRequested += () => _uiDispatcherQueue?.TryEnqueue(ShowMainWindow);       // 우클릭 메뉴 "열기" → 메인 창
