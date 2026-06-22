@@ -1,130 +1,140 @@
-# plan — 설치 앱 열거를 PackageManager → shell:AppsFolder로 전환 (packageQuery 제거)
+# plan — 작업표시줄 핀 자동 유지·복구 (별칭 재생성으로 깨진 핀 클릭 시 "열 수 없음" 수정)
+
+## 증상 / 근본 원인 (systematic-debugging Phase 1–3 완료)
+
+### Symptom
+작업표시줄에 핀한 그룹을 클릭하면 가끔 Windows 셸 다이얼로그 "이 항목을 열 수 없음 — 항목이 제거되었거나, 이름이 바뀌었거나, 삭제되었을 수 있습니다"가 뜬다. 저장 폴더(`Groups\{guid}\`)에는 파일이 그대로 있다.
+
+### Phase 1 — Evidence (실측)
+- 실제 핀 파일(`%APPDATA%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar\*.lnk`)을 직접 읽음:
+  - TargetPath = `%LOCALAPPDATA%\Microsoft\WindowsApps\WorkGroup.exe` (별칭, 버전 무관)
+  - Arguments = `--group {guid}`, IconLocation = `Groups\{guid}\Icons\{guid}.ico`
+  - **버전·패키지 풀네임·설치 폴더 경로 참조는 전혀 없음** → 핀은 그룹 이름/폴더명에 의존하지 않는다.
+- 별칭 `WorkGroup.exe`는 **0바이트 reparse point**(APPEXECLINK). 소유 패키지 = `JongCheol.8930A247C36`(현재 설치본). 다른 두 패키지(`54127D4E99526`, `5468CEA75CF0`)는 별칭 미선언 = 동일 개발자의 별개 앱(무관).
+
+### Phase 2/3 — Root Cause (확정)
+0바이트 앱 실행 별칭은 **MSIX 설치/업데이트마다 삭제·재생성**되어 파일 ID/셸 추적 정보가 바뀐다. WorkGroup은 핀을 **드래그로 1회 생성한 뒤 다시 손대지 않는다**. 따라서 업데이트로 별칭이 재생성되면 핀 `.lnk`에 캐시된 셸 링크/추적 정보가 stale 상태가 되어, 클릭 시 셸이 "대상이 제거/이름변경/삭제됨"으로 판단한다.
+- "가끔"(=업데이트 직후), "파일은 그대로인데 안 열림"(별칭·폴더·소스는 멀쩡, 캐시만 stale)을 모두 설명.
+- 사용자가 말한 "파일/폴더 이름 변경"은 실제로는 업데이트 시 **패키지 설치 폴더명이 버전과 함께 바뀌는 것**을 가리킨 것 — 같은 업데이트가 별칭 재생성도 유발.
+
+### 검증된 참조 구현 대조 (AppGroup)
+같은 개발자의 동작 검증된 MSIX 앱 **AppGroup**도 핀 타깃은 동일한 별칭 방식(`AppPaths.GetStableExePath`)이다. 차이는 단 하나 — **AppGroup은 핀을 능동 유지한다**: `TaskbarManager.UpdateTaskbarShortcutIcon()`이 `User Pinned\TaskBar`의 `.lnk`를 스캔→대상/인자/아이콘 갱신→**재저장(Save)**→셸 알림(`SHChangeNotify`). 재저장이 별칭 링크 정보를 새로 고쳐 stale를 해소한다. **WorkGroup엔 이 로직이 없다.**
+
+> notes.md 2026-06-03의 "핀은 프로그래밍 방식 자동 변경 불가" 기록은 부정확(AppGroup이 반례). 단, 그 경고가 가리키는 **핀의 표시 라벨(=`.lnk` 파일명)** 은 본 수정 범위 밖이다(아래 OUT 참조).
 
 ## 목표
-MSIX 패키지 수락 검증 경고("packageQuery requires approval")를 없애기 위해, 패키지(Store/UWP) 앱 열거를 `PackageManager.FindPackagesForUser()`(제한 기능 `packageQuery` 필요)에서 `Shell.Application` COM의 `shell:AppsFolder` 네임스페이스 열거로 전환한다. 그 결과 `Package.appxmanifest`에서 `packageQuery` 제한 기능을 제거한다.
+검증된 AppGroup 패턴을 이식해, **앱 시작 시 WorkGroup 소유 작업표시줄 핀을 스캔→재저장→셸 알림**으로 stale 별칭 참조를 복구한다. 이미 깨진 핀도 앱 실행만으로 자동 복구되게 한다.
 
 ## 범위
 - IN:
-  - `InstalledAppInventory`의 **패키지 앱 소스**를 `PackageManager` → `shell:AppsFolder` COM 열거로 교체.
-  - `Package.appxmanifest`에서 `packageQuery` capability 제거.
-  - 패키지 AUMID 판별 순수 헬퍼 + 단위 테스트 추가.
-  - 관련 문서(README, notes, 클래스 주석) 갱신.
-- OUT (사용자 결정 = 패키지 소스만 교체):
-  - **Win32 소스(시작 메뉴 .lnk 열거)는 그대로 유지** — 변경 없음.
-  - `AppLauncher`(실행/관리자 권한 실행) 변경 없음.
-  - `IconService`/`AppIconLoader`/`ShellIcon` 변경 없음.
-  - `runFullTrust` capability 유지.
-  - 도메인/직렬화/공개 API/DI 변경 없음.
+  - 신규 Application 인터페이스 `ITaskbarPinMaintainer` (유지·복구 use case 추상화).
+  - 신규 Infrastructure 구현 `TaskbarPinMaintainer` — `User Pinned\TaskBar`의 `.lnk`를 IShellLink COM으로 load→식별→대상/인자/아이콘 재설정→Save, `SHChangeNotify`로 셸 갱신.
+  - DI 등록 + **앱 시작 시 1회 best-effort 호출** 배선.
+  - 단위 테스트(식별·재저장 로직).
+  - 문서(README/notes) 갱신.
+- OUT:
+  - **핀 표시 라벨(`.lnk` 파일명) 변경 / 그룹 이름변경 시 라벨 동기화** — Windows가 핀 라벨을 안전하게 바꾸려면 핀 파일 rename이 필요(AppGroup은 `File.Move`로 시도)하나 위험·별개 관심사. 본 수정은 **클릭이 다시 동작**(타깃/인자/아이콘 복구)하는 것에 집중. `GroupEditViewModel.ShowRenameWarning` InfoBar는 라벨 관점에서 여전히 유효하므로 **건드리지 않는다**.
+  - 핀 타깃을 프로토콜(`workgroup://`)로 전환 — 효과 불확실·기존 핀 재핀 필요라 채택 안 함.
+  - 그룹 저장/이름변경 시점 추가 트리거 — 시작 시 복구로 보고된 버그(클릭 실패)는 해소됨. 시작 트리거만으로 범위 한정(YAGNI).
+  - 깨진(=삭제된 그룹) 핀의 프로그래밍 방식 unpin — Windows가 신뢰성 있게 허용하지 않음. 미대상 핀은 그대로 둔다.
+  - 매니페스트 Version/StoreAssociation의 워킹트리 미커밋 변경(1.0.4→1.0.5 등) — 사용자 진행 중 작업, 본 수정과 무관하므로 손대지 않는다.
 
-## 동작 변경 명시 (사용자 승인 = 요청)
-- **기존**: 패키지 앱 = `PackageManager.FindPackagesForUser("")` 열거 → `GetAppListEntries()[0]`의 DisplayName/AUMID, IconLocation = 패키지 로고 파일 경로.
-- **변경 후**: 패키지 앱 = `shell:AppsFolder` 항목 중 **AUMID 형식(`PackageFamilyName!AppId`, path에 `!` 포함)** 만 추출 → `item.Name`=DisplayName, `item.Path`=AUMID(=LaunchTarget), **IconLocation = null**.
-- **아이콘 회귀 근거 + 트레이드오프(확인)**: `AppIconLoader.LoadAsync`(`AppIconLoader.cs:26`)와 `IconService.ResolveMemberBitmapAsync`(`IconService.cs:105`)는 패키지 앱 아이콘을 **항상 `ShellIcon.OpenForAppAsync`(= `shell:AppsFolder\{AUMID}`)로 먼저** 해석한다. AUMID가 유효하면 **ShellIcon 성공 → 아이콘은 기존과 동일하게 렌더(회귀 없음)**.
-  - **단, ShellIcon이 실패하는 경우의 폴백은 저하된다(수용된 트레이드오프, M2)**: 기존엔 `ResolveLogoPath`로 얻은 로고 파일 경로가 `IconLocation`에 있어 최후 폴백이 가능했으나, 변경 후 `IconLocation=null`이면 `AppIconLoader.cs:44`(`Kind==Win32 ? LaunchTarget : IconLocation`)의 패키지 폴백 경로가 무력화된다. **수용 근거**: 패키지 아이콘의 정규 렌더 경로는 `shell:AppsFolder\{AUMID}`이며, 유효 AUMID에서 이것이 실패할 확률은 낮고(시작 메뉴가 그리는 것과 동일 메커니즘) DevDashboard도 전적으로 이 경로에만 의존한다. 실패 시 단색 기본 아이콘 폴백은 유지된다.
+## 동작 변경 명시 (승인 대상)
+- **기존**: 핀은 드래그 생성 후 앱이 절대 갱신하지 않음 → 별칭 재생성 시 stale.
+- **변경 후**: 앱 시작 시, `User Pinned\TaskBar`에서 **`--group {유효 guid}` 인자 + 타깃이 별칭 경로**인 `.lnk`만 식별해 별칭/인자/아이콘을 재설정 후 Save하고 `SHChangeNotify(SHCNE_UPDATEITEM)`로 갱신. 다른 앱의 핀·미식별 핀은 **읽기만 하고 변경하지 않음**.
 
 ## 결정 사항 (확정)
-- **D1 전환 범위**: 패키지 소스만 교체, Win32 .lnk 소스 유지(사용자 선택). 근거: `packageQuery`는 `PackageManager`에서만 필요하고, Win32를 shell:AppsFolder로 바꾸면 AppsFolder의 Win32 항목 다수가 실제 경로가 아닌 AUMID라 `AppLauncher.LaunchAsAdmin`(runas는 실제 .exe/.lnk 경로 필요)이 깨질 수 있음.
-- **D2 패키지 판별 기준**: `shell:AppsFolder` 항목의 `Path`가 **`!`를 포함**하면 패키지 AUMID로 본다(`PackageFamilyName!AppId`는 Windows AUMID 사양상 `!` 구분자 필수 — 기존 테스트 데이터 `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`와 일치). `.exe`로 끝나는 실제 파일 경로는 제외(이는 Win32 .lnk 소스가 담당). 이 판별을 순수 `internal static` 헬퍼 `IsPackagedAumid`로 분리해 단위 테스트한다.
-- **D3 COM 수명 관리**: DevDashboard 참고 구현과 동일하게 `Type.GetTypeFromProgID("Shell.Application")` + `Activator.CreateInstance` + `dynamic` 열거, 각 `item`은 루프 내 `finally`에서 `Marshal.ReleaseComObject`, `folder`/`shell`은 바깥 `finally`에서 해제.
-- **D4 시스템 항목 필터**: 별도 이름 기반 필터(`Microsoft.*Extension/Client`)는 **추가하지 않는다**. 기존 `PackageManager` 경로 동작(프레임워크/리소스 패키지만 제외)과 가장 가깝게 유지 — shell:AppsFolder는 "모든 앱" 목록과 동일 집합을 반환하므로 사용자 대상 앱만 노출된다.
-- **D5 실패 격리**: 한 소스(패키지) 실패가 전체를 막지 않는 기존 계약 유지. **전체 COM 접근 실패**는 `_logger.LogWarning` 후 빈/부분 목록 반환, **항목 단위 실패**는 `_logger.LogDebug`(노이즈 억제 — 기존 `TryMapPackage`/`ResolveLogoPath`와 동일 수준) 후 해당 항목만 skip. `OperationCanceledException`은 재전파(취소=취소, 기존 PackageManager 경로와 동일). Win32 소스는 독립적으로 계속 수집.
+- **D1 트리거 = 앱 시작 1회.** resident/메인 인스턴스 시작 시 백그라운드 Task로 best-effort 호출(UI 스레드 비차단, 실패는 로그만). 매 시작 재저장은 멱등(유효 핀 재저장은 무해)이라 안전. 근거: 업데이트 직후 첫 실행에서 깨진 핀을 복구.
+- **D2 식별 기준(보수적).** `.lnk`의 Arguments에서 `GroupArgs.ParseCommandLine`로 guid 추출 → **추출된 guid가 유효 그룹 목록에 존재** AND **TargetPath가 별칭 경로와 일치(또는 파일명이 `WorkGroup.exe`)**. 둘 다 만족할 때만 우리 핀으로 보고 갱신. (다른 앱 핀 오변경 방지.)
+- **D3 복구 동작 = in-place 재저장.** 핀 `.lnk`를 load → `SetPath(별칭)`·`SetArguments(--group guid)`·`SetIconLocation(현재 .ico)` 재설정 → `IPersistFile.Save(같은 경로, true)`. **삭제·재생성은 금지**(삭제하면 unpin되고 재핀은 프로그래밍 불가). COM은 `Marshal.FinalReleaseComObject`로 해제(ShortcutWriter와 동일).
+- **D4 COM interop 재사용.** `ShortcutWriter.cs`에 이미 있는 `IShellLinkW`/`IPersistFile`/`ShellLink`(동일 `WorkGroup.Infrastructure.Shortcuts` 네임스페이스, internal)를 그대로 사용. 신규 COM 정의 최소화. `SHChangeNotify`만 P/Invoke 신설.
+- **D5 실패 격리.** 폴더 부재/COM 실패 → 로그(Warning) 후 무동작 반환. 항목별 실패 → 로그(Debug) 후 해당 항목 skip. 전체 작업이 앱 시작을 막지 않는다(best-effort, 예외 흡수).
+- **D6 아이콘 경로.** `Path.Combine(WorkGroupPaths.GroupIconsDirectory(guid), guid + ".ico")`. `.ico` 부재 시 IconLocation 재설정은 skip(타깃/인자만 복구).
 
-## 영향 범위 전수 조사 (Impact Analysis)
+## 아키텍처 / 레이어 배치
+- `WorkGroup.Application/Shortcuts/ITaskbarPinMaintainer.cs` — `Result RepairPins(IReadOnlyCollection<AppGroup> validGroups)`.
+- `WorkGroup.Infrastructure/Shortcuts/TaskbarPinMaintainer.cs` — 구현. 생성자 주입: `taskbarPinDirectory`(테스트 주입 가능), `aliasExePath`, `groupsDirectory`, `ILogger?`. ShortcutService의 경로·로거 주입 패턴을 따른다. (ILocalizer는 RepairPins 결과가 UI에 노출되지 않고 로그로만 쓰여 불필요 — YAGNI상 미주입. 구현 중 정정.)
+- `WorkGroup.Infrastructure/Interop/`(또는 Shortcuts 내) `SHChangeNotify` P/Invoke 최소 정의.
+- DI: `ServiceConfiguration.cs`에 `ITaskbarPinMaintainer` 싱글턴 등록(ShortcutService 등록부 인근).
+- 트리거: `App.xaml.cs` 시작 흐름에서 `IGroupRepository`로 그룹 로드 후 `ITaskbarPinMaintainer.RepairPins(groups)`를 백그라운드 best-effort 호출.
 
-### 변경 대상 & 사용처(전수 grep 후 Read 확인)
-- `PackageManager`/`Windows.Management.Deployment` 전 솔루션 grep 결과(정정 — B1): **코드 사용처는 `InstalledAppInventory.cs` 1곳뿐**이나, 문자열 언급은 추가로 ① `WorkGroup.Infrastructure.csproj:4`(TFM 주석에 `Windows.Management.Deployment` 예시), ② `README.md`, ③ `notes.md`에 존재 → 모두 정정 대상(T4).
-- `src/WorkGroup.Infrastructure/Inventory/InstalledAppInventory.cs` — 유일한 `PackageManager` **코드** 사용처.
-  - 교체 대상 메서드: `GetPackagedAppsAsync`(`:77`), `TryMapPackage`(`:112`), `ResolveLogoPath`(`:140`) → 마지막 둘 삭제, 첫째는 shell:AppsFolder 열거로 재구현.
-  - 유지: `GetInstalledAppsAsync`(`:29`, 조합 흐름 불변), `MergeApps`(`:40`), `CreateManualEntry`(`:57`), `GetStartMenuApps`(`:163`), `StartMenuRoots`(`:200`).
-- `IAppInventory`(`src/WorkGroup.Application/Inventory/IAppInventory.cs`) — **시그니처 변경 없음**(반환 타입·메서드 동일). 구현체는 `InstalledAppInventory` 1개(grep 확인).
-- `AppEntry`(`src/WorkGroup.Domain/Groups/AppEntry.cs`) — 변경 없음. `AppKind.Packaged` 의미(LaunchTarget=AUMID) 그대로 사용.
-- DI 등록: `ServiceConfiguration.cs` — `IAppInventory` 등록(타입 동일, 변경 불필요. 확인만).
-
-### 다운스트림 소비처(패키지 AppEntry 사용) — 회귀 점검 완료
-- `AppLauncher.BuildSpec`(`AppLauncher.cs:32`): Packaged → `explorer.exe shell:AppsFolder\{AUMID}`. AUMID는 동일 형식 → **불변**.
-- `ShellIcon.OpenForAppAsync`(`ShellIcon.cs:35`): Packaged → `shell:AppsFolder\{AUMID}`. **불변**.
-- `AppIconLoader.LoadAsync`(`AppIconLoader.cs:18`): ShellIcon 우선, IconLocation 폴백 → IconLocation=null 안전.
-- `IconService.ResolveMemberBitmapAsync`(`IconService.cs:102`): 동일. IconLocation=null 안전.
-
-### 직렬화 호환성
-- `JsonGroupRepository`는 그룹에 **저장된** AppEntry(AUMID 포함)를 직렬화 — AUMID 형식이 동일하므로 기존 저장 그룹과 호환. IconLocation은 nullable, 누락 무해.
-
-### 영향 받는 테스트
-- `tests/WorkGroup.Application.Tests/InstalledAppInventoryTests.cs`:
-  - 단위(MergeApps/CreateManualEntry): **불변, 계속 통과**.
-  - 통합(`[Trait("Category","Integration")]`): 이제 패키지 소스가 shell:AppsFolder 경유 — 반환 비어있지 않음/표시명 유효/중복 없음 검증은 여전히 유효(머신 의존).
-  - **추가**: `IsPackagedAumid` 순수 단위 테스트.
-- `AppLauncherTests.cs`: **확인됨** — `BuildSpec_Packaged는_AppsFolder_AUMID`(`AppLauncherTests.cs:30`)가 AUMID `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App`로 검증. AUMID 형식 불변이므로 **계속 통과**(영향 없음).
+## 영향 범위 (Impact Analysis)
+- 신규 파일 4개(인터페이스/구현/P-Invoke/테스트) — 기존 공개 멤버 시그니처 변경 **없음**.
+- `ServiceConfiguration.cs` — DI 등록 1건 추가(기존 등록 불변).
+- `App.xaml.cs` — 시작 흐름에 호출 1건 추가(기존 로직 불변, best-effort라 실패가 시작을 막지 않음).
+- 도메인/직렬화/`ShortcutService`/`ShortcutWriter`/`AppLauncher` — **불변**(ShortcutWriter의 COM 타입은 재사용만, 수정 없음).
+- 기존 테스트 — 불변, 계속 통과. 신규 테스트만 추가.
 
 ## 위험
-- **COM/dynamic 의존**: `Microsoft.CSharp`(dynamic 런타임 바인더)는 .NET 런타임 기본 포함 — 추가 패키지 불필요. `Type.GetTypeFromProgID`/`Marshal`은 `System.Runtime.InteropServices`(기본). 위험 낮음.
-- **스레드 컨텍스트**: `Task.Run`(MTA 스레드풀)에서 Shell.Application 열거 — DevDashboard 동일 패턴으로 검증됨. STA 요구 없음.
-- **집합 차이**: shell:AppsFolder 패키지 집합이 `PackageManager` 집합과 미세하게 다를 수 있음(거의 동일, "모든 앱" 기준). 사용자 노출 앱은 동일 수준.
-- **AUMID 판별 오탐**: Win32 앱이 명시적 AUMID(예 `Microsoft.Office.WINWORD.EXE.15` — 점 구분, `!` 없음)를 가져도 `!` 미포함이라 패키지로 오분류되지 않음. `!`는 패키지 PFN 구분자 전용.
-- **회귀 격리**: Win32 소스·실행·아이콘·직렬화 전부 불변. 패키지 열거 메커니즘만 교체.
+- **재저장이 실제 shell-level stale를 해소하는지**: AppGroup 검증 패턴 근거로 강하게 기대되나, 단위 테스트로는 식별·재저장 *로직*만 검증 가능(별칭 재생성 시뮬레이션은 셸 내부라 불가). **실효성은 F5 배포 후 수동 재현으로 최종 확인**(아래 검증 4).
+- **타 앱 핀 오변경**: D2 이중 조건(유효 guid + 별칭 타깃)으로 차단. 테스트로 "미식별 핀 불변" 단언.
+- **User Pinned\TaskBar 쓰기**: MSIX `runFullTrust`로 접근 가능(AppGroup이 동일 환경에서 검증). 쓰기 실패는 항목 skip.
+- **시작 지연**: 백그라운드 Task로 비차단. 핀 수는 소수라 비용 낮음.
 
 ## 검증 방법
-1. `dotnet build` (솔루션) — 경고/에러 0.
-2. `dotnet test` — 기존 단위 + 신규 `IsPackagedAumid` 단위 테스트 통과. 통합 테스트(머신 의존) 통과.
-3. **패키지 소스 누락 회귀 검출(B2/M1)**: 통합 테스트에 `apps.Any(a => a.Kind == AppKind.Packaged)` 단언 추가 — shell:AppsFolder 패키지 추출이 0개를 반환하면(=`!` 판별이 너무 엄격하거나 COM 실패) 테스트가 **빨강**으로 즉시 드러난다. (Win32 .lnk만으로 NotEmpty가 통과해 회귀가 은폐되던 구멍을 막음.)
-4. 수동(GUI): 그룹 편집 화면에서 설치 앱 목록에 **패키지(Store/UWP) 앱과 Win32 앱이 모두** 표시되는지, 패키지 앱 아이콘이 정상 렌더되는지, 패키지 앱 실행이 동작하는지, **시스템 확장 잡음 항목이 과다 노출되지 않는지(m1)** 확인.
-5. `Package.appxmanifest`에 `packageQuery`가 없고 `runFullTrust`만 남았는지 확인. 패키징/배포 시 packageQuery 경고가 사라지는지 확인.
+1. `dotnet build`(솔루션) — 경고/에러 0.
+2. `dotnet test` — 기존 + 신규 단위 테스트 통과.
+3. 신규 단위 테스트(임시 "taskbar" 폴더 사용, 실제 COM):
+   - 우리 핀(별칭+`--group {guid}`, stale 아이콘 경로) → RepairPins 후 IconLocation=현재 `.ico`, Arguments=`--group {guid}`, TargetPath=별칭으로 갱신됨.
+   - 미식별 핀(notepad 타깃, `--group` 없음) → **불변**.
+   - 유효 그룹 목록에 없는 guid 핀 → **불변**(미대상).
+4. **수동(F5 MSIX 배포, RED→GREEN)**: ① 그룹 핀 → ② 버전 올려 재배포(별칭 재생성, 핀 깨짐 재현) → ③ 앱 재실행(시작 복구 동작) → ④ 핀 클릭이 다시 정상 실행되는지 확인. (헤드리스 불가 — 미검증 항목으로 보고.)
 
 ## 작업 분해
 
-### T1 — InstalledAppInventory 패키지 소스를 shell:AppsFolder로 교체 [Type D]
-- **파일**: `src/WorkGroup.Infrastructure/Inventory/InstalledAppInventory.cs`
-- **내용**:
-  - `using Windows.ApplicationModel;`, `using Windows.Management.Deployment;` 제거 → `using System.Runtime.InteropServices;` 추가.
-  - `GetPackagedAppsAsync`를 `Task.Run`으로 `GetPackagedAppsFromShellFolder(ct)` 호출하도록 재구현.
-  - 신규 private `GetPackagedAppsFromShellFolder(CancellationToken)`: `Shell.Application` COM 생성 → `NameSpace("shell:AppsFolder")` 열거 → 각 항목 `Name`/`Path` 읽어 `IsPackagedAumid(Path)`이면 `new AppEntry(name, path, AppKind.Packaged)`(IconLocation 미지정=null) 추가. 항목별 try/catch + `Marshal.ReleaseComObject(item)`(finally), 바깥 finally에서 folder/shell 해제. `OperationCanceledException` 재전파, 그 외 예외는 `_logger.LogWarning` 후 부분 반환.
-  - 신규 `internal static bool IsPackagedAumid(string? path)`: 공백 아님 && `!` 포함 && `.exe`로 끝나지 않음.
-  - `TryMapPackage`, `ResolveLogoPath` 삭제.
-  - 클래스 XML 주석을 새 메커니즘(패키지=shell:AppsFolder AUMID 열거)으로 갱신.
-- **Acceptance**: 빌드 성공, `PackageManager`/`Windows.Management.Deployment` 참조가 파일에서 사라짐(grep 0). `GetInstalledAppsAsync` 시그니처·동작(조합/병합) 불변.
-- **Edge Cases**:
-  - `Shell.Application` ProgID 미해석 / 인스턴스 null → 빈 목록 반환(폴백).
-  - `item.Name` 또는 `item.Path` 빈 값/예외 → 해당 항목 skip.
-  - 취소 토큰 발화 → 루프 중 `ThrowIfCancellationRequested` → `OperationCanceledException` 재전파(COM 해제는 finally 보장).
-- **Halt Forecast**:
-  - `dynamic` 호출 시 런타임 바인더 누락 빌드 오류 → `Microsoft.CSharp`는 기본 포함이므로 불발 예상. 발생 시 빌드 로그로 즉시 식별(코드 추측 금지, build 재확인).
+### T1 — Application 인터페이스 `ITaskbarPinMaintainer` [Type 신규 공개 API]
+- 파일: `src/WorkGroup.Application/Shortcuts/ITaskbarPinMaintainer.cs`
+- 내용: `Result RepairPins(IReadOnlyCollection<AppGroup> validGroups)` + 한글 XML 주석(역할: 작업표시줄 핀의 stale 별칭 참조 복구).
+- Acceptance: 빌드 성공. Application 레이어 의존 규칙 준수(Domain만 참조).
+- [x]
 
-### T2 — Package.appxmanifest에서 packageQuery 제거 [Type A]
-- **파일**: `src/WorkGroup.App/Package.appxmanifest`
-- **내용**: `<rescap:Capability Name="packageQuery" />`와 그 위 주석 줄(`:72-73`) 제거. `runFullTrust` 유지. `rescap` 네임스페이스 선언은 `runFullTrust`가 계속 사용하므로 유지.
-- **Acceptance**: 매니페스트에 `packageQuery` 문자열 없음(grep 0), `runFullTrust` 존재, XML 유효(빌드 통과).
+### T2 — Infrastructure `TaskbarPinMaintainer` 구현 [Type 신규 + COM/P-Invoke]
+- 파일: `src/WorkGroup.Infrastructure/Shortcuts/TaskbarPinMaintainer.cs`(+ 필요 시 `SHChangeNotify` P/Invoke 파일)
+- 내용:
+  - 생성자: `(string taskbarPinDirectory, string aliasExePath, string groupsDirectory, ILogger<TaskbarPinMaintainer>? logger = null, ILocalizer? localizer = null)` + 빈 인자 검증.
+  - `RepairPins`: 폴더 부재면 Ok(무동작). `*.lnk` 열거 → 각 파일 load(IPersistFile.Load) → GetArguments로 `GroupArgs.ParseCommandLine` → guid가 유효 그룹에 있고 GetPath가 별칭/`WorkGroup.exe`면 SetPath/SetArguments/SetIconLocation 재설정 후 Save → `SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH|SHCNF_FLUSH, path)`. 항목 finally에서 COM 해제. D5 격리.
+  - 표준 taskbar 경로 헬퍼: `%APPDATA%\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar`(생성자 미지정 시 기본).
+- Acceptance: 빌드 성공. `ShortcutWriter`의 기존 COM 타입 재사용(중복 정의 0). 도메인/기존 서비스 불변.
+- Edge: 폴더 부재, `.lnk` 0개, Arguments 빈 값, `.ico` 부재, guid 미일치, COM 예외.
+- Halt Forecast: IShellLink GetPath/GetArguments 마샬링 오류 → 빌드/런타임 로그로 식별(추측 금지).
+- [x]
 
-### T3 — 테스트 추가 (IsPackagedAumid 단위 + 패키지 소스 통합 검증) [Type C]
-- **파일**: `tests/WorkGroup.Application.Tests/InstalledAppInventoryTests.cs`
-- **내용**:
-  - `InstalledAppInventoryUnitTests`에 `IsPackagedAumid` 검증 추가:
-    - `Microsoft.WindowsCalculator_8wekyb3d8bbwe!App` → true
-    - `C:\Program Files\app\app.exe` → false (.exe 경로)
-    - `Microsoft.Office.WINWORD.EXE.15` → false (`!` 없음)
-    - `null`/빈 문자열 → false
-  - `InstalledAppInventoryIntegrationTests`에 **패키지 앱 ≥1개 반환** 검증 추가(B2/M1): `Assert.Contains(apps, a => a.Kind == AppKind.Packaged)`. shell:AppsFolder 패키지 추출이 0개면 실패하도록 하여 조용한 누락을 검출. (개발 머신은 Calculator/Store 등 패키지 앱이 항상 존재.)
-- **Acceptance**: `dotnet test` 통과. (InternalsVisibleTo=WorkGroup.Application.Tests 이미 설정됨 — `IsPackagedAumid`는 internal static.)
-- **Edge Cases**: null/빈 입력 포함.
-- **Halt Forecast**: 통합 테스트의 패키지 ≥1 단언이 실패하면 → `!` 판별이 너무 엄격하거나(실제 `item.Path` 형식이 예상과 다름) COM 열거 실패. 이 경우 멈추고 실제 `item.Path` 샘플 값을 진단(추측 수정 금지). 참고 구현(`.exe 미종료` 기준)으로의 완화는 별도 결정.
+### T3 — DI 등록 + 앱 시작 트리거 배선 [Type 호출부 변경(승인 대상)]
+- 파일: `src/WorkGroup.App/ServiceConfiguration.cs`, `src/WorkGroup.App/App.xaml.cs`
+- 내용:
+  - DI: `ITaskbarPinMaintainer` → `new TaskbarPinMaintainer(기본 taskbar 경로, WorkGroupPaths.AliasExePath, WorkGroupPaths.GroupsDirectory, logger, localizer)` 싱글턴 등록.
+  - App 시작: 리소스/그룹 로드 후 백그라운드 Task로 `IGroupRepository`(기존 로드 경로 — 구현 시 정확한 메서드 확인) → `RepairPins(groups)` best-effort 호출. 예외 흡수, UI 비차단.
+- Acceptance: 빌드 성공. 시작 실패 시에도 앱 정상 기동(best-effort). 기존 시작 로직 불변.
+- [x]
 
-### T4 — 문서·구성 주석 갱신 [Type A]
-- **파일**: `README.md`, `notes.md`, `src/WorkGroup.Infrastructure/WorkGroup.Infrastructure.csproj`
-- **내용**:
-  - `README.md`: 설치 앱 수집 설명(`:41` "Store/UWP(PackageManager)")을 "Store/UWP(shell:AppsFolder)"로 갱신. 그 외 PackageManager 언급 위치 grep 후 일괄 정정.
-  - `csproj`(`:4` 주석, B1): TFM 주석의 예시 `Windows.Management.Deployment`를 제거(또는 실제 사용 중인 `Windows.Graphics.Imaging` 등으로 교체). **TFM 자체(`net10.0-windows10.0.19041.0`)는 다른 WinRT/Win32 interop가 계속 필요하므로 변경하지 않는다.**
-  - `notes.md`: `## 최근 변경` 맨 위에 `- 2026-06-08: 설치 앱 패키지 열거를 PackageManager → shell:AppsFolder COM 방식으로 전환(packageQuery 제한 기능 제거). Win32 .lnk 소스·실행·아이콘 불변.` 추가. 1개월 초과 항목 정리.
-- **Acceptance**: README·csproj 주석에 `Windows.Management.Deployment`/`PackageManager` 잔존 언급 없음(grep 0, 변경 이력 문맥 제외). notes 최신 항목 반영. csproj TFM 불변.
+### T4 — 단위 테스트 [Type 테스트]
+- 파일: `tests/WorkGroup.Application.Tests/TaskbarPinMaintainerTests.cs`
+- 내용: 검증 3케이스(위 "검증 방법 3"). 임시 폴더 + 실제 ShortcutWriter로 `.lnk` 생성 후 RepairPins 결과 단언. `IDisposable`로 임시 폴더 정리(ShortcutServiceTests 패턴).
+- Acceptance: `dotnet test` 통과.
+- [x]
+
+### T5 — 문서 갱신 [Type 문서]
+- 파일: `README.md`, `notes.md`
+- 내용: README에 "작업표시줄 핀 자동 유지·복구(앱 시작 시)" 동작 1줄 추가. notes `## 최근 변경` 최상단에 이번 수정 상세(증상/근본 원인/해결) 추가. 1주일 초과 항목은 날짜 확인 후 아카이브(현재 날짜 확인 가능 시).
+- Acceptance: 문서가 실제 동작과 일치(역대조).
+- [x]
+
+## 승인 필요 항목 (1단계)
+- 신규 공개 API(`ITaskbarPinMaintainer`) 추가 — T1.
+- 신규 Infrastructure 서비스 + COM/P-Invoke(`SHChangeNotify`) — T2.
+- DI 등록 + App 시작 호출부 추가 — T3.
+- 신규 단위 테스트 추가 — T4.
+> 수정 방향(핀 자동 유지·복구)은 사용자 승인 완료. 위 plan 전체에 대한 최종 승인 후 T1부터 구현 착수.
 
 ## Open Questions
-- 없음(전환 범위 확정, 다운스트림 회귀 점검 완료).
+- (구현 시 확인) App 시작에서 그룹 목록을 얻는 정확한 경로(`IGroupRepository`의 로드 메서드명). 본 plan 승인에는 영향 없음 — 기존 로드 경로 재사용.
 
 ## Progress Log
-- T1 완료: InstalledAppInventory 패키지 소스를 shell:AppsFolder COM 열거로 교체 + IsPackagedAumid 헬퍼. COM 누수(FolderItems) 수정. 빌드/테스트 OK. spec+quality 리뷰 통과.
-- T2 완료: Package.appxmanifest에서 packageQuery 제거(runFullTrust 유지). App 빌드 OK.
-- T3 완료: IsPackagedAumid 단위 5케이스 + 통합 "패키지 앱 ≥1개" 단언 추가. 테스트 127/127. spec 리뷰 OK.
-- T4 완료: README/csproj 주석/notes 갱신. 잔존 언급 0. 빌드 OK.
-- Phase F 통과: 전체 빌드 0/0, 테스트 127/127. plan-completion-reviewer OK(0/0/0).
+- T1~T4 구현 + V-1/V-2: `ITaskbarPinMaintainer`(Application) + `TaskbarPinMaintainer`(Infrastructure, IShellLink COM 재사용 + SHChangeNotify) + DI 등록 + `App.BecomeResidentInstance` best-effort 호출 + 단위 테스트 5케이스. 빌드 0/0, 테스트 132/132(Domain 23 + Application 109).
+- V-5/V-6 리뷰 반영: (품질-M2) `SHChangeNotify` wEventId를 Win32 LONG에 맞춰 `int`로 정정. (품질-M1/m2) App 핀 복구 래퍼에 실패 로깅 추가(Result 확인 + catch 예외 기록). (스펙-m1) 테스트에 TargetPath=별칭 단언 추가. (스펙-M1) ILocalizer는 UI 미노출이라 YAGNI상 미주입 — plan 아키텍처 줄 정정. (스펙-M2/품질-m3) T5 문서 반영; GroupEditViewModel/Dialog 15→20자 변경은 본 작업 무관(사용자 진행 중 working tree 변경)이라 커밋 비포함.
+- T5: README "작업 표시줄 핀 자동 유지·복구" 1줄 + notes 2026-06-22 항목 추가.
 
 ## Next Steps
-- 권장 다음 액션: F5(Visual Studio MSIX 배포)로 ① 패키지/Win32 앱 목록·아이콘 렌더 ② 시스템 확장 잡음 과다 노출 여부 ③ 실제 패키징 시 packageQuery 수락 경고 소멸을 수동 검증. 이상 없으면 master 병합.
-- Suggested skills: 공식 /code-review, 공식 /verify
+- 권장 다음 액션: 변경 커밋 승인(아래 변경 파일만 — 사용자 진행 중인 매니페스트/StoreAssociation/GroupEdit 변경은 제외) → F5 MSIX 배포로 핀 깨짐 재현→재실행→클릭 정상화 수동 검증.
+- Suggested skills: 공식 /verify(배포 후 동작 확인), 공식 /code-review.
+- 미처리(별도 housekeeping): notes.md `## 최근 변경`에 1주일 경과(≤2026-06-15) 항목이 누적됨 — 43KB 전면 재작성 위험 때문에 본 세션 보류. 별도 세션에서 `notes-archive/2026-06.md`로 이동 권장.

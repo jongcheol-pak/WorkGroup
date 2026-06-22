@@ -56,6 +56,14 @@ public static class ServiceConfiguration
                 logger: sp.GetRequiredService<ILogger<ShortcutService>>(),
                 localizer: sp.GetRequiredService<ILocalizer>()));
 
+        // 작업 표시줄 핀 유지·복구 — 앱 업데이트로 실행 별칭이 재생성돼 stale 상태가 된 핀을 시작 시 복구.
+        services.AddSingleton<ITaskbarPinMaintainer>(sp =>
+            new TaskbarPinMaintainer(
+                TaskbarPinMaintainer.DefaultTaskbarPinDirectory,
+                WorkGroupPaths.AliasExePath,
+                WorkGroupPaths.GroupsDirectory,
+                sp.GetRequiredService<ILogger<TaskbarPinMaintainer>>()));
+
         // 폴더 바로가기(트레이 좌클릭 팝업) — 저장/열거/셸 열기.
         services.AddSingleton<IFolderShortcutRepository>(sp =>
             new JsonFolderShortcutRepository(
