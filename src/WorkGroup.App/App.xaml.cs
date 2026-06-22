@@ -1,5 +1,6 @@
 using System.Threading;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
@@ -9,6 +10,8 @@ using WorkGroup.App.Activation;
 using WorkGroup.App.Services;
 using WorkGroup.App.Views;
 using WorkGroup.Application.Groups;
+using WorkGroup.Application.Persistence;
+using WorkGroup.Application.Shortcuts;
 
 namespace WorkGroup.App
 {
@@ -124,6 +127,27 @@ namespace WorkGroup.App
 
             // 상주 시작 시 저장소와 불일치하는 고아 .lnk/.ico 정리(plan.md T8 연결).
             _ = Services.GetRequiredService<IGroupAppService>().CleanupOrphansAsync();
+
+            // 앱 업데이트로 실행 별칭이 재생성돼 stale 상태가 된 작업 표시줄 핀을 복구한다.
+            _ = RepairTaskbarPinsAsync();
+        }
+
+        // 작업 표시줄 핀(.lnk)이 별칭 재생성으로 깨졌으면 다시 저장해 복구한다(best-effort, 시작 비차단).
+        private static async Task RepairTaskbarPinsAsync()
+        {
+            var logger = Services.GetService<ILogger<App>>();
+            try
+            {
+                var groups = await Services.GetRequiredService<IGroupRepository>().LoadAllAsync();
+                var result = await Task.Run(() => Services.GetRequiredService<ITaskbarPinMaintainer>().RepairPins(groups));
+                if (result.IsFailure)
+                    logger?.LogWarning("작업 표시줄 핀 복구 실패: {Error}", result.Error);
+            }
+            catch (Exception ex)
+            {
+                // 핀 복구 실패는 앱 시작/동작을 막지 않는다(다음 실행에서 재시도). 원인 추적용으로만 기록.
+                logger?.LogWarning(ex, "작업 표시줄 핀 복구 중 예외");
+            }
         }
 
         // UI 스레드 데드락을 피하려고 redirect를 별도 스레드에서 수행하고 완료를 동기 대기한다(공식 Instancing 패턴).
