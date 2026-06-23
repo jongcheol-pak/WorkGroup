@@ -12,7 +12,7 @@ using IconSource = WorkGroup.Domain.Groups.IconSource;
 namespace WorkGroup.App.ViewModels;
 
 /// <summary>
-/// 그룹 추가/수정 다이얼로그 ViewModel(plan.md T4). 상단 아이콘+이름(15자), 선택 앱 목록(추가/삭제),
+/// 그룹 추가/수정 다이얼로그 ViewModel(plan.md T4). 상단 아이콘+이름(20자), 선택 앱 목록(추가/삭제),
 /// 확인 시 빈 목록·이름 중복을 검증하고 GroupAppService로 저장한다. 아이콘은 사용자 이미지/리소스 아이콘.
 /// </summary>
 public sealed partial class GroupEditViewModel : ObservableObject

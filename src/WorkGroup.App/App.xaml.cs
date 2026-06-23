@@ -103,8 +103,8 @@ namespace WorkGroup.App
             var editId = ActivationParser.TryGetEditGroupId(activation);
             if (!string.IsNullOrWhiteSpace(editId))
                 RouteEditRequest(editId);
-            else if (activation.Kind != ExtendedActivationKind.StartupTask)
-                // 로그인 자동 시작이면 트레이만 상주(메인 창은 사용자가 트레이로 연다).
+            else if (activation.Kind != ExtendedActivationKind.StartupTask && !ActivationParser.IsSilentStart(activation))
+                // 로그인 자동 시작·업데이트 후 무음 재시작이면 트레이만 상주(메인 창은 사용자가 트레이로 연다).
                 ShowMainWindow();
         }
 
@@ -114,6 +114,10 @@ namespace WorkGroup.App
         {
             _keyInstance = keyInstance;
             keyInstance.Activated += OnAppInstanceActivated;
+
+            // 스토어/Windows 업데이트로 OS가 앱을 강제 종료할 때, 업데이트 후 트레이로 자동 복귀하도록 재시작을 등록한다.
+            // full-trust MSIX 앱은 이 등록이 없으면 업데이트 후 재시작되지 못하고 종료된 채 남는다.
+            UpdateRestartService.RegisterForRestart();
 
             EnsureTray();
 
@@ -178,10 +182,10 @@ namespace WorkGroup.App
                 var editId = ActivationParser.TryGetEditGroupId(e);
                 if (!string.IsNullOrWhiteSpace(editId))
                     RouteEditRequest(editId);
-                else if (e.Kind != ExtendedActivationKind.StartupTask)
+                else if (e.Kind != ExtendedActivationKind.StartupTask && !ActivationParser.IsSilentStart(e))
                     // 일반 재활성화 — 메인 창을 앞으로.
-                    // 로그인 자동 시작이 redirect로 들어온 경우는 제외(이미 상주 중이므로 아무 동작 불필요)
-                    // — 콜드 경로(OnLaunched)와 동일한 StartupTask 검사로 메인 창 표시를 막는다.
+                    // 로그인 자동 시작·업데이트 후 무음 재시작이 redirect로 들어온 경우는 제외(이미 상주 중이라 무동작)
+                    // — 콜드 경로(OnLaunched)와 동일한 StartupTask/무음 검사로 메인 창 표시를 막는다.
                     ShowMainWindow();
             });
         }

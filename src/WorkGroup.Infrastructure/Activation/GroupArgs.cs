@@ -8,6 +8,9 @@ public static class GroupArgs
 {
     public const string GroupFlag = "--group";
     public const string EditFlag = "--edit-group";
+    // 업데이트 후 OS 자동 재시작(RegisterApplicationRestart) 시 전달하는 무음 시작 플래그.
+    // 이 플래그로 시작하면 메인 창을 띄우지 않고 트레이에만 상주한다(StartupTask와 동일 취급).
+    public const string SilentFlag = "--silent";
     public const string ProtocolScheme = "workgroup";
     public const string ProtocolHost = "group";
 
@@ -16,6 +19,22 @@ public static class GroupArgs
 
     /// <summary>"--edit-group {id}" 명령줄에서 id 추출(그룹 수정 활성화). 없으면 null.</summary>
     public static string? ParseEditCommandLine(string? commandLine) => ParseFlag(commandLine, EditFlag);
+
+    /// <summary>명령줄에 무음 시작 플래그("--silent")가 있는지. 업데이트 후 자동 재시작을 식별한다.</summary>
+    public static bool HasSilentFlag(string? commandLine)
+    {
+        if (string.IsNullOrWhiteSpace(commandLine))
+            return false;
+
+        var tokens = commandLine.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var token in tokens)
+        {
+            if (token.Equals(SilentFlag, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
 
     // 지정한 플래그 다음 토큰을 id로 추출한다(따옴표 제거). 플래그는 정확 일치(--group ≠ --edit-group).
     private static string? ParseFlag(string? commandLine, string flag)

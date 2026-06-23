@@ -33,4 +33,15 @@ public static class ActivationParser
             _ => null
         };
     }
+
+    /// <summary>업데이트 후 OS 자동 재시작(무음 시작) 활성화인지 판별한다. 그러면 메인 창을 띄우지 않는다.</summary>
+    public static bool IsSilentStart(AppActivationArguments args)
+    {
+        return args.Kind switch
+        {
+            ExtendedActivationKind.Launch when args.Data is ILaunchActivatedEventArgs launch
+                => GroupArgs.HasSilentFlag(launch.Arguments),
+            _ => false
+        };
+    }
 }

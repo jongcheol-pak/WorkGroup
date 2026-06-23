@@ -64,4 +64,20 @@ public class GroupArgsTests
         Assert.Null(GroupArgs.ParseEditCommandLine("--group g1"));
         Assert.Null(GroupArgs.ParseCommandLine("--edit-group g1"));
     }
+
+    [Theory]
+    [InlineData("--silent")]
+    [InlineData("  --silent  ")]
+    [InlineData("--SILENT")]
+    [InlineData("--group g1 --silent")]
+    public void HasSilentFlag_있으면_true(string input)
+        => Assert.True(GroupArgs.HasSilentFlag(input));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("--group g1")]
+    [InlineData("--silentx")]
+    public void HasSilentFlag_없으면_false(string? input)
+        => Assert.False(GroupArgs.HasSilentFlag(input));
 }

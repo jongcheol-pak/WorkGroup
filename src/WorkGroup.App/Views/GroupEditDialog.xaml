@@ -23,7 +23,7 @@
             <RowDefinition Height="300" />
         </Grid.RowDefinitions>
 
-        <!-- 1행: 그룹 아이콘 + 이름(15자) -->
+        <!-- 1행: 그룹 아이콘 + 이름(20자) -->
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
