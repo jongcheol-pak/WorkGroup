@@ -105,7 +105,7 @@
 - [x] **T5-3** `src/WorkGroup.App/Views/ReorderDrop.cs` 신규 — `ListView`의 컨테이너에서 `ItemBounds` 목록을 뽑아 T5-1에 넘기는 어댑터 + 드래그 데이터 포맷 상수
 - **Files**: `src/WorkGroup.Infrastructure/Ui/ListInsertionPoint.cs` · `tests/WorkGroup.Application.Tests/ListInsertionPointTests.cs` · `src/WorkGroup.App/Views/ReorderDrop.cs`
 - **구조**: 계산과 UI 접근을 가른다 — 순수 계산은 `WorkGroup.Infrastructure`(`TaskbarPopupPositioner`와 같은 자리, Application.Tests가 참조하므로 테스트 가능), `ListView` 컨테이너 순회처럼 WinUI 타입이 필요한 부분만 `WorkGroup.App/Views`. 두 페이지가 같은 어댑터를 호출하므로 한쪽만 고쳐 화면이 갈리는 일이 없다. 새 스타일 토큰을 만들지 않고 인디케이터 색은 `AccentFillColorDefaultBrush` 테마 리소스를 각 페이지 XAML에서 쓴다
-- **Acceptance**: T5-2 케이스 5건이 통과한다. 두 페이지가 어댑터만 호출하고 좌표 계산을 자체 복제하지 않는다 — `grep -rn "ListInsertionPoint\.\|ReorderDrop\." src/WorkGroup.App/Views/` 에서 두 페이지 코드비하인드가 `ReorderDrop`만 호출하고 `Math` 기반 좌표 계산 코드를 갖지 않는다
+- **Acceptance**: T5-2 케이스가 통과한다(계획 5건 → 리뷰 반영으로 `ResolveMoveTarget` 이전·케이스 추가하여 실제 19건). 두 페이지는 `ReorderDrop`(ListView 접근)과 `ListInsertionPoint`(순수 계산)만 호출하고 좌표 계산을 자체 복제하지 않는다 — `grep -rn "ListInsertionPoint\.\|ReorderDrop\." src/WorkGroup.App/Views/` 에서 두 페이지 코드비하인드가 `ReorderDrop`만 호출하고 `Math` 기반 좌표 계산 코드를 갖지 않는다
 - **검증**: `dotnet test WorkGroup.slnx` → 실패 0, Application 통과 128 이상 · `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0
 
 ### T6. 작업 그룹 페이지 UI
@@ -129,7 +129,7 @@
 
 - [x] **T8-1** `README.md`의 작업 그룹·트레이 메뉴 기능 서술에 드래그 순서 변경 추가
 - [x] **T8-2** `help.md`(앱 내 도움말)에 조작 방법 한 줄 추가 — 핸들에서 끌어야 하고 검색 중에는 불가함을 명시
-- **Files**: `README.md` · `help.md`
+- **Files**: `README.md` · `help.md` · `notes.md`(레포 관례 「최근 변경」 — 리뷰 반영으로 추가)
 - **Acceptance**: 두 파일에 순서 변경 서술이 존재 — `grep -c "순서 변경" README.md help.md` → 각 1건 이상. [면제 ①] 실행 경로를 바꾸지 않는 문서 수정
 - **검증**: `grep -n "순서 변경" README.md help.md`
 
@@ -158,6 +158,7 @@
 - [미등재:이번 회차가 처리] 그룹 편집 다이얼로그 앱 목록의 드래그 재정렬 — 직전 요청으로 이미 적용됨(`GroupEditDialog.xaml`)
 - [미등재:범위 밖] 드래그로 순서를 바꾼 뒤 저장에 실패했을 때의 처리 — 롤백 없이 실패 메시지만 표시하고 다음 `LoadAsync`에서 저장된 순서로 복원된다. **이 경로를 재는 케이스는 이번 회차에 만들지 않는다**(T4 acceptance에서 제외, 수동 확인 항목으로 보고). 실패 자체가 디스크 쓰기 실패라 드문 경로이고, 롤백을 넣으려면 두 VM의 실패 처리 정책을 함께 정해야 한다
 - [다음 회차] 트레이 메뉴 페이지에 상태 안내 InfoBar가 없어 저장 실패를 사용자에게 알릴 자리가 없다 — `FolderShortcutsViewModel.MoveAsync`가 `ReorderAsync`의 `Result`를 버려 실패가 무음으로 지나간다(그룹 쪽은 `StatusMessage`로 표시). 통지 수단(InfoBar 신설 / 토스트 / 로그)을 정하는 것이 설계 선택이라 이번 회차에서 임의로 고르지 않았다.
+- [다음 회차] 가상화된 목록에서 "마지막 실현 항목 아래" 드롭의 뒤쪽 경계 — 2차 리뷰 지적을 받아 `realized.Indexes[^1] + 1`로 고쳤으나, 이 자리는 `ListInsertionPoint`의 순수 계산 밖이라 케이스로 재지 못한다. 실화면에서 긴 목록을 스크롤한 채 끝으로 끄는 조작으로 확인이 필요하다.
 - [다음 회차] 검색 중 핸들이 `Collapsed`가 되어도 카드 `Grid`의 `ColumnSpacing="12"`가 0폭 열에도 적용돼 내용이 좌우로 약간 움직일 수 있다 — 헤드리스라 실화면 확인 불가(리뷰어 추정). 거슬리면 열 자체를 접거나 `Opacity`로 숨기는 쪽으로 바꾼다.
 
 ## Progress Log
@@ -168,3 +169,8 @@
 - T1·T2 완료 — 두 리포지토리에 `ReorderAsync`(지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
 
 ## Next Steps
+
+다음 회차가 이어받을 항목(위 `[다음 회차]` 3건과 같다):
+1. 트레이 메뉴 페이지의 순서 저장 실패 통지 수단 결정 — `FolderShortcutsViewModel.MoveAsync`가 `Result`를 버린다.
+2. 검색 중 핸들이 숨겨질 때 카드 `ColumnSpacing` 때문에 내용이 좌우로 흔들리는지 실화면 확인.
+3. 가상화 목록의 뒤쪽 드롭 경계 실화면 확인(순수 계산 밖이라 케이스가 없다).
