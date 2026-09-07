@@ -56,6 +56,8 @@ public static class ListInsertionPoint
     {
         ArgumentNullException.ThrowIfNull(realizedIndexes);
 
+        // 음수 slot은 호출자(Resolve의 반환값)에서는 나오지 않지만, 공개 메서드라 첫 자리로 클램프한다
+        // (IndicatorOffset도 같은 형태).
         if (slot < realizedIndexes.Count)
             return realizedIndexes[Math.Max(slot, 0)];
 

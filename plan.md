@@ -135,3 +135,6 @@
 - T1~T3 완료 — 가상화 인덱스 매핑을 ListInsertionPoint.ResolveActualIndex로 내려 케이스 7건 추가(변이 2회로 red 확인), 트레이 페이지에 InfoBar 상태 경로 + 쓰기 실패 케이스 1건, 두 페이지 핸들을 Opacity·IsHitTestVisible·AccessibilityView 바인딩으로 전환. Application 테스트 142 → 150.
 
 ## Next Steps
+
+다음 회차 인계:
+1. `WorkGroup.App`의 ViewModel 테스트 프로젝트 신설 — `tests/`의 두 프로젝트 모두 `WorkGroup.App`을 ProjectReference하지 않아, ApplyFilter가 CanReorder를 갱신하는지·검색 중 MoveAsync가 무동작인지·실패가 StatusMessage에 담기는지를 재는 자리가 없다(T3이 면제 ④로 닫힌 이유). 구조 변경이라 착수 전 별도 승인이 필요하고, WinUI 타입 의존 때문에 windows TFM + App 참조 가능 여부를 먼저 실측해야 한다.
