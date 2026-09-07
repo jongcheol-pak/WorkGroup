@@ -140,4 +140,50 @@ public sealed class JsonFolderShortcutRepositoryTests : IDisposable
         Assert.Empty(await sut.LoadAllAsync());
         Assert.True(File.Exists(_filePath + ".corrupt.bak"));
     }
+
+    [Fact]
+    public async Task Reorder_후_로드하면_지정한_순서로_나온다()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync("A", @"D:\A");
+        await sut.AddAsync("B", @"D:\B");
+        await sut.AddAsync("C", @"D:\C");
+
+        var result = await sut.ReorderAsync([3, 1, 2]);
+        Assert.True(result.IsSuccess);
+
+        // 새 인스턴스로 로드해 직렬화까지 순서가 보존되는지 본다(재시작 시나리오).
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["C", "A", "B"], loaded.Select(f => f.Name));
+    }
+
+    [Fact]
+    public async Task Reorder_목록에_빠진_폴더는_뒤에_남는다()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync("A", @"D:\A");
+        await sut.AddAsync("B", @"D:\B");
+        await sut.AddAsync("C", @"D:\C");
+
+        // Id 2(B)를 빼고 재정렬 — B가 유실되지 않고 뒤에 붙어야 한다.
+        await sut.ReorderAsync([3, 1]);
+
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["C", "A", "B"], loaded.Select(f => f.Name));
+    }
+
+    [Fact]
+    public async Task Reorder_저장에_없는_id는_무시된다()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync("A", @"D:\A");
+        await sut.AddAsync("B", @"D:\B");
+
+        // 이미 삭제된 폴더의 Id가 섞여 들어와도 예외 없이 나머지 순서만 반영한다.
+        var result = await sut.ReorderAsync([99, 2, 1]);
+        Assert.True(result.IsSuccess);
+
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["B", "A"], loaded.Select(f => f.Name));
+    }
 }

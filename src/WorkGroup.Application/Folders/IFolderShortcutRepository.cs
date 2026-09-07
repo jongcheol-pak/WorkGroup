@@ -22,4 +22,10 @@ public interface IFolderShortcutRepository
 
     /// <summary>등록된 모든 폴더를 삭제한다(설정 화면 초기화용, 멱등).</summary>
     Task<Result> ClearAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 저장된 폴더를 <paramref name="orderedIds"/> 순서로 재배열해 기록한다(트레이 팝업의 표시 순서 = 배열 순서).
+    /// 목록에 없는 기존 폴더는 원래 상대 순서로 뒤에 남기고, 저장에 없는 id는 무시한다.
+    /// </summary>
+    Task<Result> ReorderAsync(IReadOnlyList<int> orderedIds, CancellationToken cancellationToken = default);
 }

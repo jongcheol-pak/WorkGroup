@@ -113,6 +113,31 @@ public sealed class JsonFolderShortcutRepository : IFolderShortcutRepository
         finally { _gate.Release(); }
     }
 
+    public async Task<Result> ReorderAsync(IReadOnlyList<int> orderedIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var items = (await LoadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+
+            // 지정 순서로 앞에 배치하고, 목록에 없던 폴더는 원래 상대 순서로 뒤에 남긴다
+            // (다른 경로에서 추가된 폴더가 재정렬 한 번에 사라지지 않게 한다).
+            var ordered = new List<FolderShortcut>(items.Count);
+            foreach (var id in orderedIds)
+            {
+                var item = items.FirstOrDefault(f => f.Id == id);
+                if (item is not null && !ordered.Contains(item))
+                    ordered.Add(item);
+            }
+            ordered.AddRange(items.Where(f => !ordered.Contains(f)));
+
+            return await WriteUnlockedAsync(ordered, cancellationToken).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
+
     // 경로 중복 검사(대소문자 무시). excludeId가 있으면 자기 자신은 제외(수정 시).
     private static bool IsDuplicatePath(IEnumerable<FolderShortcut> items, string? path, int? excludeId)
     {

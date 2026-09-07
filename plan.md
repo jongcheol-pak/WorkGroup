@@ -75,9 +75,9 @@
 
 ### T2. 폴더 순서 저장 API
 
-- [ ] **T2-1** `IFolderShortcutRepository`에 `Task<Result> ReorderAsync(IReadOnlyList<int> orderedIds, CancellationToken)` 추가
-- [ ] **T2-2** `JsonFolderShortcutRepository`에 구현 — T1-2와 같은 규칙(누락 id 뒤에 유지, 미존재 id 무시)
-- [ ] **T2-3** `JsonFolderShortcutRepositoryTests`에 케이스 3건 추가 — T1-5와 같은 세 분기(순서 일치 / 빠진 id 유실 없음 / 미존재 id 무시)
+- [x] **T2-1** `IFolderShortcutRepository`에 `Task<Result> ReorderAsync(IReadOnlyList<int> orderedIds, CancellationToken)` 추가
+- [x] **T2-2** `JsonFolderShortcutRepository`에 구현 — T1-2와 같은 규칙(누락 id 뒤에 유지, 미존재 id 무시)
+- [x] **T2-3** `JsonFolderShortcutRepositoryTests`에 케이스 3건 추가 — T1-5와 같은 세 분기(순서 일치 / 빠진 id 유실 없음 / 미존재 id 무시)
 - **Files**: `src/WorkGroup.Application/Folders/IFolderShortcutRepository.cs` · `src/WorkGroup.Infrastructure/Persistence/JsonFolderShortcutRepository.cs` · `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs`
 - **Acceptance**: 신규 테스트 3건 통과. `_gate` 세마포어 안에서 로드-쓰기가 이뤄져 기존 동시성 정책을 따른다
 - **검증**: `dotnet test WorkGroup.slnx` → 실패 0, Application 통과 123 이상
@@ -160,5 +160,7 @@
 - [미판정] 트레이 메뉴 페이지에 상태 안내 InfoBar가 없어 저장 실패를 사용자에게 알릴 자리가 없다 — 이번에는 실패 시 무음(다음 로드에서 복원)
 
 ## Progress Log
+
+- T1·T2 완료 — 두 리포지토리에 (지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
 
 ## Next Steps
