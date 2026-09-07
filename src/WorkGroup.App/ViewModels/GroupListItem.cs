@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Automation.Peers;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WorkGroup.App.Services;
@@ -45,11 +46,19 @@ public sealed partial class GroupListItem : ObservableObject
     /// 드래그 순서 변경 가능 여부. 검색 중에는 목록이 부분집합이라 전체 순서를 확정할 수 없어 false가 된다.
     /// </summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ReorderHandleVisibility))]
+    [NotifyPropertyChangedFor(nameof(ReorderHandleOpacity))]
+    [NotifyPropertyChangedFor(nameof(ReorderHandleAccessibilityView))]
     public partial bool CanReorder { get; set; }
 
-    /// <summary>순서 변경 핸들 표시 여부(x:Bind는 bool→Visibility 자동변환 없음).</summary>
-    public Visibility ReorderHandleVisibility => CanReorder ? Visibility.Visible : Visibility.Collapsed;
+    /// <summary>
+    /// 순서 변경 핸들의 불투명도. Visibility로 접으면 열 폭이 0이 되는데 Grid.ColumnSpacing은
+    /// 그래도 적용돼 카드 내용이 좌우로 밀린다 — 자리를 유지한 채 보이지 않게 한다.
+    /// </summary>
+    public double ReorderHandleOpacity => CanReorder ? 1.0 : 0.0;
+
+    /// <summary>보이지 않는 핸들은 접근성 트리에서도 뺀다(조작할 수 없는 것을 읽지 않도록).</summary>
+    public AccessibilityView ReorderHandleAccessibilityView
+        => CanReorder ? AccessibilityView.Content : AccessibilityView.Raw;
 
     public async Task LoadAsync()
     {

@@ -88,8 +88,8 @@
 
 ### T3. 검색 중 핸들이 자리를 유지하며 숨도록 전환
 
-- [ ] **T3-1** `GroupListItem`·`FolderShortcutItem`의 `ReorderHandleVisibility`를 `ReorderHandleOpacity`(double, 1.0/0.0)로 바꾸고, 숨겼을 때 접근성 트리에서 빠지도록 `ReorderHandleAccessibilityView`를 함께 노출한다(`CanReorder`의 `NotifyPropertyChangedFor` 대상도 갱신)
-- [ ] **T3-2** 두 XAML의 핸들 `FontIcon`에서 `Visibility` 바인딩을 `Opacity`·`AutomationProperties.AccessibilityView`로 바꾸고, `IsHitTestVisible`을 `CanReorder`에 바인딩해 숨은 핸들이 마우스를 먹지 않게 한다
+- [x] **T3-1** `GroupListItem`·`FolderShortcutItem`의 `ReorderHandleVisibility`를 `ReorderHandleOpacity`(double, 1.0/0.0)로 바꾸고, 숨겼을 때 접근성 트리에서 빠지도록 `ReorderHandleAccessibilityView`를 함께 노출한다(`CanReorder`의 `NotifyPropertyChangedFor` 대상도 갱신)
+- [x] **T3-2** 두 XAML의 핸들 `FontIcon`에서 `Visibility` 바인딩을 `Opacity`·`AutomationProperties.AccessibilityView`로 바꾸고, `IsHitTestVisible`을 `CanReorder`에 바인딩해 숨은 핸들이 마우스를 먹지 않게 한다
 - **Files**: `src/WorkGroup.App/ViewModels/GroupListItem.cs` · `src/WorkGroup.App/ViewModels/FolderShortcutItem.cs` · `src/WorkGroup.App/Views/WorkGroupsPage.xaml` · `src/WorkGroup.App/Views/TrayMenuPage.xaml`
 - **Acceptance**: 두 XAML에서 `ReorderHandleVisibility` 각 1건 → 0건, `ReorderHandleOpacity` 각 0건 → 1건. `grep -c "AccessibilityView"`가 항목 VM 2개와 XAML 2개에서 각 0건 → 1건 이상. 빌드 경고 0.
   **[면제 ④] `WorkGroup.App` 서브트리에 테스트 러너가 없다** — `tests/`에 Domain·Application 두 프로젝트뿐이고 `grep -rn "MoveAsync\|IsFiltered\|WorkGroupsViewModel\|FolderShortcutsViewModel" tests/` → 0건이다. **변이 실증은 이 task에서 불가능하다** — 바꾸는 것이 시각 표현(`Opacity`)과 접근성 노출이라 실행 경로에 관측 지점이 없다. 이 사실을 근거로 사용자가 수동 확인을 선택했다(인터뷰). 따라서 **흔들림 해소·접근성 트리 제외는 `HUMAN-VERIFY`이고, 이 task에는 케이스가 없다**
@@ -131,5 +131,7 @@
 - [미등재:원리상 불가] 실화면 확인이 필요한 항목이 이번에도 남는다(드래그 조작감·삽입 표시선 위치·핸들 히트테스트·흔들림 해소·InfoBar 표시). 헤드리스로는 확인할 수 없어 사용자 수동 검증으로 보고한다
 
 ## Progress Log
+
+- T1~T3 완료 — 가상화 인덱스 매핑을 ListInsertionPoint.ResolveActualIndex로 내려 케이스 7건 추가(변이 2회로 red 확인), 트레이 페이지에 InfoBar 상태 경로 + 쓰기 실패 케이스 1건, 두 페이지 핸들을 Opacity·IsHitTestVisible·AccessibilityView 바인딩으로 전환. Application 테스트 142 → 150.
 
 ## Next Steps

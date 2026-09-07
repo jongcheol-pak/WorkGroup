@@ -94,7 +94,9 @@
                                 <FontIcon Glyph="&#xE700;" FontSize="14" VerticalAlignment="Center" Margin="-4,0,-4,0"
                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                           CanDrag="{x:Bind CanReorder, Mode=OneWay}" DragStarting="OnReorderDragStarting"
-                                          Visibility="{x:Bind ReorderHandleVisibility, Mode=OneWay}"
+                                          Opacity="{x:Bind ReorderHandleOpacity, Mode=OneWay}"
+                                          IsHitTestVisible="{x:Bind CanReorder, Mode=OneWay}"
+                                          AutomationProperties.AccessibilityView="{x:Bind ReorderHandleAccessibilityView, Mode=OneWay}"
                                           ToolTipService.ToolTip="{loc:Localize Key=Common_ReorderTooltip}" />
 
                                 <!-- 폴더 아이콘(사각 테두리) -->

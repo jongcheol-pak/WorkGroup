@@ -96,7 +96,9 @@
                                 <FontIcon Glyph="&#xE700;" FontSize="14" VerticalAlignment="Center" Margin="-4,0,-4,0"
                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                           CanDrag="{x:Bind CanReorder, Mode=OneWay}" DragStarting="OnReorderDragStarting"
-                                          Visibility="{x:Bind ReorderHandleVisibility, Mode=OneWay}"
+                                          Opacity="{x:Bind ReorderHandleOpacity, Mode=OneWay}"
+                                          IsHitTestVisible="{x:Bind CanReorder, Mode=OneWay}"
+                                          AutomationProperties.AccessibilityView="{x:Bind ReorderHandleAccessibilityView, Mode=OneWay}"
                                           ToolTipService.ToolTip="{loc:Localize Key=Common_ReorderTooltip}" />
 
                                 <!-- 그룹 아이콘(사각 테두리). 내부 영역(50-패딩8-테두리2≈40)에 맞춰 38로 표시(잘림 방지). -->
