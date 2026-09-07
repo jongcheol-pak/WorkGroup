@@ -173,6 +173,23 @@ public sealed class JsonFolderShortcutRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Reorder_쓰기_실패하면_Result_실패를_돌려준다()
+    {
+        var sut = CreateSut();
+        await sut.AddAsync("A", @"D:\A");
+        await sut.AddAsync("B", @"D:\B");
+
+        // 원자적 쓰기가 쓰는 임시 파일 경로를 디렉터리로 선점해 File.Create를 실패시킨다.
+        // 트레이 메뉴 페이지의 InfoBar가 표시해야 할 바로 그 경로다.
+        Directory.CreateDirectory(_filePath + ".tmp");
+
+        var result = await sut.ReorderAsync([2, 1]);
+
+        Assert.True(result.IsFailure);
+        Assert.False(string.IsNullOrEmpty(result.Error));
+    }
+
+    [Fact]
     public async Task Reorder_저장에_없는_id는_무시된다()
     {
         var sut = CreateSut();

@@ -77,11 +77,11 @@
 
 ### T2. 트레이 메뉴 페이지에 저장 실패 통지
 
-- [ ] **T2-1** `FolderShortcutsViewModel`에 `StatusMessage`(ObservableProperty) + `HasStatus` + `StatusVisibility`를 그룹 쪽과 같은 형태로 추가하고 생성자에서 빈 문자열로 초기화
-- [ ] **T2-2** `MoveAsync`가 `ReorderAsync`의 `Result`를 받아 실패 시 `StatusMessage`에 담고 성공 시 비운다(`WorkGroupsViewModel.cs:110`과 같은 형태). 실패 메시지는 리포지토리가 현지화해 주므로 새 키를 만들지 않는다
-- [ ] **T2-3** `TrayMenuPage.xaml`의 목록 Grid에 행을 나눠 `InfoBar`를 목록 위에 놓는다 — `WorkGroupsPage.xaml:60-63`과 같은 속성(Visibility·IsOpen·`IsClosable=False`·`Severity=Informational`·Message). 메시지가 없으면 접혀 간격을 차지하지 않아야 한다
-- [ ] **T2-4** `DropIndicator`·`FoldersList`·빈 상태 `StackPanel` 셋 모두에 목록 행의 `Grid.Row`를 지정한다 — 지금 이 Grid에는 `RowDefinitions`가 없어 셋이 암묵적으로 Row 0에 겹쳐 있고, 행을 나누면서 하나라도 빠지면 삽입 표시선 좌표가 어긋나거나 "폴더 0개" 안내가 InfoBar 행에 갇힌다(참조 패턴 `WorkGroupsPage.xaml:156,162`는 셋 다 `Grid.Row="1"`)
-- [ ] **T2-5** `JsonFolderShortcutRepositoryTests`에 쓰기 실패 케이스 1건 추가 — 임시 파일 경로와 같은 이름의 **디렉터리**를 만들어 `WriteUnlockedAsync`의 `File.Create(tempPath)`를 실패시키고, `ReorderAsync`가 `Result.Fail`을 돌려주는지 잰다. InfoBar가 표시해야 할 바로 그 경로이며 현재 이를 재는 케이스가 0건이다
+- [x] **T2-1** `FolderShortcutsViewModel`에 `StatusMessage`(ObservableProperty) + `HasStatus` + `StatusVisibility`를 그룹 쪽과 같은 형태로 추가하고 생성자에서 빈 문자열로 초기화
+- [x] **T2-2** `MoveAsync`가 `ReorderAsync`의 `Result`를 받아 실패 시 `StatusMessage`에 담고 성공 시 비운다(`WorkGroupsViewModel.cs:110`과 같은 형태). 실패 메시지는 리포지토리가 현지화해 주므로 새 키를 만들지 않는다
+- [x] **T2-3** `TrayMenuPage.xaml`의 목록 Grid에 행을 나눠 `InfoBar`를 목록 위에 놓는다 — `WorkGroupsPage.xaml:60-63`과 같은 속성(Visibility·IsOpen·`IsClosable=False`·`Severity=Informational`·Message). 메시지가 없으면 접혀 간격을 차지하지 않아야 한다
+- [x] **T2-4** `DropIndicator`·`FoldersList`·빈 상태 `StackPanel` 셋 모두에 목록 행의 `Grid.Row`를 지정한다 — 지금 이 Grid에는 `RowDefinitions`가 없어 셋이 암묵적으로 Row 0에 겹쳐 있고, 행을 나누면서 하나라도 빠지면 삽입 표시선 좌표가 어긋나거나 "폴더 0개" 안내가 InfoBar 행에 갇힌다(참조 패턴 `WorkGroupsPage.xaml:156,162`는 셋 다 `Grid.Row="1"`)
+- [x] **T2-5** `JsonFolderShortcutRepositoryTests`에 쓰기 실패 케이스 1건 추가 — 임시 파일 경로와 같은 이름의 **디렉터리**를 만들어 `WriteUnlockedAsync`의 `File.Create(tempPath)`를 실패시키고, `ReorderAsync`가 `Result.Fail`을 돌려주는지 잰다. InfoBar가 표시해야 할 바로 그 경로이며 현재 이를 재는 케이스가 0건이다
 - **Files**: `src/WorkGroup.App/ViewModels/FolderShortcutsViewModel.cs` · `src/WorkGroup.App/Views/TrayMenuPage.xaml` · `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs`
 - **Acceptance**: `grep -c "InfoBar" src/WorkGroup.App/Views/TrayMenuPage.xaml` → 0건 → 1건 이상. `grep -c "StatusMessage" src/WorkGroup.App/ViewModels/FolderShortcutsViewModel.cs` → 0건 → 2건 이상. `DropIndicator`·`FoldersList`·빈 상태 `StackPanel`의 `Grid.Row` 값이 모두 같다. T2-5 신규 1건 통과. 빌드 경고 0. **실제 InfoBar 표시 여부는 `HUMAN-VERIFY`** — VM 속성이 InfoBar에 반영되는 것은 GUI 경로이고, 그 앞단인 "쓰기 실패 → `Result.Fail`"만 T2-5가 잰다
 - **검증**: `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0 · `dotnet test WorkGroup.slnx` → 실패 0

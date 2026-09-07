@@ -22,6 +22,7 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
         _repository = repository;
         _loc = loc;
         SearchText = string.Empty;
+        StatusMessage = string.Empty;
     }
 
     /// <summary>검색 필터가 적용된 표시용 목록.</summary>
@@ -33,6 +34,16 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(EmptyVisibility))]
     public partial bool IsEmpty { get; set; }
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasStatus))]
+    [NotifyPropertyChangedFor(nameof(StatusVisibility))]
+    public partial string StatusMessage { get; set; }
+
+    public bool HasStatus => !string.IsNullOrEmpty(StatusMessage);
+
+    /// <summary>메시지가 없으면 InfoBar 자체를 접어 헤더-목록 간격이 벌어지지 않게 한다.</summary>
+    public Visibility StatusVisibility => HasStatus ? Visibility.Visible : Visibility.Collapsed;
 
     /// <summary>등록된 폴더 수 표시(예: "3개 폴더"). 전체 개수 기준(검색과 무관).</summary>
     public string FolderCountText => _loc.Get("TrayMenu_FolderCountFormat", _all.Count);
@@ -83,7 +94,9 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
         _all.Insert(toIndex, item);
         Folders.Move(fromIndex, toIndex);
 
-        await _repository.ReorderAsync(_all.Select(i => i.Id).ToList());
+        // 실패 메시지는 리포지토리가 현지화해 담아 준다(Infra_Folder_SaveFailed).
+        var result = await _repository.ReorderAsync(_all.Select(i => i.Id).ToList());
+        StatusMessage = result.IsFailure ? result.Error ?? string.Empty : string.Empty;
     }
 
     // 검색 중인지(표시 목록이 전체의 부분집합인지).
