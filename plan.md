@@ -100,9 +100,9 @@
 
 ### T5. 드롭 지점 계산 — 순수 함수 + ListView 어댑터
 
-- [ ] **T5-1** `src/WorkGroup.Infrastructure/Ui/ListInsertionPoint.cs` 신규 — WinUI 타입에 의존하지 않는 순수 계산. `Resolve(IReadOnlyList<ItemBounds> items, double y)`가 각 항목의 세로 중점을 기준으로 삽입 인덱스를 돌려주고, `IndicatorOffset(IReadOnlyList<ItemBounds> items, int insertionIndex)`가 인디케이터 Y 오프셋을 돌려준다(`ItemBounds`는 `(double Top, double Height)` readonly record struct)
-- [ ] **T5-2** `tests/WorkGroup.Application.Tests/ListInsertionPointTests.cs` 신규 — 빈 목록 / 첫 항목 위쪽 / 항목 중점 바로 위·아래(경계) / 마지막 항목 아래(끝 인덱스) / 인디케이터 오프셋이 삽입 지점의 위쪽 경계와 같다. 기대값은 구현식을 옮기지 않고 **손으로 계산한 좌표 상수**로 적는다
-- [ ] **T5-3** `src/WorkGroup.App/Views/ReorderDrop.cs` 신규 — `ListView`의 컨테이너에서 `ItemBounds` 목록을 뽑아 T5-1에 넘기는 어댑터 + 드래그 데이터 포맷 상수
+- [x] **T5-1** `src/WorkGroup.Infrastructure/Ui/ListInsertionPoint.cs` 신규 — WinUI 타입에 의존하지 않는 순수 계산. `Resolve(IReadOnlyList<ItemBounds> items, double y)`가 각 항목의 세로 중점을 기준으로 삽입 인덱스를 돌려주고, `IndicatorOffset(IReadOnlyList<ItemBounds> items, int insertionIndex)`가 인디케이터 Y 오프셋을 돌려준다(`ItemBounds`는 `(double Top, double Height)` readonly record struct)
+- [x] **T5-2** `tests/WorkGroup.Application.Tests/ListInsertionPointTests.cs` 신규 — 빈 목록 / 첫 항목 위쪽 / 항목 중점 바로 위·아래(경계) / 마지막 항목 아래(끝 인덱스) / 인디케이터 오프셋이 삽입 지점의 위쪽 경계와 같다. 기대값은 구현식을 옮기지 않고 **손으로 계산한 좌표 상수**로 적는다
+- [x] **T5-3** `src/WorkGroup.App/Views/ReorderDrop.cs` 신규 — `ListView`의 컨테이너에서 `ItemBounds` 목록을 뽑아 T5-1에 넘기는 어댑터 + 드래그 데이터 포맷 상수
 - **Files**: `src/WorkGroup.Infrastructure/Ui/ListInsertionPoint.cs` · `tests/WorkGroup.Application.Tests/ListInsertionPointTests.cs` · `src/WorkGroup.App/Views/ReorderDrop.cs`
 - **구조**: 계산과 UI 접근을 가른다 — 순수 계산은 `WorkGroup.Infrastructure`(`TaskbarPopupPositioner`와 같은 자리, Application.Tests가 참조하므로 테스트 가능), `ListView` 컨테이너 순회처럼 WinUI 타입이 필요한 부분만 `WorkGroup.App/Views`. 두 페이지가 같은 어댑터를 호출하므로 한쪽만 고쳐 화면이 갈리는 일이 없다. 새 스타일 토큰을 만들지 않고 인디케이터 색은 `AccentFillColorDefaultBrush` 테마 리소스를 각 페이지 XAML에서 쓴다
 - **Acceptance**: T5-2 케이스 5건이 통과한다. 두 페이지가 어댑터만 호출하고 좌표 계산을 자체 복제하지 않는다 — `grep -rn "ListInsertionPoint\.\|ReorderDrop\." src/WorkGroup.App/Views/` 에서 두 페이지 코드비하인드가 `ReorderDrop`만 호출하고 `Math` 기반 좌표 계산 코드를 갖지 않는다
