@@ -91,9 +91,9 @@
 
 ### T4. 항목 VM에 재정렬 가능 플래그, 목록 VM에 이동+저장
 
-- [ ] **T4-1** `GroupListItem`·`FolderShortcutItem`에 `CanReorder`(ObservableProperty, 기본 true)와 그에 연동된 `ReorderHandleVisibility` 추가
-- [ ] **T4-2** 두 목록 VM의 `ApplyFilter`에서 검색어 유무로 각 항목의 `CanReorder`를 갱신
-- [ ] **T4-3** 두 목록 VM에 `MoveAsync(int fromIndex, int toIndex)` 추가 — `_all`과 표시 컬렉션을 함께 이동시킨 뒤 T1/T2의 `ReorderAsync`로 저장. 검색 중이면 아무것도 하지 않는다(방어). 저장이 실패해도 목록은 되돌리지 않고, 그룹 페이지는 기존 `StatusMessage` InfoBar 경로로 실패를 표시한다(다음 `LoadAsync`에서 저장된 순서로 복원)
+- [x] **T4-1** `GroupListItem`·`FolderShortcutItem`에 `CanReorder`(ObservableProperty, 기본 true)와 그에 연동된 `ReorderHandleVisibility` 추가
+- [x] **T4-2** 두 목록 VM의 `ApplyFilter`에서 검색어 유무로 각 항목의 `CanReorder`를 갱신
+- [x] **T4-3** 두 목록 VM에 `MoveAsync(int fromIndex, int toIndex)` 추가 — `_all`과 표시 컬렉션을 함께 이동시킨 뒤 T1/T2의 `ReorderAsync`로 저장. 검색 중이면 아무것도 하지 않는다(방어). 저장이 실패해도 목록은 되돌리지 않고, 그룹 페이지는 기존 `StatusMessage` InfoBar 경로로 실패를 표시한다(다음 `LoadAsync`에서 저장된 순서로 복원)
 - **Files**: `src/WorkGroup.App/ViewModels/GroupListItem.cs` · `src/WorkGroup.App/ViewModels/FolderShortcutItem.cs` · `src/WorkGroup.App/ViewModels/WorkGroupsViewModel.cs` · `src/WorkGroup.App/ViewModels/FolderShortcutsViewModel.cs`
 - **Acceptance**: 빌드 경고 0. `MoveAsync`가 넘기는 순서대로 `ReorderAsync`가 저장하는 계약은 [면제 ②] `tests/WorkGroup.Application.Tests/JsonGroupRepositoryTests.cs`·`tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs`의 T1-5·T2-3 케이스가 덮는다. **저장 실패 시의 표시·복원 동작은 acceptance 대상이 아니다** — 그 경로를 재는 케이스가 없으므로 Deferred에 남기고 수동 확인 항목으로 보고한다
 - **검증**: `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0

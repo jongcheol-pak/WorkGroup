@@ -65,6 +65,30 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
         await LoadAsync();
     }
 
+    /// <summary>
+    /// 표시 목록의 <paramref name="fromIndex"/> 항목을 <paramref name="toIndex"/> 자리로 옮기고 새 순서를 저장한다.
+    /// 저장 순서가 곧 트레이 좌클릭 팝업의 표시 순서다. 검색 중에는 표시 목록이 부분집합이라
+    /// 전체 순서를 확정할 수 없어 아무것도 하지 않는다(핸들도 숨겨져 있다).
+    /// 저장에 실패해도 목록은 되돌리지 않는다 — 다음 LoadAsync가 저장된 순서로 복원한다.
+    /// </summary>
+    public async Task MoveAsync(int fromIndex, int toIndex)
+    {
+        if (IsFiltered || fromIndex == toIndex)
+            return;
+        if (fromIndex < 0 || fromIndex >= _all.Count || toIndex < 0 || toIndex >= _all.Count)
+            return;
+
+        var item = _all[fromIndex];
+        _all.RemoveAt(fromIndex);
+        _all.Insert(toIndex, item);
+        Folders.Move(fromIndex, toIndex);
+
+        await _repository.ReorderAsync(_all.Select(i => i.Id).ToList());
+    }
+
+    // 검색 중인지(표시 목록이 전체의 부분집합인지).
+    private bool IsFiltered => !string.IsNullOrEmpty(SearchText?.Trim());
+
     // 검색어(이름/경로 부분일치, 대소문자 무시)로 표시 목록을 재구성한다.
     private void ApplyFilter()
     {
@@ -72,6 +96,8 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
         Folders.Clear();
         foreach (var item in _all)
         {
+            // 검색 중에는 순서 변경 핸들을 숨긴다(전체 순서를 확정할 수 없다).
+            item.CanReorder = query.Length == 0;
             if (query.Length == 0
                 || item.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                 || item.Path.Contains(query, StringComparison.OrdinalIgnoreCase))

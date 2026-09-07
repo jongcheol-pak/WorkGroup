@@ -19,6 +19,7 @@ public sealed partial class GroupListItem : ObservableObject
     {
         Group = group;
         Name = group.Name;
+        CanReorder = true;
     }
 
     public AppGroup Group { get; }
@@ -39,6 +40,16 @@ public sealed partial class GroupListItem : ObservableObject
     /// <summary>표시 상한을 넘는 멤버 수("+N", 없으면 null).</summary>
     [ObservableProperty]
     public partial string? MoreCount { get; set; }
+
+    /// <summary>
+    /// 드래그 순서 변경 가능 여부. 검색 중에는 목록이 부분집합이라 전체 순서를 확정할 수 없어 false가 된다.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ReorderHandleVisibility))]
+    public partial bool CanReorder { get; set; }
+
+    /// <summary>순서 변경 핸들 표시 여부(x:Bind는 bool→Visibility 자동변환 없음).</summary>
+    public Visibility ReorderHandleVisibility => CanReorder ? Visibility.Visible : Visibility.Collapsed;
 
     public async Task LoadAsync()
     {
