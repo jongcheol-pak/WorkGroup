@@ -187,6 +187,9 @@
   <data name="Common_Delete" xml:space="preserve">
     <value>削除</value>
   </data>
+  <data name="Common_ReorderTooltip" xml:space="preserve">
+    <value>ドラッグして並べ替え</value>
+  </data>
   <data name="Common_Reset" xml:space="preserve">
     <value>初期化</value>
   </data>

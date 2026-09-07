@@ -187,6 +187,9 @@
   <data name="Common_Delete" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="Common_ReorderTooltip" xml:space="preserve">
+    <value>Drag to reorder</value>
+  </data>
   <data name="Common_Reset" xml:space="preserve">
     <value>Reset</value>
   </data>

@@ -84,7 +84,7 @@
 
 ### T3. 드래그 핸들 리소스 키
 
-- [ ] **T3-1** 4개 언어 resw에 `Common_ReorderTooltip` 추가(ko: "드래그하여 순서 변경", en/ja/zh-Hans 각 번역)
+- [x] **T3-1** 4개 언어 resw에 `Common_ReorderTooltip` 추가(ko: "드래그하여 순서 변경", en/ja/zh-Hans 각 번역)
 - **Files**: `src/WorkGroup.App/Strings/ko-KR/Resources.resw` · `src/WorkGroup.App/Strings/en-US/Resources.resw` · `src/WorkGroup.App/Strings/ja-JP/Resources.resw` · `src/WorkGroup.App/Strings/zh-Hans/Resources.resw`
 - **Acceptance**: 각 파일 키 수 136 → 137, `ResourceParityTests` 2건 통과
 - **검증**: `grep -c "<data name=" src/WorkGroup.App/Strings/*/Resources.resw` → 4파일 모두 137
@@ -161,6 +161,6 @@
 
 ## Progress Log
 
-- T1·T2 완료 — 두 리포지토리에 (지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
+- T1·T2 완료 — 두 리포지토리에 `ReorderAsync`(지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
 
 ## Next Steps

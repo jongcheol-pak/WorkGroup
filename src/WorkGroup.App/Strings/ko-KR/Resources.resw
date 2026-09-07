@@ -187,6 +187,9 @@
   <data name="Common_Delete" xml:space="preserve">
     <value>삭제</value>
   </data>
+  <data name="Common_ReorderTooltip" xml:space="preserve">
+    <value>드래그하여 순서 변경</value>
+  </data>
   <data name="Common_Reset" xml:space="preserve">
     <value>초기화</value>
   </data>
