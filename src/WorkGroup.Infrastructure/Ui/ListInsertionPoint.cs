@@ -47,6 +47,22 @@ public static class ListInsertionPoint
     }
 
     /// <summary>
+    /// 화면에 실현된 항목들 안에서의 자리(<paramref name="slot"/>)를 전체 컬렉션 인덱스로 되돌린다.
+    /// 가상화로 앞뒤 항목이 재활용되면 둘이 어긋나므로, 실현 항목의 실제 인덱스 목록이 함께 필요하다.
+    /// 마지막 실현 항목보다 아래에 놓았으면 그 항목의 바로 뒷자리이고(전체 끝이 아니다),
+    /// 실현된 항목이 하나도 없으면 전체 끝(<paramref name="totalCount"/>)이다.
+    /// </summary>
+    public static int ResolveActualIndex(IReadOnlyList<int> realizedIndexes, int slot, int totalCount)
+    {
+        ArgumentNullException.ThrowIfNull(realizedIndexes);
+
+        if (slot < realizedIndexes.Count)
+            return realizedIndexes[Math.Max(slot, 0)];
+
+        return realizedIndexes.Count > 0 ? realizedIndexes[^1] + 1 : totalCount;
+    }
+
+    /// <summary>
     /// 삽입할 자리를 실제 이동 대상 인덱스로 바꾼다 — 끌던 항목이 목록에서 빠지면서
     /// 그보다 뒤의 자리는 한 칸씩 당겨지기 때문이다. 제자리이거나 범위를 벗어나면 null.
     /// </summary>

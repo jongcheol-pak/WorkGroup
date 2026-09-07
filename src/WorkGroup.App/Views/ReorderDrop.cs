@@ -25,12 +25,8 @@ internal static class ReorderDrop
         var realized = GetRealizedItems(list);
         var slot = ListInsertionPoint.Resolve(realized.Bounds, position.Y);
 
-        // 슬롯은 "실현된 것들 중 몇 번째"이므로 전체 컬렉션 인덱스로 되돌린다 —
-        // 가상화로 앞뒤 항목이 재활용되면 둘이 어긋나고, 그대로 쓰면 엉뚱한 자리로 옮겨진다.
-        // 마지막 실현 항목보다 아래에 놓았으면 그 항목의 바로 뒷자리다(전체 끝이 아니다).
-        var insertionIndex = slot < realized.Indexes.Count
-            ? realized.Indexes[slot]
-            : realized.Indexes.Count > 0 ? realized.Indexes[^1] + 1 : list.Items.Count;
+        // 슬롯은 "실현된 것들 중 몇 번째"이므로 전체 컬렉션 인덱스로 되돌린다(가상화 보정은 순수 계산 쪽).
+        var insertionIndex = ListInsertionPoint.ResolveActualIndex(realized.Indexes, slot, list.Items.Count);
         return new DropTarget(insertionIndex, ListInsertionPoint.IndicatorOffset(realized.Bounds, slot));
     }
 

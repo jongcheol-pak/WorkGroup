@@ -55,6 +55,30 @@ public class ListInsertionPointTests
     }
 
     [Theory]
+    // 실현 목록이 전체와 같다(스크롤 없음, 전체 3개) — 슬롯이 그대로 인덱스다
+    [InlineData(new[] { 0, 1, 2 }, 0, 3, 0)]
+    [InlineData(new[] { 0, 1, 2 }, 2, 3, 2)]
+    // 앞쪽이 재활용돼 3번부터만 실현됐다(전체 8개) — 슬롯 0은 3번이다
+    [InlineData(new[] { 3, 4, 5 }, 0, 8, 3)]
+    [InlineData(new[] { 3, 4, 5 }, 2, 8, 5)]
+    // 마지막 실현 항목(5) 아래 = 슬롯 3 → 그 바로 뒷자리 6. 전체 끝(8)이 아니다
+    [InlineData(new[] { 3, 4, 5 }, 3, 8, 6)]
+    // 실현 목록이 전체 끝까지 간 경우엔 마지막 아래가 곧 전체 끝(3)이다 — 위 케이스와 값이 갈린다
+    [InlineData(new[] { 0, 1, 2 }, 3, 3, 3)]
+    public void 실현_목록의_자리를_전체_컬렉션_인덱스로_되돌린다(int[] realized, int slot, int totalCount, int expected)
+    {
+        Assert.Equal(expected, ListInsertionPoint.ResolveActualIndex(realized, slot, totalCount));
+    }
+
+    [Fact]
+    public void 실현된_항목이_없으면_전체_끝으로_간다()
+    {
+        // 컨테이너가 아직 하나도 만들어지지 않은 상태(빈 목록·초기 로드) — 끝에 붙인다.
+        Assert.Equal(8, ListInsertionPoint.ResolveActualIndex([], 0, totalCount: 8));
+        Assert.Equal(0, ListInsertionPoint.ResolveActualIndex([], 5, totalCount: 0));
+    }
+
+    [Theory]
     // 항목 5개(0~4) 기준. 끌던 항목이 빠지면 그보다 뒤의 자리는 한 칸 당겨진다.
     // 1번을 4번 자리에 놓으면 → 3번 자리로 간다
     [InlineData(1, 4, 3)]
