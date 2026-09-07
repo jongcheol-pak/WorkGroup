@@ -18,6 +18,9 @@ public interface IGroupAppService
     /// <summary>그룹과 그 .lnk·.ico를 삭제한다(멱등).</summary>
     Task<Result> DeleteAsync(GroupId id, CancellationToken cancellationToken = default);
 
+    /// <summary>목록의 표시 순서를 지정 순서로 저장한다(아이콘·.lnk 산출물은 순서와 무관해 건드리지 않는다).</summary>
+    Task<Result> ReorderAsync(IReadOnlyList<GroupId> orderedIds, CancellationToken cancellationToken = default);
+
     /// <summary>저장된 모든 그룹을 .lnk·.ico 산출물과 함께 삭제한다(설정 화면 초기화용, 멱등).</summary>
     Task<Result> ClearAllAsync(CancellationToken cancellationToken = default);
 

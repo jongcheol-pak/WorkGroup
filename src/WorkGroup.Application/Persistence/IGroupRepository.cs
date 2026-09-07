@@ -16,4 +16,10 @@ public interface IGroupRepository
 
     /// <summary>식별자로 그룹을 삭제한다. 없으면 성공으로 간주(멱등).</summary>
     Task<Result> DeleteAsync(GroupId id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 저장된 그룹을 <paramref name="orderedIds"/> 순서로 재배열해 기록한다(목록의 표시 순서 = 배열 순서).
+    /// 목록에 없는 기존 그룹은 원래 상대 순서로 뒤에 남기고, 저장에 없는 id는 무시한다.
+    /// </summary>
+    Task<Result> ReorderAsync(IReadOnlyList<GroupId> orderedIds, CancellationToken cancellationToken = default);
 }

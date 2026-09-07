@@ -92,6 +92,10 @@ public sealed class GroupAppService : IGroupAppService
         return await _repository.DeleteAsync(id, cancellationToken).ConfigureAwait(false);
     }
 
+    // 순서는 groups.json의 배열 순서로만 표현되고 아이콘·.lnk와 무관하므로 리포지토리에 바로 위임한다.
+    public Task<Result> ReorderAsync(IReadOnlyList<GroupId> orderedIds, CancellationToken cancellationToken = default)
+        => _repository.ReorderAsync(orderedIds, cancellationToken);
+
     public async Task<Result> ClearAllAsync(CancellationToken cancellationToken = default)
     {
         // 전체 그룹을 개별 DeleteAsync로 제거해 .lnk·아이콘 폴더 정리 로직을 재사용한다.

@@ -211,5 +211,17 @@ public sealed class GroupAppServiceTests : IDisposable
             Saved.RemoveAll(g => g.Id == id);
             return Task.FromResult(Result.Ok());
         }
+
+        public Task<Result> ReorderAsync(IReadOnlyList<GroupId> orderedIds, CancellationToken cancellationToken = default)
+        {
+            var ordered = orderedIds
+                .Select(id => Saved.FirstOrDefault(g => g.Id == id))
+                .Where(g => g is not null)
+                .ToList();
+            ordered.AddRange(Saved.Where(g => !ordered.Contains(g)));
+            Saved.Clear();
+            Saved.AddRange(ordered!);
+            return Task.FromResult(Result.Ok());
+        }
     }
 }

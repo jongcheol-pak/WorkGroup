@@ -92,6 +92,34 @@ public sealed class JsonGroupRepository : IGroupRepository
         }
     }
 
+    public async Task<Result> ReorderAsync(IReadOnlyList<GroupId> orderedIds, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(orderedIds);
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var groups = (await LoadUnlockedAsync(cancellationToken).ConfigureAwait(false)).ToList();
+
+            // 지정 순서로 앞에 배치하고, 목록에 없던 그룹은 원래 상대 순서로 뒤에 남긴다.
+            // (다른 경로에서 추가된 그룹이 재정렬 한 번에 사라지지 않게 한다.)
+            var ordered = new List<AppGroup>(groups.Count);
+            foreach (var id in orderedIds)
+            {
+                var group = groups.FirstOrDefault(g => g.Id == id);
+                if (group is not null && !ordered.Contains(group))
+                    ordered.Add(group);
+            }
+            ordered.AddRange(groups.Where(g => !ordered.Contains(g)));
+
+            return await WriteUnlockedAsync(ordered, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private async Task<IReadOnlyList<AppGroup>> LoadUnlockedAsync(CancellationToken cancellationToken)
     {
         if (!File.Exists(_filePath))

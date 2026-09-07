@@ -168,4 +168,58 @@ public sealed class JsonGroupRepositoryTests : IDisposable
 
         Assert.True(Assert.Single(loaded).ShowPopupHeader);
     }
+
+    [Fact]
+    public async Task Reorder_후_로드하면_지정한_순서로_나온다()
+    {
+        var sut = CreateSut();
+        var a = SampleGroup("A");
+        var b = SampleGroup("B");
+        var c = SampleGroup("C");
+        await sut.SaveAsync(a);
+        await sut.SaveAsync(b);
+        await sut.SaveAsync(c);
+
+        var result = await sut.ReorderAsync([c.Id, a.Id, b.Id]);
+        Assert.True(result.IsSuccess);
+
+        // 새 인스턴스로 로드해 직렬화까지 순서가 보존되는지 본다(재시작 시나리오).
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["C", "A", "B"], loaded.Select(g => g.Name));
+    }
+
+    [Fact]
+    public async Task Reorder_목록에_빠진_그룹은_뒤에_남는다()
+    {
+        var sut = CreateSut();
+        var a = SampleGroup("A");
+        var b = SampleGroup("B");
+        var c = SampleGroup("C");
+        await sut.SaveAsync(a);
+        await sut.SaveAsync(b);
+        await sut.SaveAsync(c);
+
+        // B를 빼고 재정렬 — B가 유실되지 않고 남은 것들 뒤에 붙어야 한다.
+        await sut.ReorderAsync([c.Id, a.Id]);
+
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["C", "A", "B"], loaded.Select(g => g.Name));
+    }
+
+    [Fact]
+    public async Task Reorder_저장에_없는_id는_무시된다()
+    {
+        var sut = CreateSut();
+        var a = SampleGroup("A");
+        var b = SampleGroup("B");
+        await sut.SaveAsync(a);
+        await sut.SaveAsync(b);
+
+        // 다른 인스턴스가 지운 그룹의 id가 섞여 들어와도 예외 없이 나머지 순서만 반영한다.
+        var result = await sut.ReorderAsync([new GroupId(Guid.NewGuid().ToString("N")), b.Id, a.Id]);
+        Assert.True(result.IsSuccess);
+
+        var loaded = await CreateSut().LoadAllAsync();
+        Assert.Equal(["B", "A"], loaded.Select(g => g.Name));
+    }
 }
