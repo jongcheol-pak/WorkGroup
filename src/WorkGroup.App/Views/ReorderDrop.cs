@@ -3,6 +3,9 @@ using WorkGroup.Infrastructure.Ui;
 
 namespace WorkGroup.App.Views;
 
+/// <summary>드롭 지점 — 끼워 넣을 자리(전체 컬렉션 기준)와 표시선을 놓을 세로 오프셋.</summary>
+internal readonly record struct DropTarget(int InsertionIndex, double IndicatorOffset);
+
 /// <summary>
 /// 목록 드래그 재정렬의 ListView 어댑터. 컨테이너에서 항목 경계를 뽑아
 /// <see cref="ListInsertionPoint"/>(순수 계산)에 넘기는 얇은 껍데기다.
@@ -16,31 +19,25 @@ internal static class ReorderDrop
     /// </summary>
     public const string IndexFormat = "WorkGroup/ReorderIndex";
 
-    /// <summary>커서 위치(목록 기준 좌표)로 끼워 넣을 자리를 고른다.</summary>
-    public static int ResolveInsertionIndex(ListView list, Point position)
-        => ListInsertionPoint.Resolve(GetItemBounds(list), position.Y);
-
-    /// <summary>삽입 표시선을 놓을 세로 오프셋(목록 기준 좌표)을 돌려준다.</summary>
-    public static double GetIndicatorOffset(ListView list, int insertionIndex)
-        => ListInsertionPoint.IndicatorOffset(GetItemBounds(list), insertionIndex);
-
-    /// <summary>
-    /// 삽입 자리를 실제 이동 대상 인덱스로 바꾼다 — 끌던 항목이 목록에서 빠지면서
-    /// 그보다 뒤의 자리는 한 칸씩 당겨지기 때문이다. 제자리면 null.
-    /// </summary>
-    public static int? ResolveMoveTarget(int fromIndex, int insertionIndex, int itemCount)
+    /// <summary>커서 위치(목록 기준 좌표)로 끼워 넣을 자리와 표시선 위치를 함께 구한다.</summary>
+    public static DropTarget ResolveDropTarget(ListView list, Point position)
     {
-        var to = insertionIndex > fromIndex ? insertionIndex - 1 : insertionIndex;
-        if (to == fromIndex || to < 0 || to >= itemCount)
-            return null;
-        return to;
+        var realized = GetRealizedItems(list);
+        var slot = ListInsertionPoint.Resolve(realized.Bounds, position.Y);
+
+        // 슬롯은 "실현된 것들 중 몇 번째"이므로 전체 컬렉션 인덱스로 되돌린다 —
+        // 가상화로 앞쪽 항목이 재활용되면 둘이 어긋나고, 그대로 쓰면 엉뚱한 자리로 옮겨진다.
+        var insertionIndex = slot < realized.Indexes.Count ? realized.Indexes[slot] : list.Items.Count;
+        return new DropTarget(insertionIndex, ListInsertionPoint.IndicatorOffset(realized.Bounds, slot));
     }
 
-    // 실현된 컨테이너만 좌표를 갖는다. 가상화로 아직 만들어지지 않은 항목은 건너뛰므로,
-    // 화면 밖까지 끌어 스크롤된 경우에도 보이는 범위 기준으로 자리를 고른다.
-    private static List<ItemBounds> GetItemBounds(ListView list)
+    // 화면에 실현된 컨테이너만 좌표를 갖는다. 가상화로 아직 만들어지지 않았거나 재활용된 항목은
+    // 건너뛰되, 그 항목들의 전체 컬렉션 인덱스를 함께 들고 나가 좌표계 혼선을 막는다.
+    private static (List<ItemBounds> Bounds, List<int> Indexes) GetRealizedItems(ListView list)
     {
         var bounds = new List<ItemBounds>(list.Items.Count);
+        var indexes = new List<int>(list.Items.Count);
+
         for (var i = 0; i < list.Items.Count; i++)
         {
             if (list.ContainerFromIndex(i) is not ListViewItem container)
@@ -48,8 +45,9 @@ internal static class ReorderDrop
 
             var top = container.TransformToVisual(list).TransformPoint(new Point(0, 0)).Y;
             bounds.Add(new ItemBounds(top, container.ActualHeight));
+            indexes.Add(i);
         }
 
-        return bounds;
+        return (bounds, indexes);
     }
 }

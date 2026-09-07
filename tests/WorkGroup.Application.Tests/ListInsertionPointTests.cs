@@ -54,6 +54,23 @@ public class ListInsertionPointTests
         Assert.Equal(expected, ListInsertionPoint.IndicatorOffset(ThreeItems, insertionIndex));
     }
 
+    [Theory]
+    // 항목 5개(0~4) 기준. 끌던 항목이 빠지면 그보다 뒤의 자리는 한 칸 당겨진다.
+    // 1번을 4번 자리에 놓으면 → 3번 자리로 간다
+    [InlineData(1, 4, 3)]
+    // 3번을 1번 자리에 놓으면 → 앞으로 가는 이동은 보정이 없다
+    [InlineData(3, 1, 1)]
+    // 1번을 끝자리(5)에 놓으면 → 마지막(4번)
+    [InlineData(1, 5, 4)]
+    // 0번을 맨 앞(0)에 놓으면 제자리 → null
+    [InlineData(0, 0, null)]
+    // 2번을 자기 바로 뒤 자리(3)에 놓아도 제자리 → null
+    [InlineData(2, 3, null)]
+    public void 끌던_항목이_빠지는_만큼_대상_인덱스를_보정한다(int fromIndex, int insertionIndex, int? expected)
+    {
+        Assert.Equal(expected, ListInsertionPoint.ResolveMoveTarget(fromIndex, insertionIndex, itemCount: 5));
+    }
+
     [Fact]
     public void 항목_높이가_제각각이어도_각자의_중점을_기준으로_한다()
     {

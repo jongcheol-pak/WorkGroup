@@ -5,6 +5,7 @@ using Windows.ApplicationModel.DataTransfer;
 using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Folders;
+using WorkGroup.Infrastructure.Ui;
 
 namespace WorkGroup.App.Views;
 
@@ -97,8 +98,8 @@ public sealed partial class TrayMenuPage : Page
         }
 
         e.AcceptedOperation = DataPackageOperation.Move;
-        var insertionIndex = ReorderDrop.ResolveInsertionIndex(FoldersList, e.GetPosition(FoldersList));
-        DropIndicator.Margin = new Thickness(0, ReorderDrop.GetIndicatorOffset(FoldersList, insertionIndex), 0, 0);
+        var target = ReorderDrop.ResolveDropTarget(FoldersList, e.GetPosition(FoldersList));
+        DropIndicator.Margin = new Thickness(0, target.IndicatorOffset, 0, 0);
         DropIndicator.Visibility = Visibility.Visible;
     }
 
@@ -111,13 +112,13 @@ public sealed partial class TrayMenuPage : Page
             return;
 
         // 드롭 지점은 DataView를 읽는 await 전에 잡아 둔다(이후 좌표가 유효하지 않을 수 있다).
-        var insertionIndex = ReorderDrop.ResolveInsertionIndex(FoldersList, e.GetPosition(FoldersList));
+        var target = ReorderDrop.ResolveDropTarget(FoldersList, e.GetPosition(FoldersList));
 
         var raw = await e.DataView.GetDataAsync(ReorderDrop.IndexFormat);
         if (!int.TryParse(raw as string, out var fromIndex))
             return;
 
-        if (ReorderDrop.ResolveMoveTarget(fromIndex, insertionIndex, ViewModel.Folders.Count) is not { } toIndex)
+        if (ListInsertionPoint.ResolveMoveTarget(fromIndex, target.InsertionIndex, ViewModel.Folders.Count) is not { } toIndex)
             return;
 
         await ViewModel.MoveAsync(fromIndex, toIndex);

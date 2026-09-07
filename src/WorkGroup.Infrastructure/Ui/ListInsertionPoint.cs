@@ -45,4 +45,16 @@ public static class ListInsertionPoint
 
         return items[Math.Max(insertionIndex, 0)].Top;
     }
+
+    /// <summary>
+    /// 삽입할 자리를 실제 이동 대상 인덱스로 바꾼다 — 끌던 항목이 목록에서 빠지면서
+    /// 그보다 뒤의 자리는 한 칸씩 당겨지기 때문이다. 제자리이거나 범위를 벗어나면 null.
+    /// </summary>
+    public static int? ResolveMoveTarget(int fromIndex, int insertionIndex, int itemCount)
+    {
+        var to = insertionIndex > fromIndex ? insertionIndex - 1 : insertionIndex;
+        if (to == fromIndex || to < 0 || to >= itemCount)
+            return null;
+        return to;
+    }
 }

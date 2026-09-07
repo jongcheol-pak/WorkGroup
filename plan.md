@@ -157,10 +157,13 @@
 
 - [미등재:이번 회차가 처리] 그룹 편집 다이얼로그 앱 목록의 드래그 재정렬 — 직전 요청으로 이미 적용됨(`GroupEditDialog.xaml`)
 - [미등재:범위 밖] 드래그로 순서를 바꾼 뒤 저장에 실패했을 때의 처리 — 롤백 없이 실패 메시지만 표시하고 다음 `LoadAsync`에서 저장된 순서로 복원된다. **이 경로를 재는 케이스는 이번 회차에 만들지 않는다**(T4 acceptance에서 제외, 수동 확인 항목으로 보고). 실패 자체가 디스크 쓰기 실패라 드문 경로이고, 롤백을 넣으려면 두 VM의 실패 처리 정책을 함께 정해야 한다
-- [미판정] 트레이 메뉴 페이지에 상태 안내 InfoBar가 없어 저장 실패를 사용자에게 알릴 자리가 없다 — 이번에는 실패 시 무음(다음 로드에서 복원)
+- [다음 회차] 트레이 메뉴 페이지에 상태 안내 InfoBar가 없어 저장 실패를 사용자에게 알릴 자리가 없다 — `FolderShortcutsViewModel.MoveAsync`가 `ReorderAsync`의 `Result`를 버려 실패가 무음으로 지나간다(그룹 쪽은 `StatusMessage`로 표시). 통지 수단(InfoBar 신설 / 토스트 / 로그)을 정하는 것이 설계 선택이라 이번 회차에서 임의로 고르지 않았다.
+- [다음 회차] 검색 중 핸들이 `Collapsed`가 되어도 카드 `Grid`의 `ColumnSpacing="12"`가 0폭 열에도 적용돼 내용이 좌우로 약간 움직일 수 있다 — 헤드리스라 실화면 확인 불가(리뷰어 추정). 거슬리면 열 자체를 접거나 `Opacity`로 숨기는 쪽으로 바꾼다.
 
 ## Progress Log
 
+- T3·T4·T8 완료 — 리소스 키 1개 4언어 추가(136→137), 항목 VM `CanReorder`·목록 VM `MoveAsync`, README·help 서술 갱신.
+- 최종 리뷰 반영 — ① 미커밋이던 `GroupEditDialog.xaml`(직전 회차 산출물)을 별도 커밋해 문서와 코드 상태를 일치시킴 ② `ReorderDrop`이 가상화로 재활용된 항목 때문에 슬롯↔실제 인덱스가 어긋나던 문제를 실제 인덱스 동반 반환으로 수정(`ResolveDropTarget`) ③ `ResolveMoveTarget`을 `ListInsertionPoint`로 옮기고 케이스 5건 추가 ④ `notes.md` 「최근 변경」 항목 추가(레포 관례).
 - T5~T7 완료 — 삽입 지점 계산을 Infrastructure/Ui로 분리(케이스 5건), 두 페이지에 핸들·표시선·드롭 처리 추가. 카드 본체 핀 드래그와는 데이터 포맷(WorkGroup/ReorderIndex)으로 구분.
 - T1·T2 완료 — 두 리포지토리에 `ReorderAsync`(지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
 

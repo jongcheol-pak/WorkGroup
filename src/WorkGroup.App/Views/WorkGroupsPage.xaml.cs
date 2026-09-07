@@ -8,6 +8,7 @@ using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Shortcuts;
 using WorkGroup.Domain.Groups;
+using WorkGroup.Infrastructure.Ui;
 
 namespace WorkGroup.App.Views;
 
@@ -227,8 +228,8 @@ public sealed partial class WorkGroupsPage : Page
         }
 
         e.AcceptedOperation = DataPackageOperation.Move;
-        var insertionIndex = ReorderDrop.ResolveInsertionIndex(GroupsList, e.GetPosition(GroupsList));
-        DropIndicator.Margin = new Thickness(0, ReorderDrop.GetIndicatorOffset(GroupsList, insertionIndex), 0, 0);
+        var target = ReorderDrop.ResolveDropTarget(GroupsList, e.GetPosition(GroupsList));
+        DropIndicator.Margin = new Thickness(0, target.IndicatorOffset, 0, 0);
         DropIndicator.Visibility = Visibility.Visible;
     }
 
@@ -241,13 +242,13 @@ public sealed partial class WorkGroupsPage : Page
             return;
 
         // 드롭 지점은 DataView를 읽는 await 전에 잡아 둔다(이후 좌표가 유효하지 않을 수 있다).
-        var insertionIndex = ReorderDrop.ResolveInsertionIndex(GroupsList, e.GetPosition(GroupsList));
+        var target = ReorderDrop.ResolveDropTarget(GroupsList, e.GetPosition(GroupsList));
 
         var raw = await e.DataView.GetDataAsync(ReorderDrop.IndexFormat);
         if (!int.TryParse(raw as string, out var fromIndex))
             return;
 
-        if (ReorderDrop.ResolveMoveTarget(fromIndex, insertionIndex, ViewModel.Groups.Count) is not { } toIndex)
+        if (ListInsertionPoint.ResolveMoveTarget(fromIndex, target.InsertionIndex, ViewModel.Groups.Count) is not { } toIndex)
             return;
 
         await ViewModel.MoveAsync(fromIndex, toIndex);
