@@ -64,6 +64,7 @@
 
             <ListView x:Name="GroupsList" Grid.Row="1" ItemsSource="{x:Bind ViewModel.Groups, Mode=OneWay}"
                       SelectionMode="None"
+                      AllowDrop="True" DragOver="OnListDragOver" Drop="OnListDrop" DragLeave="OnListDragLeave"
                       Background="Transparent">
                 <ListView.ItemContainerStyle>
                     <!-- 항목을 전체 폭으로 펴고 기본 ListViewItem 패딩 제거 → 카드가 폭을 채우도록 -->
@@ -84,20 +85,29 @@
                             <Grid ColumnSpacing="12" MinHeight="40">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
+                                <!-- 순서 변경 핸들. 카드 본체 드래그는 작업 표시줄 핀이므로 제스처가 겹치지 않게
+                                     재정렬은 이 핸들에서만 시작한다. 검색 중에는 전체 순서를 확정할 수 없어 숨긴다. -->
+                                <FontIcon Glyph="&#xE700;" FontSize="14" VerticalAlignment="Center" Margin="-4,0,-4,0"
+                                          Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                          CanDrag="{x:Bind CanReorder, Mode=OneWay}" DragStarting="OnReorderDragStarting"
+                                          Visibility="{x:Bind ReorderHandleVisibility, Mode=OneWay}"
+                                          ToolTipService.ToolTip="{loc:Localize Key=Common_ReorderTooltip}" />
+
                                 <!-- 그룹 아이콘(사각 테두리). 내부 영역(50-패딩8-테두리2≈40)에 맞춰 38로 표시(잘림 방지). -->
-                                <Border Width="50" Height="50" CornerRadius="4" VerticalAlignment="Center"
+                                <Border Grid.Column="1" Width="50" Height="50" CornerRadius="4" VerticalAlignment="Center"
                                         Background="{x:Bind IconFallback, Mode=OneWay}"
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" Padding="4">
                                     <Image Width="38" Height="38" Stretch="Uniform" Source="{x:Bind Icon, Mode=OneWay}" />
                                 </Border>
 
                                 <!-- 2라인: 이름 / 멤버 아이콘 -->
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                     <TextBlock Text="{x:Bind Name}" Style="{ThemeResource BodyStrongTextBlockStyle}"
                                                TextTrimming="CharacterEllipsis" />
                                     <StackPanel Orientation="Horizontal" Spacing="6">
@@ -126,12 +136,12 @@
                                 </StackPanel>
 
                                 <!-- 수정/삭제(아이콘 전용) -->
-                                <Button Grid.Column="2" Tag="{x:Bind}" Click="OnEditClick"
+                                <Button Grid.Column="3" Tag="{x:Bind}" Click="OnEditClick"
                                         Background="Transparent" BorderThickness="0"
                                         ToolTipService.ToolTip="{loc:Localize Key=Common_Edit}">
                                     <SymbolIcon Symbol="Edit" />
                                 </Button>
-                                <Button Grid.Column="3" Tag="{x:Bind}" Click="OnDeleteClick"
+                                <Button Grid.Column="4" Tag="{x:Bind}" Click="OnDeleteClick"
                                         Background="Transparent" BorderThickness="0"
                                         ToolTipService.ToolTip="{loc:Localize Key=Common_Delete}">
                                     <SymbolIcon Symbol="Delete" />
@@ -141,6 +151,12 @@
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
+
+            <!-- 드래그 재정렬 시 끼워 넣을 자리를 알리는 표시선(목록 위에 겹침, 입력은 통과시킨다) -->
+            <Rectangle x:Name="DropIndicator" Grid.Row="1" Height="2" Margin="0" RadiusX="1" RadiusY="1"
+                       VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                       IsHitTestVisible="False" Visibility="Collapsed"
+                       Fill="{ThemeResource AccentFillColorDefaultBrush}" />
 
             <!-- 빈 상태 -->
             <StackPanel Grid.Row="1" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"

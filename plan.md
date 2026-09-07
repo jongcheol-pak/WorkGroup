@@ -110,9 +110,9 @@
 
 ### T6. 작업 그룹 페이지 UI
 
-- [ ] **T6-1** `WorkGroupsPage.xaml` 카드에 핸들 열 추가 — `≡` FontIcon, `CanDrag`·`Visibility`를 `CanReorder`에 바인딩, 툴팁 `Common_ReorderTooltip`
-- [ ] **T6-2** `GroupsList`에 `AllowDrop="True"` + `DragOver`/`Drop`/`DragLeave` 핸들러, 목록 위에 삽입 인디케이터(`Rectangle`, `IsHitTestVisible="False"`) 배치
-- [ ] **T6-3** `WorkGroupsPage.xaml.cs`에 `OnReorderDragStarting`(커스텀 포맷에 인덱스 기록, `RequestedOperation = Move`)과 드롭 핸들러 추가 — 커스텀 포맷이 없는 드래그(외부 파일 등)는 `AcceptedOperation = None`으로 무시해 핀 드래그 경로와 섞이지 않게 한다
+- [x] **T6-1** `WorkGroupsPage.xaml` 카드에 핸들 열 추가 — `≡` FontIcon, `CanDrag`·`Visibility`를 `CanReorder`에 바인딩, 툴팁 `Common_ReorderTooltip`
+- [x] **T6-2** `GroupsList`에 `AllowDrop="True"` + `DragOver`/`Drop`/`DragLeave` 핸들러, 목록 위에 삽입 인디케이터(`Rectangle`, `IsHitTestVisible="False"`) 배치
+- [x] **T6-3** `WorkGroupsPage.xaml.cs`에 `OnReorderDragStarting`(커스텀 포맷에 인덱스 기록, `RequestedOperation = Move`)과 드롭 핸들러 추가 — 커스텀 포맷이 없는 드래그(외부 파일 등)는 `AcceptedOperation = None`으로 무시해 핀 드래그 경로와 섞이지 않게 한다
 - **Files**: `src/WorkGroup.App/Views/WorkGroupsPage.xaml` · `src/WorkGroup.App/Views/WorkGroupsPage.xaml.cs`
 - **Acceptance**: G5의 grep이 1건을 유지(핀 드래그 보존)하고 빌드 경고 0 — [면제 ②] 드래그/드롭은 GUI 상호작용이라 자동 테스트 대상이 아니며, 순서 저장 계약은 `tests/WorkGroup.Application.Tests/JsonGroupRepositoryTests.cs`가 덮는다
 - **검증**: `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0 · `grep -n "OnGroupDragStarting" src/WorkGroup.App/Views/WorkGroupsPage.xaml` → 1건

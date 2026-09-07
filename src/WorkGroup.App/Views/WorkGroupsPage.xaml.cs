@@ -196,4 +196,62 @@ public sealed partial class WorkGroupsPage : Page
             transform, ExifOrientationMode.IgnoreExifOrientation, ColorManagementMode.DoNotColorManage);
         e.DragUI.SetContentFromSoftwareBitmap(bitmap);
     }
+
+    // ----- 드래그 순서 변경(핸들 → 목록에 드롭) -----
+
+    /// <summary>
+    /// 핸들에서 시작한 드래그에 항목 인덱스를 실어 보낸다. 카드 본체의 작업 표시줄 핀 드래그와는
+    /// 데이터 포맷으로 구분되므로, 둘이 서로의 드롭 대상이 되지 않는다.
+    /// </summary>
+    private void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not GroupListItem item)
+            return;
+
+        var index = ViewModel.Groups.IndexOf(item);
+        if (index < 0)
+            return;
+
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetData(ReorderDrop.IndexFormat, index.ToString());
+    }
+
+    private void OnListDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(ReorderDrop.IndexFormat))
+        {
+            // 재정렬이 아닌 드래그(외부 파일 등)는 받지 않는다.
+            e.AcceptedOperation = DataPackageOperation.None;
+            HideDropIndicator();
+            return;
+        }
+
+        e.AcceptedOperation = DataPackageOperation.Move;
+        var insertionIndex = ReorderDrop.ResolveInsertionIndex(GroupsList, e.GetPosition(GroupsList));
+        DropIndicator.Margin = new Thickness(0, ReorderDrop.GetIndicatorOffset(GroupsList, insertionIndex), 0, 0);
+        DropIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void OnListDragLeave(object sender, DragEventArgs e) => HideDropIndicator();
+
+    private async void OnListDrop(object sender, DragEventArgs e)
+    {
+        HideDropIndicator();
+        if (!e.DataView.Contains(ReorderDrop.IndexFormat))
+            return;
+
+        // 드롭 지점은 DataView를 읽는 await 전에 잡아 둔다(이후 좌표가 유효하지 않을 수 있다).
+        var insertionIndex = ReorderDrop.ResolveInsertionIndex(GroupsList, e.GetPosition(GroupsList));
+
+        var raw = await e.DataView.GetDataAsync(ReorderDrop.IndexFormat);
+        if (!int.TryParse(raw as string, out var fromIndex))
+            return;
+
+        if (ReorderDrop.ResolveMoveTarget(fromIndex, insertionIndex, ViewModel.Groups.Count) is not { } toIndex)
+            return;
+
+        await ViewModel.MoveAsync(fromIndex, toIndex);
+    }
+
+    private void HideDropIndicator() => DropIndicator.Visibility = Visibility.Collapsed;
 }
