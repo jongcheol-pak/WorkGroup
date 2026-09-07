@@ -119,8 +119,8 @@
 
 ### T7. 트레이 메뉴 페이지 UI
 
-- [ ] **T7-1** `TrayMenuPage.xaml`에 T6-1·T6-2와 동일한 핸들 열·인디케이터 추가
-- [ ] **T7-2** `TrayMenuPage.xaml.cs`에 T6-3과 동일한 드래그/드롭 핸들러 추가(`ReorderDrop` 재사용)
+- [x] **T7-1** `TrayMenuPage.xaml`에 T6-1·T6-2와 동일한 핸들 열·인디케이터 추가
+- [x] **T7-2** `TrayMenuPage.xaml.cs`에 T6-3과 동일한 드래그/드롭 핸들러 추가(`ReorderDrop` 재사용)
 - **Files**: `src/WorkGroup.App/Views/TrayMenuPage.xaml` · `src/WorkGroup.App/Views/TrayMenuPage.xaml.cs`
 - **Acceptance**: 빌드 경고 0 — [면제 ②] T6과 같은 사유, 저장 계약은 `tests/WorkGroup.Application.Tests/JsonFolderShortcutRepositoryTests.cs`가 덮는다
 - **검증**: `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0
@@ -161,6 +161,7 @@
 
 ## Progress Log
 
+- T5~T7 완료 — 삽입 지점 계산을 Infrastructure/Ui로 분리(케이스 5건), 두 페이지에 핸들·표시선·드롭 처리 추가. 카드 본체 핀 드래그와는 데이터 포맷(WorkGroup/ReorderIndex)으로 구분.
 - T1·T2 완료 — 두 리포지토리에 `ReorderAsync`(지정 순서 앞 배치 + 누락분 뒤 유지 + 미존재 id 무시) 추가. 구현 변이로 신규 6건의 red를 각각 확인. Application 테스트 117 → 123.
 
 ## Next Steps

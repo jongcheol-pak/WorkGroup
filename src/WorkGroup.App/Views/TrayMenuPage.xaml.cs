@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.ApplicationModel.DataTransfer;
 using WorkGroup.App.Services;
 using WorkGroup.App.ViewModels;
 using WorkGroup.Application.Folders;
@@ -69,4 +70,58 @@ public sealed partial class TrayMenuPage : Page
         var dialog = new FolderPopupSettingsDialog { XamlRoot = XamlRoot };
         await dialog.ShowAsync();
     }
+
+    // ----- 드래그 순서 변경(핸들 → 목록에 드롭). 작업 그룹 페이지와 같은 어댑터를 쓴다. -----
+
+    private void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not FolderShortcutItem item)
+            return;
+
+        var index = ViewModel.Folders.IndexOf(item);
+        if (index < 0)
+            return;
+
+        e.Data.RequestedOperation = DataPackageOperation.Move;
+        e.Data.SetData(ReorderDrop.IndexFormat, index.ToString());
+    }
+
+    private void OnListDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(ReorderDrop.IndexFormat))
+        {
+            // 재정렬이 아닌 드래그(외부 파일 등)는 받지 않는다.
+            e.AcceptedOperation = DataPackageOperation.None;
+            HideDropIndicator();
+            return;
+        }
+
+        e.AcceptedOperation = DataPackageOperation.Move;
+        var insertionIndex = ReorderDrop.ResolveInsertionIndex(FoldersList, e.GetPosition(FoldersList));
+        DropIndicator.Margin = new Thickness(0, ReorderDrop.GetIndicatorOffset(FoldersList, insertionIndex), 0, 0);
+        DropIndicator.Visibility = Visibility.Visible;
+    }
+
+    private void OnListDragLeave(object sender, DragEventArgs e) => HideDropIndicator();
+
+    private async void OnListDrop(object sender, DragEventArgs e)
+    {
+        HideDropIndicator();
+        if (!e.DataView.Contains(ReorderDrop.IndexFormat))
+            return;
+
+        // 드롭 지점은 DataView를 읽는 await 전에 잡아 둔다(이후 좌표가 유효하지 않을 수 있다).
+        var insertionIndex = ReorderDrop.ResolveInsertionIndex(FoldersList, e.GetPosition(FoldersList));
+
+        var raw = await e.DataView.GetDataAsync(ReorderDrop.IndexFormat);
+        if (!int.TryParse(raw as string, out var fromIndex))
+            return;
+
+        if (ReorderDrop.ResolveMoveTarget(fromIndex, insertionIndex, ViewModel.Folders.Count) is not { } toIndex)
+            return;
+
+        await ViewModel.MoveAsync(fromIndex, toIndex);
+    }
+
+    private void HideDropIndicator() => DropIndicator.Visibility = Visibility.Collapsed;
 }
