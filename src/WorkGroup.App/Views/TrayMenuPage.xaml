@@ -62,7 +62,7 @@
             <InfoBar Grid.Row="0" Margin="0,0,0,8"
                      Visibility="{x:Bind ViewModel.StatusVisibility, Mode=OneWay}"
                      IsOpen="{x:Bind ViewModel.HasStatus, Mode=OneWay}" IsClosable="False"
-                     Severity="Informational" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
+                     Severity="Error" Message="{x:Bind ViewModel.StatusMessage, Mode=OneWay}" />
 
             <ListView x:Name="FoldersList" Grid.Row="1" ItemsSource="{x:Bind ViewModel.Folders, Mode=OneWay}"
                       SelectionMode="None" Background="Transparent"
@@ -85,7 +85,6 @@
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 

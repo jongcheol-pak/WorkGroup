@@ -134,6 +134,8 @@
 
 - T1~T3 완료 — 가상화 인덱스 매핑을 ListInsertionPoint.ResolveActualIndex로 내려 케이스 7건 추가(변이 2회로 red 확인), 트레이 페이지에 InfoBar 상태 경로 + 쓰기 실패 케이스 1건, 두 페이지 핸들을 Opacity·IsHitTestVisible·AccessibilityView 바인딩으로 전환. Application 테스트 142 → 150.
 
+- 코드 리뷰 후속 5건 반영 — 빈 실현 목록 + 음수 slot 예외(클램프보다 앞으로), 두 VM의 `LoadAsync`에서 낡은 실패 배너 소거, InfoBar `Severity` Informational→Error(2페이지), `TrayMenuPage` 폴더 카드의 미사용 5번째 컬럼 제거. 회귀 어서션 1건 추가(기존 Fact 안 — 케이스 수 150 유지).
+
 ## Next Steps
 
 다음 회차 인계:

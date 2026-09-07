@@ -76,6 +76,8 @@ public class ListInsertionPointTests
         // 컨테이너가 아직 하나도 만들어지지 않은 상태(빈 목록·초기 로드) — 끝에 붙인다.
         Assert.Equal(8, ListInsertionPoint.ResolveActualIndex([], 0, totalCount: 8));
         Assert.Equal(0, ListInsertionPoint.ResolveActualIndex([], 5, totalCount: 0));
+        // 음수 slot이어도 빈 목록을 인덱싱하지 않는다(빈 목록 판정이 클램프보다 앞선다).
+        Assert.Equal(8, ListInsertionPoint.ResolveActualIndex([], -1, totalCount: 8));
     }
 
     [Theory]

@@ -56,12 +56,17 @@ public static class ListInsertionPoint
     {
         ArgumentNullException.ThrowIfNull(realizedIndexes);
 
+        // 실현 항목이 없으면 자리를 되돌릴 기준 자체가 없어 전체 끝이다. 아래 클램프보다 먼저 걸러야 한다 —
+        // 음수 slot이면 `slot < Count`(-1 < 0)가 통과해 빈 목록을 인덱싱한다.
+        if (realizedIndexes.Count == 0)
+            return totalCount;
+
         // 음수 slot은 호출자(Resolve의 반환값)에서는 나오지 않지만, 공개 메서드라 첫 자리로 클램프한다
         // (IndicatorOffset도 같은 형태).
         if (slot < realizedIndexes.Count)
             return realizedIndexes[Math.Max(slot, 0)];
 
-        return realizedIndexes.Count > 0 ? realizedIndexes[^1] + 1 : totalCount;
+        return realizedIndexes[^1] + 1;
     }
 
     /// <summary>

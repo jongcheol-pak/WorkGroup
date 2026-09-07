@@ -56,6 +56,10 @@ public sealed partial class FolderShortcutsViewModel : ObservableObject
     /// <summary>저장된 폴더를 다시 불러온다.</summary>
     public async Task LoadAsync()
     {
+        // 목록을 다시 읽으면 이전 순서 저장 실패 안내는 더 이상 현재 상태를 가리키지 않는다.
+        // InfoBar가 IsClosable="False"라 사용자가 직접 닫을 수도 없다.
+        StatusMessage = string.Empty;
+
         var shortcuts = await _repository.LoadAllAsync();
         _all.Clear();
         foreach (var s in shortcuts)

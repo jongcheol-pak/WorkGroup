@@ -57,6 +57,11 @@ public sealed partial class WorkGroupsViewModel : ObservableObject
     /// <summary>저장된 그룹을 다시 불러온다.</summary>
     public async Task LoadAsync()
     {
+        // 목록을 다시 읽으면 이전 순서 저장 실패 안내는 더 이상 현재 상태를 가리키지 않는다.
+        // InfoBar가 IsClosable="False"이고 이 뷰모델은 페이지 캐시로 앱 세션 내내 살아 있어,
+        // 여기서 비우지 않으면 다음 순서 변경이 성공할 때까지 배너가 남는다.
+        StatusMessage = string.Empty;
+
         var groups = await _groupService.GetAllAsync();
         _all.Clear();
         foreach (var g in groups)
