@@ -1,4 +1,6 @@
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Foundation;
+using Windows.Graphics.Imaging;
 using WorkGroup.Infrastructure.Ui;
 
 namespace WorkGroup.App.Views;
@@ -19,6 +21,12 @@ internal static class ReorderDrop
     /// </summary>
     public const string IndexFormat = "WorkGroup/ReorderIndex";
 
+    /// <summary>
+    /// 드래그 비주얼 최대 폭(논리 px). 카드는 ContentMaxWidth까지 넓어져 커서를 따라다니기엔 과대하다.
+    /// 필요 시 이 값만 조정한다.
+    /// </summary>
+    private const int MaxDragVisualWidth = 320;
+
     /// <summary>커서 위치(목록 기준 좌표)로 끼워 넣을 자리와 표시선 위치를 함께 구한다.</summary>
     public static DropTarget ResolveDropTarget(ListView list, Point position)
     {
@@ -28,6 +36,47 @@ internal static class ReorderDrop
         // 슬롯은 "실현된 것들 중 몇 번째"이므로 전체 컬렉션 인덱스로 되돌린다(가상화 보정은 순수 계산 쪽).
         var insertionIndex = ListInsertionPoint.ResolveActualIndex(realized.Indexes, slot, list.Items.Count);
         return new DropTarget(insertionIndex, ListInsertionPoint.IndicatorOffset(realized.Bounds, slot));
+    }
+
+    /// <summary>
+    /// 끌고 있는 항목의 카드 모습을 그대로 드래그 비주얼로 지정한다(핸들만 따라다니면 무엇을 옮기는지 보이지 않는다).
+    /// 화면에 쓰이는 라이브 이미지를 넘기면 드래그 표면에 빈 그림으로 렌더되므로(notes.md 2026-06-02 실측),
+    /// 컨테이너를 새로 렌더해 <see cref="SoftwareBitmap"/>(BGRA8 Premultiplied)으로 넘긴다.
+    /// 실패하면 아무것도 지정하지 않는다 — 비주얼은 부가 표시라, 여기서 막으면 순서 변경 자체가 퇴행한다.
+    /// </summary>
+    public static async Task SetDragVisualFromItemAsync(ListView list, int index, DragStartingEventArgs e)
+    {
+        if (list.ContainerFromIndex(index) is not ListViewItem container)
+            return;
+
+        try
+        {
+            var (width, height) = ScaleToMaxWidth(container.ActualWidth, container.ActualHeight);
+            if (width <= 0 || height <= 0)
+                return;
+
+            var rendered = new RenderTargetBitmap();
+            await rendered.RenderAsync(container, width, height);
+
+            var pixels = await rendered.GetPixelsAsync();
+            var surface = SoftwareBitmap.CreateCopyFromBuffer(
+                pixels, BitmapPixelFormat.Bgra8, rendered.PixelWidth, rendered.PixelHeight,
+                BitmapAlphaMode.Premultiplied);
+            e.DragUI.SetContentFromSoftwareBitmap(surface);
+        }
+        catch
+        {
+            /* 렌더 실패는 무음 — 드래그는 기본 비주얼로 계속된다 */
+        }
+    }
+
+    /// <summary>최대 폭을 넘는 카드만 종횡비를 보존해 줄인다(업스케일 금지).</summary>
+    private static (int Width, int Height) ScaleToMaxWidth(double width, double height)
+    {
+        if (width <= MaxDragVisualWidth)
+            return ((int)Math.Round(width), (int)Math.Round(height));
+
+        return (MaxDragVisualWidth, (int)Math.Round(height * (MaxDragVisualWidth / width)));
     }
 
     // 화면에 실현된 컨테이너만 좌표를 갖는다. 가상화로 아직 만들어지지 않았거나 재활용된 항목은
