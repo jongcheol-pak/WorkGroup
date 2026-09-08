@@ -201,10 +201,11 @@ public sealed partial class WorkGroupsPage : Page
     // ----- 드래그 순서 변경(핸들 → 목록에 드롭) -----
 
     /// <summary>
-    /// 핸들에서 시작한 드래그에 항목 인덱스를 실어 보낸다. 카드 본체의 작업 표시줄 핀 드래그와는
-    /// 데이터 포맷으로 구분되므로, 둘이 서로의 드롭 대상이 되지 않는다.
+    /// 핸들에서 시작한 드래그에 항목 인덱스를 실어 보내고, 드래그 비주얼을 그 항목의 카드 스냅샷으로 지정한다.
+    /// 카드 본체의 작업 표시줄 핀 드래그와는 데이터 포맷으로 구분되므로, 둘이 서로의 드롭 대상이 되지 않는다
+    /// (핀 드래그의 비주얼은 그대로 그룹 아이콘이다).
     /// </summary>
-    private void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
+    private async void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not GroupListItem item)
             return;
@@ -215,6 +216,17 @@ public sealed partial class WorkGroupsPage : Page
 
         e.Data.RequestedOperation = DataPackageOperation.Move;
         e.Data.SetData(ReorderDrop.IndexFormat, index.ToString());
+
+        // 카드 렌더는 비동기라 deferral로 붙잡아 둔다(데이터는 그 전에 이미 실었다).
+        var deferral = e.GetDeferral();
+        try
+        {
+            await ReorderDrop.SetDragVisualFromItemAsync(GroupsList, index, e);
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private void OnListDragOver(object sender, DragEventArgs e)

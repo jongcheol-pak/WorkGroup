@@ -74,7 +74,11 @@ public sealed partial class TrayMenuPage : Page
 
     // ----- 드래그 순서 변경(핸들 → 목록에 드롭). 작업 그룹 페이지와 같은 어댑터를 쓴다. -----
 
-    private void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
+    /// <summary>
+    /// 핸들에서 시작한 드래그에 항목 인덱스를 실어 보내고, 드래그 비주얼을 그 항목의 카드 스냅샷으로 지정한다
+    /// (작업 그룹 페이지와 같은 조작·같은 어댑터).
+    /// </summary>
+    private async void OnReorderDragStarting(UIElement sender, DragStartingEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not FolderShortcutItem item)
             return;
@@ -85,6 +89,17 @@ public sealed partial class TrayMenuPage : Page
 
         e.Data.RequestedOperation = DataPackageOperation.Move;
         e.Data.SetData(ReorderDrop.IndexFormat, index.ToString());
+
+        // 카드 렌더는 비동기라 deferral로 붙잡아 둔다(데이터는 그 전에 이미 실었다).
+        var deferral = e.GetDeferral();
+        try
+        {
+            await ReorderDrop.SetDragVisualFromItemAsync(FoldersList, index, e);
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private void OnListDragOver(object sender, DragEventArgs e)
