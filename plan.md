@@ -97,11 +97,11 @@
 
 ### T3. `WorkGroupsViewModel` 케이스 작성
 
-- [ ] **T3-1** `tests/WorkGroup.App.Tests/WorkGroupsViewModelTests.cs`를 만든다. 공통 준비: `AppGroup.Restore(GroupId.New(), name, IconSource.DefaultBuiltIn, apps)`로 그룹을 만들고 `FakeGroupAppService`에 넣는다
-- [ ] **T3-2** 검색 필터 축 — ① 검색 없음이면 전체가 보이고 모든 항목의 `CanReorder`가 true ② 이름 부분일치로 좁혀지고 **남은 항목의 `CanReorder`가 false** ③ **멤버 앱 이름으로도 걸린다** ④ 검색어를 비우면 `CanReorder`가 다시 true ⑤ 공백만 입력한 것은 검색 아님(`Trim()` 후 판정) ⑥ 대소문자를 무시한다
-- [ ] **T3-3** `MoveAsync` 축 — ⑦ 검색 중이면 순서가 그대로이고 `ReorderAsync`가 **호출되지 않는다** ⑧ `fromIndex==toIndex`면 무동작 ⑨ 범위 밖 인덱스(-1 · `Count`)는 무동작 ⑩ 정상 이동이면 `Groups` 순서가 바뀌고 `ReorderAsync`에 **새 순서 그대로** 전달된다
-- [ ] **T3-4** 상태 메시지 축 — ⑪ `ReorderAsync` 실패 시 `StatusMessage`가 그 `Error` 문자열이 되고 `HasStatus`가 true ⑫ 성공 시 `StatusMessage`가 빈 문자열 ⑬ 실패 후 `LoadAsync`가 `StatusMessage`를 비운다 ⑭ 실패해도 목록은 되돌리지 않는다(주석이 선언한 동작)
-- [ ] **T3-5** `IsEmpty` 축 — ⑮ 전체 0건일 때만 true이고, 검색으로 표시 0건이 된 경우는 false
+- [x] **T3-1** `tests/WorkGroup.App.Tests/WorkGroupsViewModelTests.cs`를 만든다. 공통 준비: `AppGroup.Restore(GroupId.New(), name, IconSource.DefaultBuiltIn, apps)`로 그룹을 만들고 `FakeGroupAppService`에 넣는다
+- [x] **T3-2** 검색 필터 축 — ① 검색 없음이면 전체가 보이고 모든 항목의 `CanReorder`가 true ② 이름 부분일치로 좁혀지고 **남은 항목의 `CanReorder`가 false** ③ **멤버 앱 이름으로도 걸린다** ④ 검색어를 비우면 `CanReorder`가 다시 true ⑤ 공백만 입력한 것은 검색 아님(`Trim()` 후 판정) ⑥ 대소문자를 무시한다
+- [x] **T3-3** `MoveAsync` 축 — ⑦ 검색 중이면 순서가 그대로이고 `ReorderAsync`가 **호출되지 않는다** ⑧ `fromIndex==toIndex`면 무동작 ⑨ 범위 밖 인덱스(-1 · `Count`)는 무동작 ⑩ 정상 이동이면 `Groups` 순서가 바뀌고 `ReorderAsync`에 **새 순서 그대로** 전달된다
+- [x] **T3-4** 상태 메시지 축 — ⑪ `ReorderAsync` 실패 시 `StatusMessage`가 그 `Error` 문자열이 되고 `HasStatus`가 true ⑫ 성공 시 `StatusMessage`가 빈 문자열 ⑬ 실패 후 `LoadAsync`가 `StatusMessage`를 비운다 ⑭ 실패해도 목록은 되돌리지 않는다(주석이 선언한 동작)
+- [x] **T3-5** `IsEmpty` 축 — ⑮ 전체 0건일 때만 true이고, 검색으로 표시 0건이 된 경우는 false
 - **Files**: `tests/WorkGroup.App.Tests/WorkGroupsViewModelTests.cs`(신규)
 - **구조**: ⓐ **왜 새 파일인가** — 기존 테스트는 `tests/WorkGroup.Application.Tests/`에 `<대상>Tests.cs` 1파일 = 1대상 규칙으로 놓여 있다(`GroupAppServiceTests.cs` 등 15개). 같은 규칙을 따른다. ⓑ **레이어** — `tests/WorkGroup.App.Tests`. ⓒ **재사용** — 대역은 T2-4의 `Fakes/`를 쓰고 파일 안에서 새로 만들지 않는다
 - **Acceptance**: `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WorkGroupsViewModelTests"` → 작성 시점 0건 → **10건 이상, 실패 0**. **케이스는 구현과 다른 축으로 세운다** — `ApplyFilter`의 조건식을 그대로 옮기지 않고 *관측 가능한 결과*(`Groups`의 이름 나열 · `CanReorder` 값 · fake가 붙잡은 순서 인자)로만 단언한다. **변이 실증**: `WorkGroupsViewModel.MoveAsync`의 `if (IsFiltered ...) return;`을 지우면 ⑦이 실패해야 한다(구현 중 1회 확인해 Progress Log에 적는다)
@@ -109,9 +109,9 @@
 
 ### T4. `FolderShortcutsViewModel` 케이스 작성
 
-- [ ] **T4-1** `tests/WorkGroup.App.Tests/FolderShortcutsViewModelTests.cs`를 만든다. 준비: `FolderShortcut.Create(id, name, path).Value`
-- [ ] **T4-2** T3과 같은 축을 이 VM에 맞춰 세운다 — 검색은 **이름과 경로** 양쪽 부분일치이고, 재정렬 인자는 `int` Id 목록이며, 실패 메시지 출처는 `IFolderShortcutRepository.ReorderAsync`다
-- [ ] **T4-3** 두 VM이 같은 동작을 갖는지 대조하는 축을 하나 둔다 — 검색 중 `MoveAsync` 무동작이 **두 페이지에서 같다**는 것이 직전 회차가 두 페이지에 같은 코드를 넣은 근거다
+- [x] **T4-1** `tests/WorkGroup.App.Tests/FolderShortcutsViewModelTests.cs`를 만든다. 준비: `FolderShortcut.Create(id, name, path).Value`
+- [x] **T4-2** T3과 같은 축을 이 VM에 맞춰 세운다 — 검색은 **이름과 경로** 양쪽 부분일치이고, 재정렬 인자는 `int` Id 목록이며, 실패 메시지 출처는 `IFolderShortcutRepository.ReorderAsync`다
+- [x] **T4-3** 두 VM이 같은 동작을 갖는지 대조하는 축을 하나 둔다 — 검색 중 `MoveAsync` 무동작이 **두 페이지에서 같다**는 것이 직전 회차가 두 페이지에 같은 코드를 넣은 근거다
 - **Files**: `tests/WorkGroup.App.Tests/FolderShortcutsViewModelTests.cs`(신규)
 - **구조**: ⓐ **왜 새 파일인가** — T3과 같은 1파일=1대상 규칙. 두 VM은 인터페이스도 항목 타입도 달라 한 파일에 합치면 제네릭 헬퍼가 먼저 필요해진다(YAGNI). ⓑ **레이어** — `tests/WorkGroup.App.Tests`. ⓒ **재사용** — T2-4의 `Fakes/FakeFolderShortcutRepository.cs`
 - **Acceptance**: `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~FolderShortcutsViewModelTests"` → 작성 시점 0건 → **7건 이상, 실패 0**. **변이 실증**: `FolderShortcutsViewModel.ApplyFilter`의 `item.CanReorder = query.Length == 0;`을 `= true;`로 바꾸면 검색 중 `CanReorder` 케이스가 실패해야 한다(구현 중 1회 확인해 Progress Log에 적는다)
@@ -158,6 +158,7 @@
 
 - **T0** 패키지 버전 상향 단독 커밋(`95bb026`). 이 레포는 `plan.md`를 **추적**하므로(`.gitignore`에 없다) `git status`가 회차 중 완전히 비지 않는다 — T0 Acceptance를 「App.csproj 행이 사라졌는지」로 좁혔다.
 - **T1** `WindowsAppSdkDeploymentManagerInitialize=false` + `WindowsAppRuntimeInitializer.cs`(패키지 ID 가드) + `InternalsVisibleTo`. **변이 실증이 예상보다 강했다**: `ShouldInitialize`를 `true` 고정으로 바꾸면 해당 1건이 아니라 **3건 전부**가 실패한다 — 가드가 풀리면 모듈 초기화자가 실제로 `DeploymentManager.Initialize()`를 불러 `<Module>` 타입 초기화가 터지고, App 타입을 쓰는 모든 케이스가 무너진다. 이 task가 존재하는 이유가 그대로 재현된 것이다.
+- **T3·T4** 두 VM 케이스 19건·18건. 변이 실증 각각 성공(`IsFiltered ||` 제거 → 검색 중 무동작 1건 red · `CanReorder = query.Length == 0` → `true` → 검색 중 핸들 1건 red). 전체 **173 → 213건**(Goal 하한 193 초과 — `[Theory]` 4케이스가 각각 세어진다).
 - **T2** `tests/WorkGroup.App.Tests` 신설 + slnx 등재. slnx의 `Debug|Any CPU → x64` 매핑이 먹어 `bin/x64/Debug/`로 빌드됐다 — **대비책이던 `SetPlatform` 메타데이터는 불필요**했다.
 
 ## Next Steps
