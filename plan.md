@@ -12,7 +12,7 @@
 | G2 | 솔루션 테스트가 전부 통과하고 건수가 늘었다 | `dotnet test WorkGroup.slnx` → 실패 0 · 총 **작성 시점 173건 → 193건 이상** |
 | G3 | 두 ViewModel이 실제로 실행돼 측정된다 | `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WorkGroup.App.Tests"` → 실패 0 · 20건 이상(T1 3 + T3 10 + T4 7) |
 | G4 | 앱 빌드가 깨지지 않는다(패키징 포함) | `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64` → 경고 0 / 오류 0 |
-| G5 | 자동 초기화자를 끈 자리에 대체 호출이 실재한다 | `grep -c "DeploymentManager.Initialize" src/WorkGroup.App/*.cs` → 0건 → 1건 |
+| G5 | 자동 초기화자를 끈 자리에 대체 호출이 실재한다 | `grep -c "DeploymentManager\.Initialize(" src/WorkGroup.App/*.cs` → 0건 → 1건 |
 
 ## Out of Scope
 
@@ -80,7 +80,7 @@
 - [x] **T1-7** `HUMAN-VERIFY` (표기 완료 — 실제 확인은 사용자 몫) — 헤드리스에서 패키지 실행을 관찰할 수 없어 **미검증**. 사용자 F5 MSIX 실행으로 확인할 항목: ① 앱이 정상 시작한다(시작 즉시 크래시 없음) ② 트레이 아이콘·그룹 팝업·언어 리소스가 지금과 같다
 - **Files**: `src/WorkGroup.App/WorkGroup.App.csproj` · `src/WorkGroup.App/WindowsAppRuntimeInitializer.cs`(신규) · 재는 자리: `tests/WorkGroup.App.Tests/WindowsAppRuntimeInitializerTests.cs`(신규 — T2가 프로젝트를 만든 뒤 T1-5가 채운다)
 - **구조**: ⓐ **왜 새 파일인가** — `App.xaml.cs`(331줄)는 활성화 분기·single-instance·트레이 상주를 담은 진입점이고, 이 코드는 그보다 이른 **모듈 로드 시점**에 돌아야 해 성격이 다르다. 여기 섞으면 "App 생성자보다 먼저 도는 코드"가 App 생성자 파일 안에 숨는다. ⓑ **레이어** — App(조립/부트). WinAppSDK 런타임 초기화는 실행 형태(패키지/비패키지)에 대한 것이라 Infrastructure로 내릴 수 없다. ⓒ **재사용** — P/Invoke 선언은 이 파일 안 `private static extern` 하나로 끝난다(CsWin32를 App에 새로 들이지 않는다 — D4)
-- **Acceptance**: `grep -c "WindowsAppSdkDeploymentManagerInitialize" src/WorkGroup.App/WorkGroup.App.csproj` → 작성 시점 0건 → 1건 · `grep -c "DeploymentManager.Initialize" src/WorkGroup.App/WindowsAppRuntimeInitializer.cs` → 1건 · `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WindowsAppRuntimeInitializerTests"` → 작성 시점 0건 → **3건, 실패 0**. **변이 실증**: `ShouldInitialize`의 `hresult != 15700`을 `true`로 고정하면 ① 케이스가 실패해야 한다(구현 중 1회 확인해 Progress Log에 적는다). **네이티브 호출 자체와 `DeploymentManager.Initialize()`의 실제 효과는 `[면제 ④]`** — 테스트 호스트에는 패키지 ID가 원리상 없어 true 분기를 실행할 수 없다(Investigation Log 4행이 그 벽이다). 그 분기는 T1-7의 F5 실행이 받는다
+- **Acceptance**: `grep -c "WindowsAppSdkDeploymentManagerInitialize" src/WorkGroup.App/WorkGroup.App.csproj` → 작성 시점 0건 → 1건 · `grep -c "DeploymentManager\.Initialize(" src/WorkGroup.App/WindowsAppRuntimeInitializer.cs` → 1건(호출만 센다 — 문면 전체를 세면 FailFast 메시지가 함께 잡혀 2건이다) · `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WindowsAppRuntimeInitializerTests"` → 작성 시점 0건 → **3건, 실패 0**. **변이 실증**: `ShouldInitialize`의 `hresult != 15700`을 `true`로 고정하면 ① 케이스가 실패해야 한다(구현 중 1회 확인해 Progress Log에 적는다). **네이티브 호출 자체와 `DeploymentManager.Initialize()`의 실제 효과는 `[면제 ④]`** — 테스트 호스트에는 패키지 ID가 원리상 없어 true 분기를 실행할 수 없다(Investigation Log 4행이 그 벽이다). 그 분기는 T1-7의 F5 실행이 받는다
 - **검증**: `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64` → 경고 0 / 오류 0 · `dotnet build WorkGroup.slnx` → 경고 0 / 오류 0 · `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WindowsAppRuntimeInitializerTests"` → 3건, 실패 0
 
 ### T2. `tests/WorkGroup.App.Tests` 프로젝트 신설과 솔루션 등재
@@ -132,7 +132,7 @@
 |---|---|---|
 | T0 | `git status --short` | `src/WorkGroup.App/WorkGroup.App.csproj` 행 없음 |
 | T1 | `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64` | 경고 0 / 오류 0 |
-| T1 | `grep -c "DeploymentManager.Initialize" src/WorkGroup.App/WindowsAppRuntimeInitializer.cs` | 1 |
+| T1 | `grep -c "DeploymentManager\.Initialize(" src/WorkGroup.App/WindowsAppRuntimeInitializer.cs` | 1 |
 | T1 | `dotnet test WorkGroup.slnx --filter "FullyQualifiedName~WindowsAppRuntimeInitializerTests"` | 실패 0 · 3건 |
 | T2 | `dotnet build WorkGroup.slnx` | 경고 0 / 오류 0 |
 | T2 | `grep -rl "WorkGroup.App.csproj" tests/ --include=*.csproj` | 1건 |
@@ -151,16 +151,18 @@
 
 - `[다음 회차]` `GroupEditViewModel` 케이스 — 이름 빈 값·중복 이름·앱 0개에서 `StatusMessage`와 저장 차단. 이번 인터뷰에서 범위 밖으로 확정했고, T2가 만든 프로젝트에 파일 하나만 더하면 되므로 진입 비용이 사라진 상태다.
 - `[다음 회차]` `SettingsViewModel` 케이스 — 초기화 성공/실패 메시지와 자동 시작 실패 안내.
-- `[등재]` 이 레포에는 Deferred 대장(`docs/plans/deferred.md`)이 없다. 위 두 항목은 `plan.md`가 교체되면 사라지므로, 다음 회차 시작 시 이 절을 인계 프롬프트로 읽어야 한다.
-- 직전 회차의 GUI 수동 검증 6항목(드래그 비주얼)은 여전히 미검증으로 남아 있다 — 이번 T1-7의 F5 확인과 함께 볼 수 있다.
+- `[다음 회차]` **미검증 수동 항목** — ① T1-7: 배포 초기화 대체(`WindowsAppRuntimeInitializer`)가 실제 패키지(MSIX) 실행에서 지금과 같게 도는지(앱 정상 시작·트레이 아이콘·그룹 팝업·언어 리소스) ② 직전 회차의 드래그 비주얼 GUI 6항목. 둘 다 헤드리스로 관찰 불가라 F5 실행에서 한 번에 확인한다.
+- `[1회 실패] plan acceptance의 「작성 시점 N건」을 실행하지 않고 추정으로 적었다` — 이번 회차에 두 번 어긋났다(T5의 notes.md `DeploymentManager` 0건 → 실제 1건 · T1의 `DeploymentManager.Initialize` 1건 → 실제 2건). 직전 회차 마무리 커밋 `0d0a4a0`도 같은 원인이었다. **해결: plan 작성 시 acceptance의 착수 실측치는 그 자리에서 grep을 실행해 적는다.** 이 레포는 `AGENTS.md`에 `## 위키` 절이 없고 큐 파일도 없어 여기에 폴백으로 남긴다.
+- **`[미등재:대장 없음]`** — 이 레포에는 Deferred 대장(`docs/plans/deferred.md`)이 없다(`ls docs` → 없음). 위 항목들은 `plan.md`가 교체되면 사라지므로 **최종 보고의 인계 프롬프트로 옮긴다**.
 
 ## Progress Log
 
 - **T0** 패키지 버전 상향 단독 커밋(`95bb026`). 이 레포는 `plan.md`를 **추적**하므로(`.gitignore`에 없다) `git status`가 회차 중 완전히 비지 않는다 — T0 Acceptance를 「App.csproj 행이 사라졌는지」로 좁혔다.
 - **T1** `WindowsAppSdkDeploymentManagerInitialize=false` + `WindowsAppRuntimeInitializer.cs`(패키지 ID 가드) + `InternalsVisibleTo`. **변이 실증이 예상보다 강했다**: `ShouldInitialize`를 `true` 고정으로 바꾸면 해당 1건이 아니라 **3건 전부**가 실패한다 — 가드가 풀리면 모듈 초기화자가 실제로 `DeploymentManager.Initialize()`를 불러 `<Module>` 타입 초기화가 터지고, App 타입을 쓰는 모든 케이스가 무너진다. 이 task가 존재하는 이유가 그대로 재현된 것이다.
 - **T5** `AGENTS.md`(아키텍처 + x64 제약)·`notes.md` 갱신. Acceptance의 「`DeploymentManager` 0건」이 실측과 달랐다 — 2026-06-05 항목에 이미 1건 있었다. 1건→2건으로 정정.
-- **최종 검증** 빌드 0/0 · 테스트 213건 실패 0 · G1~G5 전부 참(G5는 호출 1 + 문서주석 1로 2건 잡힌다).
-- **T3·T4** 두 VM 케이스 19건·18건. 변이 실증 각각 성공(`IsFiltered ||` 제거 → 검색 중 무동작 1건 red · `CanReorder = query.Length == 0` → `true` → 검색 중 핸들 1건 red). 전체 **173 → 213건**(Goal 하한 193 초과 — `[Theory]` 4케이스가 각각 세어진다).
+- **최종 리뷰 후속(MINOR 4건)** ① 폴더 VM에 대소문자 축이 빠져 있었다 — 실해 확인됨(`OrdinalIgnoreCase`→`Ordinal`로 바꿔도 18건 전부 green이었다). 케이스 1건 추가 후 변이 실증으로 red 확인, App **40 → 41건**(전체 214건). ② `DeploymentManager.Initialize` grep 기준을 호출만 세도록(`Initialize(`) 좁혔다 — 문면 전체를 세면 `FailFast` 메시지가 함께 잡혀 2건이다. ③ Deferred의 `[등재]` 태그를 `[미등재:대장 없음]`으로 고치고 미검증 수동 항목을 인계 대상으로 명시. ④ acceptance 기준선을 추정으로 적는 습관을 `[1회 실패]`로 기록(위키 큐가 없어 여기 폴백).
+- **최종 검증** 빌드 0/0 · 테스트 214건 실패 0 · G1~G5 전부 참(G5는 호출 1 + 문서주석 1로 2건 잡힌다).
+- **T3·T4** 두 VM 케이스 19건·18건. 변이 실증 각각 성공(`IsFiltered ||` 제거 → 검색 중 무동작 1건 red · `CanReorder = query.Length == 0` → `true` → 검색 중 핸들 1건 red). 전체 **173 → 214건**(Goal 하한 193 초과 — `[Theory]` 4케이스가 각각 세어진다).
 - **T2** `tests/WorkGroup.App.Tests` 신설 + slnx 등재. slnx의 `Debug|Any CPU → x64` 매핑이 먹어 `bin/x64/Debug/`로 빌드됐다 — **대비책이던 `SetPlatform` 메타데이터는 불필요**했다.
 
 ## Next Steps

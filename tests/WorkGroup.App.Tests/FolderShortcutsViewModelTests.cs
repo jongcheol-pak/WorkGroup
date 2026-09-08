@@ -67,6 +67,18 @@ public class FolderShortcutsViewModelTests
     }
 
     [Fact]
+    public async Task 검색은_이름과_경로_모두에서_대소문자를_무시한다()
+    {
+        var (byName, _) = await LoadedAsync(("Photos", @"C:\Media"), ("Docs", @"C:\Papers"));
+        byName.SearchText = "photos";
+        Assert.Equal(new[] { "Photos" }, byName.Folders.Select(f => f.Name));
+
+        var (byPath, _) = await LoadedAsync(("사진", @"D:\Media\Pictures"), ("문서", @"D:\Papers"));
+        byPath.SearchText = "media";
+        Assert.Equal(new[] { "사진" }, byPath.Folders.Select(f => f.Name));
+    }
+
+    [Fact]
     public async Task 검색어를_비우면_순서변경이_다시_열린다()
     {
         var (vm, _) = await LoadedAsync(Folder("문서"), Folder("사진"));
