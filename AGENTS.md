@@ -8,7 +8,8 @@ WinUI 3 / .NET 10 / MSIX 기반 "작업 그룹 런처" 프로젝트의 에이전
 ## 빌드 / 테스트 명령
 - 빌드(솔루션): `dotnet build WorkGroup.slnx` — 플랫폼 미지정으로 실행한다. `-p:Platform=x64`를 강제하면 slnx 솔루션 구성 매핑 오류가 난다.
 - 앱 단독 RID 빌드(필요 시): `dotnet build src/WorkGroup.App/WorkGroup.App.csproj -p:Platform=x64`
-- 테스트: `dotnet test WorkGroup.slnx` (Domain/Application 단위 테스트)
+- 테스트: `dotnet test WorkGroup.slnx` (Domain/Application/App 단위 테스트)
+- `WorkGroup.App.Tests`만 단독으로 돌릴 때는 `-p:Platform=x64`가 필요하다 — `WorkGroup.App`이 `OutputType=WinExe`+MSIX라 AnyCPU로 빌드되면 "app host exe cannot be ProcessorArchitecture neutral"로 패키징이 실패한다. 솔루션 경유(`WorkGroup.slnx`)는 매핑이 걸려 있어 그냥 돌린다.
 - 패키지 앱 GUI 실행은 수동(Visual Studio F5 MSIX 배포). 헤드리스 자율 실행에서는 GUI 관찰 불가.
 
 ## 아키텍처 (DDD 레이어)
@@ -17,6 +18,9 @@ WinUI 3 / .NET 10 / MSIX 기반 "작업 그룹 런처" 프로젝트의 에이전
 - `src/WorkGroup.Infrastructure` (net10.0-windows10.0.19041.0) — WinRT/Win32 interop 구현. Application·Domain 의존.
 - `src/WorkGroup.App` (WinUI3, net10.0-windows10.0.19041.0) — DI 조립 + View/ViewModel + 활성화/런처.
 - `tests/WorkGroup.Domain.Tests` (net10.0, xUnit), `tests/WorkGroup.Application.Tests` (net10.0-windows10.0.19041.0, xUnit — Infrastructure를 참조해 windows TFM).
+- `tests/WorkGroup.App.Tests` (net10.0-windows10.0.19041.0, **x64 전용**, xUnit — App을 참조해 ViewModel을 잰다).
+  테스트 호스트가 언패키지 프로세스라 `WindowsPackageType=None` + `WindowsAppSdkBootstrapInitialize=true`로 WinAppSDK를 부트스트랩해야 MRT(`LocalizationService`)가 산다.
+  App 쪽에서는 `WindowsAppSdkDeploymentManagerInitialize=false` + `WindowsAppRuntimeInitializer`(패키지 ID 가드)가 짝을 이룬다 — 자동 생성되는 배포 초기화자는 패키지 ID 없는 프로세스에서 `WorkGroup.App.dll`의 타입 로드 자체를 막는다.
 - 의존 방향: App → Infrastructure → Application → Domain (역방향 금지).
 
 ## 코딩 규칙
