@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WorkGroup.App(WinUI3) 참조를 위해 Windows 타깃. App 레이어(ViewModel) 테스트를 담는다. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+
+    <!--
+      x64 전용. WorkGroup.App이 OutputType=WinExe + MSIX 패키징이라 AnyCPU로 빌드되면
+      "Packaged .NET applications with an app host exe cannot be ProcessorArchitecture neutral"로 실패한다.
+    -->
+    <Platforms>x64</Platforms>
+
+    <!--
+      테스트 호스트는 언패키지 프로세스라, WinAppSDK 런타임을 직접 부트스트랩해야
+      LocalizationService의 MRT Core(ResourceManager) 활성화가 된다.
+      이 두 속성이면 WinAppSDK targets가 버전이 박힌 부트스트랩 모듈 초기화자를 생성해 준다
+      — 손으로 버전을 적으면 패키지 상향 때마다 낡는다.
+    -->
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>true</WindowsAppSdkBootstrapInitialize>
+    <EnableMsixTooling>false</EnableMsixTooling>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Application·Domain은 App을 통해 전이로 들어온다. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\WorkGroup.App\WorkGroup.App.csproj" />
+  </ItemGroup>
+
+</Project>

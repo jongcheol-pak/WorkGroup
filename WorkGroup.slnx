@@ -21,6 +21,10 @@
     </Project>
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/WorkGroup.App.Tests/WorkGroup.App.Tests.csproj">
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="Debug|Any CPU" Project="x64" />
+    </Project>
     <Project Path="tests/WorkGroup.Application.Tests/WorkGroup.Application.Tests.csproj">
       <Platform Solution="*|x64" Project="x64" />
     </Project>
