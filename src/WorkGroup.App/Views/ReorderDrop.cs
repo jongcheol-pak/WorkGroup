@@ -22,10 +22,12 @@ internal static class ReorderDrop
     public const string IndexFormat = "WorkGroup/ReorderIndex";
 
     /// <summary>
-    /// 드래그 비주얼 최대 폭(논리 px). 카드는 ContentMaxWidth까지 넓어져 커서를 따라다니기엔 과대하다.
-    /// 필요 시 이 값만 조정한다.
+    /// 드래그 비주얼 최대 폭(논리 px) — `ContentMaxWidth`(1024)와 같은 값이라 현재 레이아웃에서는
+    /// 축소가 걸리지 않고 카드가 원본 크기로 따라온다(그룹 수정 화면의 내장 재정렬과 같은 모습).
+    /// 이보다 작게 잡으면 넓은 창에서 카드가 판독 불가능한 띠로 줄어든다 — 폭 1024 카드를 320으로 줄이면
+    /// 높이가 25px가 되어 14px 이름이 4px로 렌더된다. 향후 레이아웃이 더 넓어질 때를 위한 안전판이다.
     /// </summary>
-    private const int MaxDragVisualWidth = 320;
+    private const int MaxDragVisualWidth = 1024;
 
     /// <summary>커서 위치(목록 기준 좌표)로 끼워 넣을 자리와 표시선 위치를 함께 구한다.</summary>
     public static DropTarget ResolveDropTarget(ListView list, Point position)
